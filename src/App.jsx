@@ -268,7 +268,7 @@ const db = (table) => {
 const initialState = {
   user: null,
   business: null,
-  screen: "login",
+  screen: "home",
   quotes: [],
   sequences: [],
   notification: null,
@@ -375,8 +375,8 @@ const Button = ({ children, variant = "primary", size = "md", onClick, style = {
     fontFamily: theme.font, fontWeight: 600, border: "none", cursor: disabled ? "not-allowed" : "pointer",
     borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 8,
     transition: "all 0.2s ease", opacity: disabled ? 0.5 : 1,
-    fontSize: size === "sm" ? 13 : 14,
-    padding: size === "sm" ? "8px 16px" : "12px 24px",
+    fontSize: size === "sm" ? 13 : size === "lg" ? 16 : 14,
+    padding: size === "sm" ? "8px 16px" : size === "lg" ? "16px 32px" : "12px 24px",
   };
   const variants = {
     primary: { background: theme.accent, color: "#000", boxShadow: `0 0 20px ${theme.accentGlow}` },
@@ -460,6 +460,196 @@ const Toast = ({ message, type, onClose }) => {
 };
 
 // ─── Auth Screen ───
+// ════════════════════════════════════════
+// PUBLIC PAGES
+// ════════════════════════════════════════
+
+const Navbar = ({ dispatch, transparent }) => (
+  <nav style={{ position:transparent?"absolute":"relative",top:0,left:0,right:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"20px 48px",background:transparent?"transparent":theme.surface,borderBottom:transparent?"none":`1px solid ${theme.border}`,fontFamily:theme.font }}>
+    <div style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer" }} onClick={() => dispatch({ type:"SET_SCREEN",payload:"home" })}>
+      <div style={{ width:36,height:36,borderRadius:10,background:`linear-gradient(135deg,${theme.accent},${theme.accentHover})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,boxShadow:`0 0 20px ${theme.accentGlow}` }}>⚡</div>
+      <span style={{ fontSize:22,fontWeight:700,color:theme.text,fontFamily:theme.fontDisplay }}>Wynflow</span>
+    </div>
+    <div style={{ display:"flex",alignItems:"center",gap:32 }}>
+      {[["home","Home"],["about","About"],["pricing","Pricing"]].map(([id,label]) => (
+        <span key={id} onClick={() => dispatch({ type:"SET_SCREEN",payload:id })} style={{ fontSize:14,fontWeight:500,color:theme.textMuted,cursor:"pointer",transition:"color 0.2s" }} onMouseEnter={e=>e.target.style.color=theme.text} onMouseLeave={e=>e.target.style.color=theme.textMuted}>{label}</span>
+      ))}
+      <Button size="sm" variant="secondary" onClick={() => dispatch({ type:"SET_SCREEN",payload:"login" })}>Log In</Button>
+      <Button size="sm" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Get Started Free</Button>
+    </div>
+  </nav>
+);
+
+const Footer = ({ dispatch }) => (
+  <footer style={{ padding:"64px 48px 32px",background:theme.surface,borderTop:`1px solid ${theme.border}`,fontFamily:theme.font }}>
+    <div style={{ display:"flex",justifyContent:"space-between",maxWidth:1100,margin:"0 auto",flexWrap:"wrap",gap:48 }}>
+      <div style={{ maxWidth:300 }}>
+        <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
+          <div style={{ width:32,height:32,borderRadius:8,background:`linear-gradient(135deg,${theme.accent},${theme.accentHover})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>⚡</div>
+          <span style={{ fontSize:18,fontWeight:700,color:theme.text,fontFamily:theme.fontDisplay }}>Wynflow</span>
+        </div>
+        <p style={{ fontSize:13,color:theme.textMuted,lineHeight:1.6 }}>Automated quote delivery and follow-up for tradies. Send quotes, chase customers, win more jobs — on autopilot.</p>
+      </div>
+      <div>
+        <h4 style={{ fontSize:13,fontWeight:600,color:theme.text,marginBottom:16,textTransform:"uppercase",letterSpacing:1 }}>Product</h4>
+        {["home","pricing","about"].map(p => <div key={p} onClick={() => dispatch({ type:"SET_SCREEN",payload:p })} style={{ fontSize:14,color:theme.textMuted,cursor:"pointer",marginBottom:10,textTransform:"capitalize" }}>{p}</div>)}
+      </div>
+      <div>
+        <h4 style={{ fontSize:13,fontWeight:600,color:theme.text,marginBottom:16,textTransform:"uppercase",letterSpacing:1 }}>Company</h4>
+        <div style={{ fontSize:14,color:theme.textMuted,marginBottom:10 }}>Built by Wynfall Automation</div>
+        <div style={{ fontSize:14,color:theme.textMuted,marginBottom:10 }}>Napier & Auckland, NZ</div>
+        <div style={{ fontSize:14,color:theme.accent }}>hello@wynflow.com</div>
+      </div>
+    </div>
+    <div style={{ maxWidth:1100,margin:"48px auto 0",paddingTop:24,borderTop:`1px solid ${theme.border}`,textAlign:"center",fontSize:13,color:theme.textDim }}>© 2026 Wynflow. A product by Wynfall Automation Ltd. All rights reserved.</div>
+  </footer>
+);
+
+const HomePage = ({ dispatch }) => (
+  <div>
+    <div style={{ minHeight:"90vh",display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",background:`radial-gradient(ellipse at 30% 20%,rgba(245,158,11,0.1) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(59,130,246,0.06) 0%,transparent 50%),${theme.bg}`,padding:"120px 48px 80px" }}>
+      <div style={{ maxWidth:800 }}>
+        <div style={{ display:"inline-block",padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:32 }}><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>🚀 Built for NZ Tradies</span></div>
+        <h1 style={{ fontSize:64,fontWeight:800,color:theme.text,lineHeight:1.1,marginBottom:24,fontFamily:theme.fontDisplay }}>Stop Chasing Quotes.<br /><span style={{ color:theme.accent }}>Start Winning Jobs.</span></h1>
+        <p style={{ fontSize:20,color:theme.textMuted,lineHeight:1.6,maxWidth:600,margin:"0 auto 40px" }}>Upload your quote, hit send, and let Wynflow handle the follow-ups. Automated emails chase your customers so you can get back on the tools.</p>
+        <div style={{ display:"flex",gap:16,justifyContent:"center" }}><Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Free Trial →</Button><Button size="lg" variant="secondary" onClick={() => dispatch({ type:"SET_SCREEN",payload:"pricing" })}>View Pricing</Button></div>
+        <p style={{ fontSize:13,color:theme.textDim,marginTop:16 }}>No credit card required • 14-day free trial • Cancel anytime</p>
+      </div>
+    </div>
+    <div style={{ padding:"100px 48px",background:theme.surface }}>
+      <div style={{ maxWidth:1100,margin:"0 auto",textAlign:"center" }}>
+        <h2 style={{ fontSize:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>How It Works</h2>
+        <p style={{ fontSize:16,color:theme.textMuted,marginBottom:64,maxWidth:500,margin:"0 auto 64px" }}>Three simple steps to never chase a quote again</p>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:32 }}>
+          {[{num:"01",icon:"📄",title:"Upload Your Quote",desc:"Create your quote however you normally do. Save it as a PDF and upload it to Wynflow."},{num:"02",icon:"📧",title:"Hit Send",desc:"Add the customer's email, job title and amount. Wynflow sends a branded email with your PDF and response buttons."},{num:"03",icon:"🤖",title:"Wynflow Chases",desc:"If they don't respond, automated follow-ups kick in. When they click Book In, Decline, or Feedback — you're notified."}].map((step,i) => (
+            <div key={i} style={{ padding:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"left" }}>
+              <div style={{ fontSize:48,fontWeight:800,color:theme.accent,fontFamily:theme.fontDisplay,opacity:0.3,marginBottom:8 }}>{step.num}</div>
+              <div style={{ fontSize:36,marginBottom:16 }}>{step.icon}</div>
+              <h3 style={{ fontSize:20,fontWeight:700,color:theme.text,marginBottom:12 }}>{step.title}</h3>
+              <p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.7 }}>{step.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+    <div style={{ padding:"100px 48px",background:theme.bg }}>
+      <div style={{ maxWidth:1100,margin:"0 auto" }}>
+        <div style={{ textAlign:"center",marginBottom:64 }}><h2 style={{ fontSize:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Everything You Need</h2><p style={{ fontSize:16,color:theme.textMuted }}>Built specifically for tradies who are sick of chasing quotes</p></div>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:24 }}>
+          {[{icon:"📋",title:"Quote Dashboard",desc:"See every quote at a glance — who's opened it, who's responded, and what needs attention."},{icon:"🔄",title:"Automated Follow-Ups",desc:"Set it and forget it. Configure email sequences that chase at day 2, 5, 10 — whatever works."},{icon:"📎",title:"PDF Attachments",desc:"Upload your quote PDF and it gets attached to the email automatically."},{icon:"✅",title:"One-Click Responses",desc:"Customers click Book In, Decline, or Give Feedback right in the email."},{icon:"📊",title:"Track Everything",desc:"Know when emails are opened, which quotes are pending, and your win rate."},{icon:"🔒",title:"Secure & Private",desc:"Your data is encrypted and isolated. Bank-grade security."}].map((f,i) => (
+            <div key={i} style={{ padding:32,borderRadius:16,background:theme.surface,border:`1px solid ${theme.border}`,display:"flex",gap:20 }}>
+              <div style={{ fontSize:28,flexShrink:0 }}>{f.icon}</div>
+              <div><h3 style={{ fontSize:16,fontWeight:600,color:theme.text,marginBottom:8 }}>{f.title}</h3><p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.6 }}>{f.desc}</p></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+    <div style={{ padding:"100px 48px",background:theme.surface }}>
+      <div style={{ maxWidth:900,margin:"0 auto",textAlign:"center" }}>
+        <h2 style={{ fontSize:40,fontWeight:700,color:theme.text,marginBottom:64,fontFamily:theme.fontDisplay }}>Trusted by Tradies Across NZ</h2>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:24 }}>
+          {[{name:"Mike R.",trade:"Plumber, Auckland",quote:"I used to spend 30 minutes a day chasing quotes. Now Wynflow does it while I'm on the job. Won 3 extra jobs last month."},{name:"Sarah T.",trade:"Electrician, Wellington",quote:"The customer response buttons are genius. People actually reply now. My conversion went from 40% to 65%."},{name:"Dave L.",trade:"Builder, Christchurch",quote:"Dead simple to use. Upload the PDF, add the email, done. Exactly what tradies need."}].map((t,i) => (
+            <div key={i} style={{ padding:32,borderRadius:16,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"left" }}>
+              <div style={{ display:"flex",gap:4,marginBottom:16 }}>{[1,2,3,4,5].map(s=><span key={s} style={{ color:theme.accent,fontSize:16 }}>★</span>)}</div>
+              <p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.7,marginBottom:20,fontStyle:"italic" }}>"{t.quote}"</p>
+              <div style={{ fontSize:14,fontWeight:600,color:theme.text }}>{t.name}</div>
+              <div style={{ fontSize:12,color:theme.textDim }}>{t.trade}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+    <div style={{ padding:"100px 48px",textAlign:"center",background:`radial-gradient(ellipse at 50% 50%,rgba(245,158,11,0.12) 0%,transparent 60%),${theme.bg}` }}>
+      <h2 style={{ fontSize:44,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Ready to Win More Jobs?</h2>
+      <p style={{ fontSize:18,color:theme.textMuted,marginBottom:40 }}>Join hundreds of NZ tradies who've stopped chasing and started winning.</p>
+      <Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Your Free Trial →</Button>
+    </div>
+    <Footer dispatch={dispatch} />
+  </div>
+);
+
+const AboutPage = ({ dispatch }) => (
+  <div>
+    <div style={{ padding:"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(245,158,11,0.08) 0%,transparent 50%),${theme.bg}` }}>
+      <h1 style={{ fontSize:52,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay }}>About Wynflow</h1>
+      <p style={{ fontSize:18,color:theme.textMuted,maxWidth:600,margin:"0 auto",lineHeight:1.6 }}>Built by a Kiwi who got sick of watching tradies lose jobs because they forgot to follow up.</p>
+    </div>
+    <div style={{ padding:"80px 48px",background:theme.surface }}>
+      <div style={{ maxWidth:800,margin:"0 auto" }}>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:48,alignItems:"center",marginBottom:80 }}>
+          <div><h2 style={{ fontSize:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>The Problem</h2><p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Every tradie knows the pain. You spend an hour measuring up a job, write up the quote, send it off... and then what? You wait. Maybe you follow up in a week. Maybe you don't. Meanwhile, the customer's gone with someone who did.</p></div>
+          <div style={{ padding:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}><div style={{ fontSize:56,fontWeight:800,color:theme.red,fontFamily:theme.fontDisplay }}>60%</div><div style={{ fontSize:14,color:theme.textMuted,marginTop:8 }}>of quotes are lost simply because nobody followed up</div></div>
+        </div>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:48,alignItems:"center",marginBottom:80 }}>
+          <div style={{ padding:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}><div style={{ fontSize:56,fontWeight:800,color:theme.green,fontFamily:theme.fontDisplay }}>3x</div><div style={{ fontSize:14,color:theme.textMuted,marginTop:8 }}>more likely to win the job with just one follow-up email</div></div>
+          <div><h2 style={{ fontSize:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>The Solution</h2><p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Wynflow takes the chasing out of your hands. Upload your quote, hit send, and our automated system follows up at exactly the right intervals. Professional, consistent, and hands-free.</p></div>
+        </div>
+        <div style={{ padding:48,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}>
+          <h2 style={{ fontSize:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Built by Wynfall Automation</h2>
+          <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,maxWidth:600,margin:"0 auto 24px" }}>Wynflow is a product of Wynfall Automation, a New Zealand-based company specialising in AI and workflow automation for service businesses. Based in Napier and Auckland, building tools that make sense for how Kiwi tradies work.</p>
+          <div style={{ display:"flex",gap:32,justifyContent:"center",marginTop:32 }}>
+            <div><div style={{ fontSize:28 }}>🇳🇿</div><div style={{ fontSize:13,color:theme.textMuted,marginTop:4 }}>100% NZ Built</div></div>
+            <div><div style={{ fontSize:28 }}>⚡</div><div style={{ fontSize:13,color:theme.textMuted,marginTop:4 }}>AI-Powered</div></div>
+            <div><div style={{ fontSize:28 }}>🔧</div><div style={{ fontSize:13,color:theme.textMuted,marginTop:4 }}>Made for Tradies</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style={{ padding:"80px 48px",background:theme.bg,textAlign:"center" }}>
+      <h2 style={{ fontSize:36,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Got Questions?</h2>
+      <p style={{ fontSize:16,color:theme.textMuted,marginBottom:32 }}>Drop us an email anytime.</p>
+      <div style={{ fontSize:20,color:theme.accent,fontWeight:600 }}>hello@wynflow.com</div>
+    </div>
+    <Footer dispatch={dispatch} />
+  </div>
+);
+
+const PricingPage = ({ dispatch }) => (
+  <div>
+    <div style={{ padding:"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(245,158,11,0.08) 0%,transparent 50%),${theme.bg}` }}>
+      <h1 style={{ fontSize:52,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay }}>Simple, Honest Pricing</h1>
+      <p style={{ fontSize:18,color:theme.textMuted,maxWidth:500,margin:"0 auto",lineHeight:1.6 }}>No hidden fees. No lock-in contracts. 14-day free trial on every plan.</p>
+    </div>
+    <div style={{ padding:"0 48px 100px",background:theme.bg }}>
+      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:24,maxWidth:1100,margin:"0 auto" }}>
+        {[
+          {name:"Starter",price:"49",desc:"Perfect for solo tradies",features:["Up to 30 quotes/month","1 follow-up sequence","PDF attachments","Customer response buttons","Email support","Quote dashboard"],highlighted:false},
+          {name:"Pro",price:"99",desc:"For busy tradies who want to win every job",features:["Unlimited quotes","Unlimited sequences","PDF attachments","Customer response buttons","Priority support","Advanced analytics","Custom email branding","Team access (3 users)"],highlighted:true},
+          {name:"Business",price:"199",desc:"For companies with multiple tradies",features:["Everything in Pro","Unlimited team members","Dedicated account manager","API access","Custom integrations","White-label emails","Phone support"],highlighted:false},
+        ].map((plan,i) => (
+          <div key={i} style={{ padding:40,borderRadius:20,background:theme.surface,border:`${plan.highlighted?"2px":"1px"} solid ${plan.highlighted?theme.accent:theme.border}`,position:"relative",transform:plan.highlighted?"scale(1.05)":"none",boxShadow:plan.highlighted?`0 0 40px ${theme.accentGlow}`:"none" }}>
+            {plan.highlighted && <div style={{ position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",padding:"6px 20px",borderRadius:20,background:theme.accent,color:"#000",fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:1 }}>Most Popular</div>}
+            <h3 style={{ fontSize:22,fontWeight:700,color:theme.text,marginBottom:8 }}>{plan.name}</h3>
+            <p style={{ fontSize:13,color:theme.textMuted,marginBottom:24 }}>{plan.desc}</p>
+            <div style={{ marginBottom:32 }}><span style={{ fontSize:52,fontWeight:800,color:theme.text,fontFamily:theme.fontDisplay }}>${plan.price}</span><span style={{ fontSize:16,color:theme.textMuted }}>/month</span></div>
+            <Button onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })} variant={plan.highlighted?"primary":"secondary"} style={{ width:"100%",justifyContent:"center",padding:"14px 24px",marginBottom:32 }}>Start Free Trial</Button>
+            <div style={{ display:"flex",flexDirection:"column",gap:12 }}>{plan.features.map((f,j) => <div key={j} style={{ display:"flex",alignItems:"center",gap:10,fontSize:14,color:theme.textMuted }}><span style={{ color:theme.green,fontSize:16 }}>✓</span> {f}</div>)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+    <div style={{ padding:"80px 48px",background:theme.surface }}>
+      <div style={{ maxWidth:700,margin:"0 auto" }}>
+        <h2 style={{ fontSize:36,fontWeight:700,color:theme.text,marginBottom:48,textAlign:"center",fontFamily:theme.fontDisplay }}>Frequently Asked Questions</h2>
+        {[{q:"Is there really a free trial?",a:"Yes! 14 days, full access, no credit card needed."},{q:"Can I cancel anytime?",a:"Absolutely. No lock-in contracts, no cancellation fees."},{q:"Do my customers know it's automated?",a:"Emails come from Wynflow on behalf of your business. They look professional and personal."},{q:"What if I already have quoting software?",a:"Keep using it! Just export as PDF and upload to Wynflow. We handle delivery and chasing."},{q:"Is my data secure?",a:"100%. Bank-grade encryption, every business's data is completely isolated."}].map((faq,i) => (
+          <div key={i} style={{ padding:"24px 0",borderBottom:`1px solid ${theme.border}` }}><h3 style={{ fontSize:16,fontWeight:600,color:theme.text,marginBottom:8 }}>{faq.q}</h3><p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.7 }}>{faq.a}</p></div>
+        ))}
+      </div>
+    </div>
+    <div style={{ padding:"80px 48px",background:theme.bg,textAlign:"center" }}>
+      <h2 style={{ fontSize:36,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Still Not Sure?</h2>
+      <p style={{ fontSize:16,color:theme.textMuted,marginBottom:32 }}>Start your free trial — no credit card, no commitment.</p>
+      <Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Free Trial →</Button>
+    </div>
+    <Footer dispatch={dispatch} />
+  </div>
+);
+
+// ════════════════════════════════════════
+// AUTH & DASHBOARD
+// ════════════════════════════════════════
+
 const AuthScreen = ({ dispatch, isSignup }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -585,6 +775,9 @@ const AuthScreen = ({ dispatch, isSignup }) => {
             style={{ color: theme.accent, cursor: "pointer", fontWeight: 600 }}>
             {isSignup ? "Sign in" : "Sign up free"}
           </span>
+          <span style={{ margin: "0 8px", color: theme.textDim }}>•</span>
+          <span onClick={() => dispatch({ type: "SET_SCREEN", payload: "home" })}
+            style={{ color: theme.textMuted, cursor: "pointer" }}>Back to home</span>
         </div>
       </div>
     </div>
@@ -1352,20 +1545,39 @@ export default function WynflowApp() {
   const activeScreen = screenParts[0];
   const detailId = screenParts[1];
 
+  const globalStyles = `${fonts}
+    * { margin:0;padding:0;box-sizing:border-box; }
+    body { background:${theme.bg}; }
+    html { scroll-behavior:smooth; }
+    input:focus,textarea:focus { border-color:${theme.accent} !important;box-shadow:0 0 0 2px ${theme.accentGlow}; }
+    ::-webkit-scrollbar { width:6px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:${theme.border};border-radius:3px; }
+    @keyframes slideIn { from{transform:translateX(100px);opacity:0} to{transform:translateX(0);opacity:1} }
+    @keyframes spin { to{transform:rotate(360deg)} }
+  `;
+
+  // Public pages
+  if (["home","about","pricing"].includes(screen)) {
+    return (
+      <>
+        <style>{globalStyles}</style>
+        {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
+        <div style={{ fontFamily: theme.font, color: theme.text }}>
+          <Navbar dispatch={dispatch} transparent={screen === "home"} />
+          {screen === "home" && <HomePage dispatch={dispatch} />}
+          {screen === "about" && <AboutPage dispatch={dispatch} />}
+          {screen === "pricing" && <PricingPage dispatch={dispatch} />}
+        </div>
+      </>
+    );
+  }
+
   // Auth screens
   if (!business && (screen === "login" || screen === "signup")) {
     return (
       <>
-        <style>{fonts}{`
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { background: ${theme.bg}; }
-          input:focus, textarea:focus { border-color: ${theme.accent} !important; box-shadow: 0 0 0 2px ${theme.accentGlow}; }
-          ::-webkit-scrollbar { width: 6px; }
-          ::-webkit-scrollbar-track { background: transparent; }
-          ::-webkit-scrollbar-thumb { background: ${theme.border}; border-radius: 3px; }
-          @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-          @keyframes spin { to { transform: rotate(360deg); } }
-        `}</style>
+        <style>{globalStyles}</style>
         {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
         <AuthScreen dispatch={dispatch} isSignup={screen === "signup"} />
       </>
@@ -1373,7 +1585,7 @@ export default function WynflowApp() {
   }
 
   if (!business) {
-    dispatch({ type: "SET_SCREEN", payload: "login" });
+    dispatch({ type: "SET_SCREEN", payload: "home" });
     return null;
   }
 
@@ -1392,16 +1604,7 @@ export default function WynflowApp() {
 
   return (
     <>
-      <style>{fonts}{`
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: ${theme.bg}; }
-        input:focus, textarea:focus { border-color: ${theme.accent} !important; box-shadow: 0 0 0 2px ${theme.accentGlow}; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: ${theme.border}; border-radius: 3px; }
-        @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
+      <style>{globalStyles}</style>
       {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
       <div style={{ display: "flex", height: "100vh", fontFamily: theme.font, color: theme.text, overflow: "hidden" }}>
         <Sidebar screen={activeScreen} dispatch={dispatch} business={business} />
