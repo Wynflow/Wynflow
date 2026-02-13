@@ -704,6 +704,12 @@ const AuthScreen = ({ dispatch, isSignup }) => {
         dispatch({ type: "SET_USER", payload: authData.user });
         dispatch({ type: "SET_BUSINESS", payload: biz?.[0] || null });
         dispatch({ type: "NOTIFY", payload: { message: "Account created! Welcome to Wynflow 🎉", type: "success" } });
+
+        // Trigger welcome email via N8N
+        fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, trade }),
+        }).catch(() => {});
       } else {
         const authData = await supabase.auth_signIn(email, password);
         dispatch({ type: "SET_USER", payload: authData.user });
@@ -1067,6 +1073,12 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
       });
 
       if (quoteErr) throw new Error("Failed to create quote");
+
+      // Trigger N8N to send the actual email
+      await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quote_id: newQuote[0].id }),
+      });
 
       dispatch({ type: "ADD_QUOTE", payload: newQuote[0] });
       dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${form.customerName}! Follow-ups scheduled. 🚀`, type: "success" } });
