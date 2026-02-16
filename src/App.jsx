@@ -614,16 +614,20 @@ const PricingPage = ({ dispatch }) => (
     <div style={{ padding:"0 48px 100px",background:theme.bg }}>
       <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:32,maxWidth:800,margin:"0 auto" }}>
         {[
-          {name:"Basic",price:"29",desc:"Perfect for getting started",features:["Up to 30 quotes/month","1 follow-up sequence","File attachments","Customer response buttons","Email support","Quote dashboard"],highlighted:false},
-          {name:"Pro",price:"49",desc:"For businesses who want to win every job",features:["Unlimited quotes","Unlimited sequences","File attachments","Customer response buttons","Priority support","Advanced analytics","Custom email branding","Team access (up to 3 users)"],highlighted:true},
+          {name:"Starter",price:"29",desc:"Everything you need to win more jobs",features:["Unlimited quotes","1 follow-up sequence","File attachments","Customer response buttons","Email support","Quote dashboard"],highlighted:true,active:true},
+          {name:"Pro",price:"49",desc:"For businesses who want the full toolkit",features:["Everything in Starter","Unlimited sequences","Custom email messages","Advanced analytics","Custom email branding","Team access (up to 3 users)","Priority support"],highlighted:false,active:false},
         ].map((plan,i) => (
           <div key={i} style={{ padding:40,borderRadius:20,background:theme.surface,border:`${plan.highlighted?"2px":"1px"} solid ${plan.highlighted?theme.accent:theme.border}`,position:"relative",transform:plan.highlighted?"scale(1.05)":"none",boxShadow:plan.highlighted?`0 0 40px ${theme.accentGlow}`:"none" }}>
             {plan.highlighted && <div style={{ position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",padding:"6px 20px",borderRadius:20,background:theme.accent,color:"#000",fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:1 }}>Most Popular</div>}
             <h3 style={{ fontSize:22,fontWeight:700,color:theme.text,marginBottom:8 }}>{plan.name}</h3>
             <p style={{ fontSize:13,color:theme.textMuted,marginBottom:24 }}>{plan.desc}</p>
             <div style={{ marginBottom:32 }}><span style={{ fontSize:52,fontWeight:800,color:theme.text,fontFamily:theme.fontDisplay }}>${plan.price}</span><span style={{ fontSize:16,color:theme.textMuted }}>/month</span></div>
-            <Button onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })} variant={plan.highlighted?"primary":"secondary"} style={{ width:"100%",justifyContent:"center",padding:"14px 24px",marginBottom:32 }}>Start Free Trial</Button>
-            <div style={{ display:"flex",flexDirection:"column",gap:12 }}>{plan.features.map((f,j) => <div key={j} style={{ display:"flex",alignItems:"center",gap:10,fontSize:14,color:theme.textMuted }}><span style={{ color:theme.green,fontSize:16 }}>✓</span> {f}</div>)}</div>
+            {plan.active ? (
+              <Button onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })} variant={plan.highlighted?"primary":"secondary"} style={{ width:"100%",justifyContent:"center",padding:"14px 24px",marginBottom:32 }}>Start Free Trial</Button>
+            ) : (
+              <div style={{ width:"100%",textAlign:"center",padding:"14px 24px",marginBottom:32,borderRadius:10,background:theme.cardBg,border:`1px solid ${theme.border}`,color:theme.textMuted,fontWeight:600,fontSize:15 }}>Coming Soon</div>
+            )}
+            <div style={{ display:"flex",flexDirection:"column",gap:12 }}>{plan.features.map((f,j) => <div key={j} style={{ display:"flex",alignItems:"center",gap:10,fontSize:14,color:plan.active ? theme.textMuted : theme.textMuted + "88" }}><span style={{ color:plan.active ? theme.green : theme.textMuted,fontSize:16 }}>✓</span> {f}</div>)}</div>
           </div>
         ))}
       </div>
@@ -702,9 +706,9 @@ const AuthScreen = ({ dispatch, isSignup }) => {
 
         dispatch({ type: "SET_USER", payload: authData.user });
         dispatch({ type: "SET_BUSINESS", payload: biz?.[0] || null });
-        window._wynflow_token = supabase.token;
-        window._wynflow_user = authData.user;
-        window._wynflow_business = biz?.[0] || null;
+        setCookie("wynflow_token", supabase.token, 30);
+        setCookie("wynflow_user", authData.user, 30);
+        setCookie("wynflow_business", biz?.[0] || null, 30);
         dispatch({ type: "NOTIFY", payload: { message: "Account created! Welcome to Wynflow 🎉", type: "success" } });
 
         // Trigger welcome email via N8N
@@ -719,9 +723,9 @@ const AuthScreen = ({ dispatch, isSignup }) => {
         // Fetch business profile
         const { data: biz } = await db("businesses").eq("user_id", authData.user.id).single().select();
         dispatch({ type: "SET_BUSINESS", payload: biz });
-        window._wynflow_token = supabase.token;
-        window._wynflow_user = authData.user;
-        window._wynflow_business = biz;
+        setCookie("wynflow_token", supabase.token, 30);
+        setCookie("wynflow_user", authData.user, 30);
+        setCookie("wynflow_business", biz, 30);
         dispatch({ type: "NOTIFY", payload: { message: "Welcome back! 👋", type: "success" } });
       }
     } catch (err) {
@@ -806,9 +810,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
 
   const handleLogout = async () => {
     await supabase.auth_signOut();
-    window._wynflow_token = null;
-    window._wynflow_user = null;
-    window._wynflow_business = null;
+    clearCookies();
     dispatch({ type: "LOGOUT" });
   };
 
@@ -1309,9 +1311,9 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
             <Button variant="secondary" onClick={async () => {
               try {
                 // Send the follow-up email via N8N
-                await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
+                await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-follow-up", {
                   method: "POST", headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ quote_id: quote.id }),
+                  body: JSON.stringify({ quote_id: quote.id, current_step: quote.current_step || 0, sequence_id: quote.sequence_id }),
                 });
                 const newStep = (quote.current_step || 0) + 1;
                 await db("quotes").eq("id", quote.id).update({ current_step: newStep });
@@ -1548,11 +1550,27 @@ export default function WynflowApp() {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const { user, business, screen, quotes, sequences, notification, loading } = state;
 
+  // Cookie helpers for session persistence
+  const setCookie = (name, value, minutes) => {
+    const expires = new Date(Date.now() + minutes * 60000).toUTCString();
+    document.cookie = `${name}=${encodeURIComponent(JSON.stringify(value))}; expires=${expires}; path=/; SameSite=Strict`;
+  };
+  const getCookie = (name) => {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    if (match) try { return JSON.parse(decodeURIComponent(match[2])); } catch { return null; }
+    return null;
+  };
+  const clearCookies = () => {
+    document.cookie = "wynflow_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    document.cookie = "wynflow_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    document.cookie = "wynflow_business=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+  };
+
   // Restore session on mount
   useEffect(() => {
-    const savedToken = window._wynflow_token;
-    const savedUser = window._wynflow_user;
-    const savedBusiness = window._wynflow_business;
+    const savedToken = getCookie("wynflow_token");
+    const savedUser = getCookie("wynflow_user");
+    const savedBusiness = getCookie("wynflow_business");
     if (savedToken && savedUser && savedBusiness) {
       supabase.token = savedToken;
       supabase.user = savedUser;
