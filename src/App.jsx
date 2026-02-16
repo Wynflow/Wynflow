@@ -509,9 +509,9 @@ const HomePage = ({ dispatch }) => (
   <div>
     <div style={{ minHeight:"90vh",display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",background:`radial-gradient(ellipse at 30% 20%,rgba(245,158,11,0.1) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(59,130,246,0.06) 0%,transparent 50%),${theme.bg}`,padding:"120px 48px 80px" }}>
       <div style={{ maxWidth:800 }}>
-        <div style={{ display:"inline-block",padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:32 }}><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>🚀 Built for NZ Tradies</span></div>
+        <div style={{ display:"inline-block",padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:32 }}><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>🚀 Built for NZ Businesses</span></div>
         <h1 style={{ fontSize:64,fontWeight:800,color:theme.text,lineHeight:1.1,marginBottom:24,fontFamily:theme.fontDisplay }}>Stop Chasing Quotes.<br /><span style={{ color:theme.accent }}>Start Winning Jobs.</span></h1>
-        <p style={{ fontSize:20,color:theme.textMuted,lineHeight:1.6,maxWidth:600,margin:"0 auto 40px" }}>Upload your quote, hit send, and let Wynflow handle the follow-ups. Automated emails chase your customers so you can get back on the tools.</p>
+        <p style={{ fontSize:20,color:theme.textMuted,lineHeight:1.6,maxWidth:600,margin:"0 auto 40px" }}>Upload your quote, hit send, and let Wynflow handle the follow-ups. Automated emails chase your customers so you can focus on what you do best.</p>
         <div style={{ display:"flex",gap:16,justifyContent:"center" }}><Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Free Trial →</Button><Button size="lg" variant="secondary" onClick={() => dispatch({ type:"SET_SCREEN",payload:"pricing" })}>View Pricing</Button></div>
         <p style={{ fontSize:13,color:theme.textDim,marginTop:16 }}>No credit card required • 14-day free trial • Cancel anytime</p>
       </div>
@@ -521,7 +521,7 @@ const HomePage = ({ dispatch }) => (
         <h2 style={{ fontSize:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>How It Works</h2>
         <p style={{ fontSize:16,color:theme.textMuted,marginBottom:64,maxWidth:500,margin:"0 auto 64px" }}>Three simple steps to never chase a quote again</p>
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:32 }}>
-          {[{num:"01",icon:"📄",title:"Upload Your Quote",desc:"Create your quote however you normally do. Save it as a PDF and upload it to Wynflow."},{num:"02",icon:"📧",title:"Hit Send",desc:"Add the customer's email, job title and amount. Wynflow sends a branded email with your PDF and response buttons."},{num:"03",icon:"🤖",title:"Wynflow Chases",desc:"If they don't respond, automated follow-ups kick in. When they click Book In, Decline, or Feedback — you're notified."}].map((step,i) => (
+          {[{num:"01",icon:"📄",title:"Upload Your Quote",desc:"Create your quote however you normally do. Save it as a file and upload it to Wynflow."},{num:"02",icon:"📧",title:"Hit Send",desc:"Add the customer's email, job title and amount. Wynflow sends a branded email with your quote and response buttons."},{num:"03",icon:"🤖",title:"Wynflow Chases",desc:"If they don't respond, automated follow-ups kick in. When they click Book In, Decline, or Feedback — you're notified."}].map((step,i) => (
             <div key={i} style={{ padding:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"left" }}>
               <div style={{ fontSize:48,fontWeight:800,color:theme.accent,fontFamily:theme.fontDisplay,opacity:0.3,marginBottom:8 }}>{step.num}</div>
               <div style={{ fontSize:36,marginBottom:16 }}>{step.icon}</div>
@@ -534,9 +534,9 @@ const HomePage = ({ dispatch }) => (
     </div>
     <div style={{ padding:"100px 48px",background:theme.bg }}>
       <div style={{ maxWidth:1100,margin:"0 auto" }}>
-        <div style={{ textAlign:"center",marginBottom:64 }}><h2 style={{ fontSize:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Everything You Need</h2><p style={{ fontSize:16,color:theme.textMuted }}>Built specifically for tradies who are sick of chasing quotes</p></div>
+        <div style={{ textAlign:"center",marginBottom:64 }}><h2 style={{ fontSize:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Everything You Need</h2><p style={{ fontSize:16,color:theme.textMuted }}>Built for service businesses who are sick of chasing quotes</p></div>
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:24 }}>
-          {[{icon:"📋",title:"Quote Dashboard",desc:"See every quote at a glance — who's opened it, who's responded, and what needs attention."},{icon:"🔄",title:"Automated Follow-Ups",desc:"Set it and forget it. Configure email sequences that chase at day 2, 5, 10 — whatever works."},{icon:"📎",title:"PDF Attachments",desc:"Upload your quote PDF and it gets attached to the email automatically."},{icon:"✅",title:"One-Click Responses",desc:"Customers click Book In, Decline, or Give Feedback right in the email."},{icon:"📊",title:"Track Everything",desc:"Know when emails are opened, which quotes are pending, and your win rate."},{icon:"🔒",title:"Secure & Private",desc:"Your data is encrypted and isolated. Bank-grade security."}].map((f,i) => (
+          {[{icon:"📋",title:"Quote Dashboard",desc:"See every quote at a glance — who's opened it, who's responded, and what needs attention."},{icon:"🔄",title:"Automated Follow-Ups",desc:"Set it and forget it. Configure email sequences that chase at day 2, 5, 10 — whatever works."},{icon:"📎",title:"File Attachments",desc:"Upload your quote file and it gets attached to the email automatically."},{icon:"✅",title:"One-Click Responses",desc:"Customers click Book In, Decline, or Give Feedback right in the email."},{icon:"📊",title:"Track Everything",desc:"Know when emails are opened, which quotes are pending, and your win rate."},{icon:"🔒",title:"Secure & Private",desc:"Your data is encrypted and isolated. Bank-grade security."}].map((f,i) => (
             <div key={i} style={{ padding:32,borderRadius:16,background:theme.surface,border:`1px solid ${theme.border}`,display:"flex",gap:20 }}>
               <div style={{ fontSize:28,flexShrink:0 }}>{f.icon}</div>
               <div><h3 style={{ fontSize:16,fontWeight:600,color:theme.text,marginBottom:8 }}>{f.title}</h3><p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.6 }}>{f.desc}</p></div>
@@ -547,9 +547,9 @@ const HomePage = ({ dispatch }) => (
     </div>
     <div style={{ padding:"100px 48px",background:theme.surface }}>
       <div style={{ maxWidth:900,margin:"0 auto",textAlign:"center" }}>
-        <h2 style={{ fontSize:40,fontWeight:700,color:theme.text,marginBottom:64,fontFamily:theme.fontDisplay }}>Trusted by Tradies Across NZ</h2>
+        <h2 style={{ fontSize:40,fontWeight:700,color:theme.text,marginBottom:64,fontFamily:theme.fontDisplay }}>Trusted by Businesses Across NZ</h2>
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:24 }}>
-          {[{name:"Mike R.",trade:"Plumber, Auckland",quote:"I used to spend 30 minutes a day chasing quotes. Now Wynflow does it while I'm on the job. Won 3 extra jobs last month."},{name:"Sarah T.",trade:"Electrician, Wellington",quote:"The customer response buttons are genius. People actually reply now. My conversion went from 40% to 65%."},{name:"Dave L.",trade:"Builder, Christchurch",quote:"Dead simple to use. Upload the PDF, add the email, done. Exactly what tradies need."}].map((t,i) => (
+          {[{name:"Mike R.",trade:"Plumber, Auckland",quote:"I used to spend 30 minutes a day chasing quotes. Now Wynflow does it while I'm on the job. Won 3 extra jobs last month."},{name:"Sarah T.",trade:"Interior Designer, Wellington",quote:"The customer response buttons are genius. People actually reply now. My conversion went from 40% to 65%."},{name:"Dave L.",trade:"Builder, Christchurch",quote:"Dead simple to use. Upload the quote, add the email, done. Exactly what busy businesses need."}].map((t,i) => (
             <div key={i} style={{ padding:32,borderRadius:16,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"left" }}>
               <div style={{ display:"flex",gap:4,marginBottom:16 }}>{[1,2,3,4,5].map(s=><span key={s} style={{ color:theme.accent,fontSize:16 }}>★</span>)}</div>
               <p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.7,marginBottom:20,fontStyle:"italic" }}>"{t.quote}"</p>
@@ -562,7 +562,7 @@ const HomePage = ({ dispatch }) => (
     </div>
     <div style={{ padding:"100px 48px",textAlign:"center",background:`radial-gradient(ellipse at 50% 50%,rgba(245,158,11,0.12) 0%,transparent 60%),${theme.bg}` }}>
       <h2 style={{ fontSize:44,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Ready to Win More Jobs?</h2>
-      <p style={{ fontSize:18,color:theme.textMuted,marginBottom:40 }}>Join hundreds of NZ tradies who've stopped chasing and started winning.</p>
+      <p style={{ fontSize:18,color:theme.textMuted,marginBottom:40 }}>Join hundreds of NZ businesses who've stopped chasing and started winning.</p>
       <Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Your Free Trial →</Button>
     </div>
     <Footer dispatch={dispatch} />
@@ -573,12 +573,12 @@ const AboutPage = ({ dispatch }) => (
   <div>
     <div style={{ padding:"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(245,158,11,0.08) 0%,transparent 50%),${theme.bg}` }}>
       <h1 style={{ fontSize:52,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay }}>About Wynflow</h1>
-      <p style={{ fontSize:18,color:theme.textMuted,maxWidth:600,margin:"0 auto",lineHeight:1.6 }}>Built by a Kiwi who got sick of watching tradies lose jobs because they forgot to follow up.</p>
+      <p style={{ fontSize:18,color:theme.textMuted,maxWidth:600,margin:"0 auto",lineHeight:1.6 }}>Built by a Kiwi who got sick of watching businesses lose jobs because they forgot to follow up.</p>
     </div>
     <div style={{ padding:"80px 48px",background:theme.surface }}>
       <div style={{ maxWidth:800,margin:"0 auto" }}>
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:48,alignItems:"center",marginBottom:80 }}>
-          <div><h2 style={{ fontSize:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>The Problem</h2><p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Every tradie knows the pain. You spend an hour measuring up a job, write up the quote, send it off... and then what? You wait. Maybe you follow up in a week. Maybe you don't. Meanwhile, the customer's gone with someone who did.</p></div>
+          <div><h2 style={{ fontSize:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>The Problem</h2><p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Every service business knows the pain. You spend time scoping a job, write up the quote, send it off... and then what? You wait. Maybe you follow up in a week. Maybe you don't. Meanwhile, the customer's gone with someone who did.</p></div>
           <div style={{ padding:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}><div style={{ fontSize:56,fontWeight:800,color:theme.red,fontFamily:theme.fontDisplay }}>60%</div><div style={{ fontSize:14,color:theme.textMuted,marginTop:8 }}>of quotes are lost simply because nobody followed up</div></div>
         </div>
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:48,alignItems:"center",marginBottom:80 }}>
@@ -587,11 +587,11 @@ const AboutPage = ({ dispatch }) => (
         </div>
         <div style={{ padding:48,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}>
           <h2 style={{ fontSize:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Built by Wynfall Automation</h2>
-          <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,maxWidth:600,margin:"0 auto 24px" }}>Wynflow is a product of Wynfall Automation, a New Zealand-based company specialising in AI and workflow automation for service businesses. Based in Napier and Auckland, building tools that make sense for how Kiwi tradies work.</p>
+          <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,maxWidth:600,margin:"0 auto 24px" }}>Wynflow is a product of Wynfall Automation, a New Zealand-based company specialising in AI and workflow automation for service businesses. Based in Napier and Auckland, building tools that make sense for how Kiwi businesses work.</p>
           <div style={{ display:"flex",gap:32,justifyContent:"center",marginTop:32 }}>
             <div><div style={{ fontSize:28 }}>🇳🇿</div><div style={{ fontSize:13,color:theme.textMuted,marginTop:4 }}>100% NZ Built</div></div>
             <div><div style={{ fontSize:28 }}>⚡</div><div style={{ fontSize:13,color:theme.textMuted,marginTop:4 }}>AI-Powered</div></div>
-            <div><div style={{ fontSize:28 }}>🔧</div><div style={{ fontSize:13,color:theme.textMuted,marginTop:4 }}>Made for Tradies</div></div>
+            <div><div style={{ fontSize:28 }}>🔧</div><div style={{ fontSize:13,color:theme.textMuted,marginTop:4 }}>Made for Business</div></div>
           </div>
         </div>
       </div>
@@ -612,11 +612,10 @@ const PricingPage = ({ dispatch }) => (
       <p style={{ fontSize:18,color:theme.textMuted,maxWidth:500,margin:"0 auto",lineHeight:1.6 }}>No hidden fees. No lock-in contracts. 14-day free trial on every plan.</p>
     </div>
     <div style={{ padding:"0 48px 100px",background:theme.bg }}>
-      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:24,maxWidth:1100,margin:"0 auto" }}>
+      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:32,maxWidth:800,margin:"0 auto" }}>
         {[
-          {name:"Starter",price:"49",desc:"Perfect for solo tradies",features:["Up to 30 quotes/month","1 follow-up sequence","PDF attachments","Customer response buttons","Email support","Quote dashboard"],highlighted:false},
-          {name:"Pro",price:"99",desc:"For busy tradies who want to win every job",features:["Unlimited quotes","Unlimited sequences","PDF attachments","Customer response buttons","Priority support","Advanced analytics","Custom email branding","Team access (3 users)"],highlighted:true},
-          {name:"Business",price:"199",desc:"For companies with multiple tradies",features:["Everything in Pro","Unlimited team members","Dedicated account manager","API access","Custom integrations","White-label emails","Phone support"],highlighted:false},
+          {name:"Basic",price:"29",desc:"Perfect for getting started",features:["Up to 30 quotes/month","1 follow-up sequence","File attachments","Customer response buttons","Email support","Quote dashboard"],highlighted:false},
+          {name:"Pro",price:"49",desc:"For businesses who want to win every job",features:["Unlimited quotes","Unlimited sequences","File attachments","Customer response buttons","Priority support","Advanced analytics","Custom email branding","Team access (up to 3 users)"],highlighted:true},
         ].map((plan,i) => (
           <div key={i} style={{ padding:40,borderRadius:20,background:theme.surface,border:`${plan.highlighted?"2px":"1px"} solid ${plan.highlighted?theme.accent:theme.border}`,position:"relative",transform:plan.highlighted?"scale(1.05)":"none",boxShadow:plan.highlighted?`0 0 40px ${theme.accentGlow}`:"none" }}>
             {plan.highlighted && <div style={{ position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",padding:"6px 20px",borderRadius:20,background:theme.accent,color:"#000",fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:1 }}>Most Popular</div>}
@@ -632,7 +631,7 @@ const PricingPage = ({ dispatch }) => (
     <div style={{ padding:"80px 48px",background:theme.surface }}>
       <div style={{ maxWidth:700,margin:"0 auto" }}>
         <h2 style={{ fontSize:36,fontWeight:700,color:theme.text,marginBottom:48,textAlign:"center",fontFamily:theme.fontDisplay }}>Frequently Asked Questions</h2>
-        {[{q:"Is there really a free trial?",a:"Yes! 14 days, full access, no credit card needed."},{q:"Can I cancel anytime?",a:"Absolutely. No lock-in contracts, no cancellation fees."},{q:"Do my customers know it's automated?",a:"Emails come from Wynflow on behalf of your business. They look professional and personal."},{q:"What if I already have quoting software?",a:"Keep using it! Just export as PDF and upload to Wynflow. We handle delivery and chasing."},{q:"Is my data secure?",a:"100%. Bank-grade encryption, every business's data is completely isolated."}].map((faq,i) => (
+        {[{q:"Is there really a free trial?",a:"Yes! 14 days, full access, no credit card needed."},{q:"Can I cancel anytime?",a:"Absolutely. No lock-in contracts, no cancellation fees."},{q:"Do my customers know it's automated?",a:"Emails come from Wynflow on behalf of your business. They look professional and personal."},{q:"What if I already have quoting software?",a:"Keep using it! Just export your quote and upload to Wynflow. We handle delivery and chasing."},{q:"Is my data secure?",a:"100%. Bank-grade encryption, every business's data is completely isolated."}].map((faq,i) => (
           <div key={i} style={{ padding:"24px 0",borderBottom:`1px solid ${theme.border}` }}><h3 style={{ fontSize:16,fontWeight:600,color:theme.text,marginBottom:8 }}>{faq.q}</h3><p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.7 }}>{faq.a}</p></div>
         ))}
       </div>
@@ -703,6 +702,9 @@ const AuthScreen = ({ dispatch, isSignup }) => {
 
         dispatch({ type: "SET_USER", payload: authData.user });
         dispatch({ type: "SET_BUSINESS", payload: biz?.[0] || null });
+        window._wynflow_token = supabase.token;
+        window._wynflow_user = authData.user;
+        window._wynflow_business = biz?.[0] || null;
         dispatch({ type: "NOTIFY", payload: { message: "Account created! Welcome to Wynflow 🎉", type: "success" } });
 
         // Trigger welcome email via N8N
@@ -717,6 +719,9 @@ const AuthScreen = ({ dispatch, isSignup }) => {
         // Fetch business profile
         const { data: biz } = await db("businesses").eq("user_id", authData.user.id).single().select();
         dispatch({ type: "SET_BUSINESS", payload: biz });
+        window._wynflow_token = supabase.token;
+        window._wynflow_user = authData.user;
+        window._wynflow_business = biz;
         dispatch({ type: "NOTIFY", payload: { message: "Welcome back! 👋", type: "success" } });
       }
     } catch (err) {
@@ -754,13 +759,13 @@ const AuthScreen = ({ dispatch, isSignup }) => {
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             {isSignup && (
               <>
-                <Input label="Business Name *" value={businessName} onChange={setBusinessName} placeholder="e.g. Smith Plumbing Ltd" />
-                <Input label="Your Name *" value={contactName} onChange={setContactName} placeholder="e.g. John Smith" />
-                <Input label="Trade" value={trade} onChange={setTrade} placeholder="e.g. Plumber, Electrician, Builder" />
+                <Input label="Business Name *" value={businessName} onChange={setBusinessName} />
+                <Input label="Your Name *" value={contactName} onChange={setContactName} />
+                <Input label="Industry" value={trade} onChange={setTrade} />
               </>
             )}
-            <Input label="Email *" value={email} onChange={setEmail} type="email" placeholder="you@yourbusiness.co.nz" />
-            <Input label="Password *" value={password} onChange={setPassword} type="password" placeholder="Min 6 characters" />
+            <Input label="Email *" value={email} onChange={setEmail} type="email" />
+            <Input label="Password *" value={password} onChange={setPassword} type="password" />
 
             {error && (
               <div style={{ padding: "10px 14px", borderRadius: 8, background: theme.redSoft, color: theme.red, fontSize: 13 }}>
@@ -801,6 +806,9 @@ const Sidebar = ({ screen, dispatch, business }) => {
 
   const handleLogout = async () => {
     await supabase.auth_signOut();
+    window._wynflow_token = null;
+    window._wynflow_user = null;
+    window._wynflow_business = null;
     dispatch({ type: "LOGOUT" });
   };
 
@@ -959,7 +967,7 @@ const QuotesList = ({ quotes, dispatch }) => {
           </span>
         ))}
         <div style={{ flex: 1 }} />
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search quotes..."
+        <input value={search} onChange={(e) => setSearch(e.target.value)}
           style={{
             fontFamily: theme.font, fontSize: 13, padding: "8px 16px", borderRadius: 8,
             background: theme.surfaceLight, border: `1px solid ${theme.border}`, color: theme.text, outline: "none", width: 200,
@@ -1101,26 +1109,26 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Customer Details</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <Input label="Customer Name *" value={form.customerName} onChange={(v) => update("customerName", v)} placeholder="e.g. John Smith" />
-            <Input label="Email *" value={form.customerEmail} onChange={(v) => update("customerEmail", v)} type="email" placeholder="john@email.com" />
-            <Input label="Phone" value={form.customerPhone} onChange={(v) => update("customerPhone", v)} placeholder="021 555 1234" />
+            <Input label="Customer Name *" value={form.customerName} onChange={(v) => update("customerName", v)} />
+            <Input label="Email *" value={form.customerEmail} onChange={(v) => update("customerEmail", v)} type="email" />
+            <Input label="Phone (optional)" value={form.customerPhone} onChange={(v) => update("customerPhone", v)} />
           </div>
         </Card>
 
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Job Details</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <Input label="Job Title *" value={form.jobTitle} onChange={(v) => update("jobTitle", v)} placeholder="e.g. Kitchen Renovation" />
-            <Input label="Description" value={form.description} onChange={(v) => update("description", v)} textarea placeholder="Describe the job scope..." />
-            <Input label="Quote Amount ($) *" value={form.amount} onChange={(v) => update("amount", v)} type="number" placeholder="0.00" />
+            <Input label="Job Title *" value={form.jobTitle} onChange={(v) => update("jobTitle", v)} />
+            <Input label="Description" value={form.description} onChange={(v) => update("description", v)} textarea />
+            <Input label="Quote Amount ($) *" value={form.amount} onChange={(v) => update("amount", v)} type="number" />
           </div>
         </Card>
 
-        {/* PDF Upload */}
+        {/* Quote Upload */}
         <Card>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Quote PDF</h3>
-          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Upload your quote document to attach to the email</p>
-          <Input label="Upload PDF" type="file" accept=".pdf" onFileChange={(e) => setPdfFile(e.target.files[0])} />
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Quote File</h3>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Upload your quote to attach to the email</p>
+          <Input label="Upload File" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" onFileChange={(e) => setPdfFile(e.target.files[0])} />
           {pdfFile && (
             <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: theme.greenSoft, color: theme.green, fontSize: 13 }}>
               📎 {pdfFile.name} ({(pdfFile.size / 1024).toFixed(0)} KB)
@@ -1230,7 +1238,7 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
             {quote.description && <div><div style={{ fontSize: 12, color: theme.textMuted }}>Description</div><div style={{ fontSize: 14, color: theme.text, lineHeight: 1.5 }}>{quote.description}</div></div>}
             {quote.pdf_filename && (
               <div>
-                <div style={{ fontSize: 12, color: theme.textMuted }}>Attached PDF</div>
+                <div style={{ fontSize: 12, color: theme.textMuted }}>Attached File</div>
                 <div style={{ fontSize: 14, color: theme.accent }}>📎 {quote.pdf_filename}</div>
               </div>
             )}
@@ -1292,19 +1300,30 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
         )}
 
         {/* Actions */}
+        {quote.status !== "accepted" && quote.status !== "declined" && (
         <Card style={{ gridColumn: "1 / -1" }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Actions</h3>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Button onClick={() => updateStatus("accepted")} style={{ background: theme.greenSoft, color: theme.green }}>✓ Mark Accepted</Button>
             <Button onClick={() => updateStatus("declined")} variant="danger">✗ Mark Declined</Button>
             <Button variant="secondary" onClick={async () => {
-              const newStep = (quote.current_step || 0) + 1;
-              await db("quotes").eq("id", quote.id).update({ current_step: newStep });
-              dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, current_step: newStep } });
-              dispatch({ type: "NOTIFY", payload: { message: "Follow-up triggered! 📧", type: "success" } });
+              try {
+                // Send the follow-up email via N8N
+                await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
+                  method: "POST", headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ quote_id: quote.id }),
+                });
+                const newStep = (quote.current_step || 0) + 1;
+                await db("quotes").eq("id", quote.id).update({ current_step: newStep });
+                dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, current_step: newStep } });
+                dispatch({ type: "NOTIFY", payload: { message: "Follow-up email sent! 📧", type: "success" } });
+              } catch (err) {
+                dispatch({ type: "NOTIFY", payload: { message: "Failed to send follow-up", type: "error" } });
+              }
             }}>📧 Send Follow-Up Now</Button>
           </div>
         </Card>
+        )}
       </div>
     </div>
   );
@@ -1415,9 +1434,9 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
               <div style={{ marginTop: 16, padding: 20, borderRadius: 12, background: theme.bg, border: `1px dashed ${theme.border}` }}>
                 <h4 style={{ fontSize: 14, fontWeight: 600, color: theme.text, margin: "0 0 14px" }}>Add New Step</h4>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <Input label="Delay (days after quote sent)" value={newStep.delay} onChange={(v) => setNewStep({ ...newStep, delay: v })} type="number" placeholder="e.g. 7" />
-                  <Input label="Email Subject" value={newStep.subject} onChange={(v) => setNewStep({ ...newStep, subject: v })} placeholder="e.g. Following up on {job}" />
-                  <Input label="Email Body" value={newStep.template} onChange={(v) => setNewStep({ ...newStep, template: v })} textarea placeholder="Hi {name}, ..." />
+                  <Input label="Delay (days after quote sent)" value={newStep.delay} onChange={(v) => setNewStep({ ...newStep, delay: v })} type="number" />
+                  <Input label="Email Subject" value={newStep.subject} onChange={(v) => setNewStep({ ...newStep, subject: v })} />
+                  <Input label="Email Body" value={newStep.template} onChange={(v) => setNewStep({ ...newStep, template: v })} textarea />
                   <Button size="sm" onClick={() => addStep(seq.id)}>+ Add Step</Button>
                 </div>
               </div>
@@ -1528,6 +1547,19 @@ const Settings = ({ business, dispatch }) => {
 export default function WynflowApp() {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const { user, business, screen, quotes, sequences, notification, loading } = state;
+
+  // Restore session on mount
+  useEffect(() => {
+    const savedToken = window._wynflow_token;
+    const savedUser = window._wynflow_user;
+    const savedBusiness = window._wynflow_business;
+    if (savedToken && savedUser && savedBusiness) {
+      supabase.token = savedToken;
+      supabase.user = savedUser;
+      dispatch({ type: "SET_USER", payload: savedUser });
+      dispatch({ type: "SET_BUSINESS", payload: savedBusiness });
+    }
+  }, []);
 
   // Load data when business is set
   const loadData = useCallback(async () => {
