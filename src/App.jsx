@@ -1,5 +1,16 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
 
+// ─── Mobile Detection Hook ───
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return isMobile;
+};
+
 // ─── Supabase Client ───
 const SUPABASE_URL = "https://hlqbjomeomahoocexljp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhscWJqb21lb21haG9vY2V4bGpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2MTkwMTQsImV4cCI6MjA4NjE5NTAxNH0.X9biLUFgktgw6H8ytkfvF6gnITJCEwLiHMw71IcUhGk";
@@ -464,31 +475,52 @@ const Toast = ({ message, type, onClose }) => {
 // PUBLIC PAGES
 // ════════════════════════════════════════
 
-const Navbar = ({ dispatch, transparent }) => (
-  <nav style={{ position:transparent?"absolute":"relative",top:0,left:0,right:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"20px 48px",background:transparent?"transparent":theme.surface,borderBottom:transparent?"none":`1px solid ${theme.border}`,fontFamily:theme.font }}>
-    <div style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer" }} onClick={() => dispatch({ type:"SET_SCREEN",payload:"home" })}>
-      <div style={{ width:36,height:36,borderRadius:10,background:`linear-gradient(135deg,${theme.accent},${theme.accentHover})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,boxShadow:`0 0 20px ${theme.accentGlow}` }}>⚡</div>
-      <span style={{ fontSize:22,fontWeight:700,color:theme.text,fontFamily:theme.fontDisplay }}>Wynflow</span>
-    </div>
-    <div style={{ display:"flex",alignItems:"center",gap:32 }}>
-      {[["home","Home"],["about","About"],["pricing","Pricing"]].map(([id,label]) => (
-        <span key={id} onClick={() => dispatch({ type:"SET_SCREEN",payload:id })} style={{ fontSize:14,fontWeight:500,color:theme.textMuted,cursor:"pointer",transition:"color 0.2s" }} onMouseEnter={e=>e.target.style.color=theme.text} onMouseLeave={e=>e.target.style.color=theme.textMuted}>{label}</span>
-      ))}
-      <Button size="sm" variant="secondary" onClick={() => dispatch({ type:"SET_SCREEN",payload:"login" })}>Log In</Button>
-      <Button size="sm" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Get Started Free</Button>
-    </div>
-  </nav>
-);
+const Navbar = ({ dispatch, transparent }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const isMobile = useIsMobile();
+  return (
+    <nav style={{ position:transparent?"absolute":"relative",top:0,left:0,right:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:isMobile?"16px 20px":"20px 48px",background:transparent?"transparent":theme.surface,borderBottom:transparent?"none":`1px solid ${theme.border}`,fontFamily:theme.font }}>
+      <div style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer" }} onClick={() => dispatch({ type:"SET_SCREEN",payload:"home" })}>
+        <div style={{ width:36,height:36,borderRadius:10,background:`linear-gradient(135deg,${theme.accent},${theme.accentHover})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,boxShadow:`0 0 20px ${theme.accentGlow}` }}>⚡</div>
+        <span style={{ fontSize:22,fontWeight:700,color:theme.text,fontFamily:theme.fontDisplay }}>Wynflow</span>
+      </div>
+      {isMobile ? (
+        <>
+          <div onClick={() => setMenuOpen(!menuOpen)} style={{ fontSize:24,color:theme.text,cursor:"pointer",padding:8 }}>{menuOpen ? "✕" : "☰"}</div>
+          {menuOpen && (
+            <div style={{ position:"absolute",top:"100%",left:0,right:0,background:theme.surface,borderBottom:`1px solid ${theme.border}`,padding:"16px 20px",display:"flex",flexDirection:"column",gap:16,zIndex:200 }}>
+              {[["home","Home"],["about","About"],["pricing","Pricing"]].map(([id,label]) => (
+                <span key={id} onClick={() => { dispatch({ type:"SET_SCREEN",payload:id }); setMenuOpen(false); }} style={{ fontSize:16,fontWeight:500,color:theme.textMuted,cursor:"pointer" }}>{label}</span>
+              ))}
+              <Button size="sm" variant="secondary" onClick={() => { dispatch({ type:"SET_SCREEN",payload:"login" }); setMenuOpen(false); }}>Log In</Button>
+              <Button size="sm" onClick={() => { dispatch({ type:"SET_SCREEN",payload:"signup" }); setMenuOpen(false); }}>Get Started Free</Button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ display:"flex",alignItems:"center",gap:32 }}>
+          {[["home","Home"],["about","About"],["pricing","Pricing"]].map(([id,label]) => (
+            <span key={id} onClick={() => dispatch({ type:"SET_SCREEN",payload:id })} style={{ fontSize:14,fontWeight:500,color:theme.textMuted,cursor:"pointer",transition:"color 0.2s" }} onMouseEnter={e=>e.target.style.color=theme.text} onMouseLeave={e=>e.target.style.color=theme.textMuted}>{label}</span>
+          ))}
+          <Button size="sm" variant="secondary" onClick={() => dispatch({ type:"SET_SCREEN",payload:"login" })}>Log In</Button>
+          <Button size="sm" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Get Started Free</Button>
+        </div>
+      )}
+    </nav>
+  );
+};
 
-const Footer = ({ dispatch }) => (
-  <footer style={{ padding:"64px 48px 32px",background:theme.surface,borderTop:`1px solid ${theme.border}`,fontFamily:theme.font }}>
-    <div style={{ display:"flex",justifyContent:"space-between",maxWidth:1100,margin:"0 auto",flexWrap:"wrap",gap:48 }}>
+const Footer = ({ dispatch }) => {
+  const isMobile = useIsMobile();
+  return (
+  <footer style={{ padding:isMobile?"40px 20px 24px":"64px 48px 32px",background:theme.surface,borderTop:`1px solid ${theme.border}`,fontFamily:theme.font }}>
+    <div style={{ display:"flex",justifyContent:"space-between",maxWidth:1100,margin:"0 auto",flexWrap:"wrap",gap:isMobile?32:48,flexDirection:isMobile?"column":"row" }}>
       <div style={{ maxWidth:300 }}>
         <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
           <div style={{ width:32,height:32,borderRadius:8,background:`linear-gradient(135deg,${theme.accent},${theme.accentHover})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>⚡</div>
           <span style={{ fontSize:18,fontWeight:700,color:theme.text,fontFamily:theme.fontDisplay }}>Wynflow</span>
         </div>
-        <p style={{ fontSize:13,color:theme.textMuted,lineHeight:1.6 }}>Automated quote delivery and follow-up for tradies. Send quotes, chase customers, win more jobs — on autopilot.</p>
+        <p style={{ fontSize:13,color:theme.textMuted,lineHeight:1.6 }}>Automated quote delivery and follow-up for businesses. Send quotes, chase customers, win more jobs — on autopilot.</p>
       </div>
       <div>
         <h4 style={{ fontSize:13,fontWeight:600,color:theme.text,marginBottom:16,textTransform:"uppercase",letterSpacing:1 }}>Product</h4>
@@ -503,26 +535,29 @@ const Footer = ({ dispatch }) => (
     </div>
     <div style={{ maxWidth:1100,margin:"48px auto 0",paddingTop:24,borderTop:`1px solid ${theme.border}`,textAlign:"center",fontSize:13,color:theme.textDim }}>© 2026 Wynflow. A product by Wynfall Automation Ltd. All rights reserved.</div>
   </footer>
-);
+  );
+};
 
-const HomePage = ({ dispatch }) => (
+const HomePage = ({ dispatch }) => {
+  const isMobile = useIsMobile();
+  return (
   <div>
-    <div style={{ minHeight:"90vh",display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",background:`radial-gradient(ellipse at 30% 20%,rgba(245,158,11,0.1) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(59,130,246,0.06) 0%,transparent 50%),${theme.bg}`,padding:"120px 48px 80px" }}>
+    <div style={{ minHeight:isMobile?"auto":"90vh",display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",background:`radial-gradient(ellipse at 30% 20%,rgba(245,158,11,0.1) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(59,130,246,0.06) 0%,transparent 50%),${theme.bg}`,padding:isMobile?"100px 20px 60px":"120px 48px 80px" }}>
       <div style={{ maxWidth:800 }}>
-        <div style={{ display:"inline-block",padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:32 }}><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>🚀 Built for NZ Businesses</span></div>
-        <h1 style={{ fontSize:64,fontWeight:800,color:theme.text,lineHeight:1.1,marginBottom:24,fontFamily:theme.fontDisplay }}>Stop Chasing Quotes.<br /><span style={{ color:theme.accent }}>Start Winning Jobs.</span></h1>
-        <p style={{ fontSize:20,color:theme.textMuted,lineHeight:1.6,maxWidth:600,margin:"0 auto 40px" }}>Upload your quote, hit send, and let Wynflow handle the follow-ups. Automated emails chase your customers so you can focus on what you do best.</p>
-        <div style={{ display:"flex",gap:16,justifyContent:"center" }}><Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Free Trial →</Button><Button size="lg" variant="secondary" onClick={() => dispatch({ type:"SET_SCREEN",payload:"pricing" })}>View Pricing</Button></div>
+        <div style={{ display:"inline-block",padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:isMobile?20:32 }}><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>🚀 Built for NZ Businesses</span></div>
+        <h1 style={{ fontSize:isMobile?36:64,fontWeight:800,color:theme.text,lineHeight:1.1,marginBottom:isMobile?16:24,fontFamily:theme.fontDisplay }}>Stop Chasing Quotes.<br /><span style={{ color:theme.accent }}>Start Winning Jobs.</span></h1>
+        <p style={{ fontSize:isMobile?16:20,color:theme.textMuted,lineHeight:1.6,maxWidth:600,margin:"0 auto 40px" }}>Upload your quote, hit send, and let Wynflow handle the follow-ups. Automated emails chase your customers so you can focus on what you do best.</p>
+        <div style={{ display:"flex",gap:12,justifyContent:"center",flexDirection:isMobile?"column":"row",alignItems:"center" }}><Button size={isMobile?"md":"lg"} onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Free Trial →</Button><Button size={isMobile?"md":"lg"} variant="secondary" onClick={() => dispatch({ type:"SET_SCREEN",payload:"pricing" })}>View Pricing</Button></div>
         <p style={{ fontSize:13,color:theme.textDim,marginTop:16 }}>No credit card required • 14-day free trial • Cancel anytime</p>
       </div>
     </div>
-    <div style={{ padding:"100px 48px",background:theme.surface }}>
+    <div style={{ padding:isMobile?"60px 20px":"100px 48px",background:theme.surface }}>
       <div style={{ maxWidth:1100,margin:"0 auto",textAlign:"center" }}>
-        <h2 style={{ fontSize:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>How It Works</h2>
-        <p style={{ fontSize:16,color:theme.textMuted,marginBottom:64,maxWidth:500,margin:"0 auto 64px" }}>Three simple steps to never chase a quote again</p>
-        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:32 }}>
+        <h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>How It Works</h2>
+        <p style={{ fontSize:16,color:theme.textMuted,marginBottom:isMobile?40:64,maxWidth:500,margin:"0 auto 64px" }}>Three simple steps to never chase a quote again</p>
+        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?20:32 }}>
           {[{num:"01",icon:"📄",title:"Upload Your Quote",desc:"Create your quote however you normally do. Save it as a file and upload it to Wynflow."},{num:"02",icon:"📧",title:"Hit Send",desc:"Add the customer's email, job title and amount. Wynflow sends a branded email with your quote and response buttons."},{num:"03",icon:"🤖",title:"Wynflow Chases",desc:"If they don't respond, automated follow-ups kick in. When they click Book In, Decline, or Feedback — you're notified."}].map((step,i) => (
-            <div key={i} style={{ padding:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"left" }}>
+            <div key={i} style={{ padding:isMobile?24:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"left" }}>
               <div style={{ fontSize:48,fontWeight:800,color:theme.accent,fontFamily:theme.fontDisplay,opacity:0.3,marginBottom:8 }}>{step.num}</div>
               <div style={{ fontSize:36,marginBottom:16 }}>{step.icon}</div>
               <h3 style={{ fontSize:20,fontWeight:700,color:theme.text,marginBottom:12 }}>{step.title}</h3>
@@ -532,12 +567,12 @@ const HomePage = ({ dispatch }) => (
         </div>
       </div>
     </div>
-    <div style={{ padding:"100px 48px",background:theme.bg }}>
+    <div style={{ padding:isMobile?"60px 20px":"100px 48px",background:theme.bg }}>
       <div style={{ maxWidth:1100,margin:"0 auto" }}>
-        <div style={{ textAlign:"center",marginBottom:64 }}><h2 style={{ fontSize:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Everything You Need</h2><p style={{ fontSize:16,color:theme.textMuted }}>Built for service businesses who are sick of chasing quotes</p></div>
-        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:24 }}>
+        <div style={{ textAlign:"center",marginBottom:isMobile?40:64 }}><h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Everything You Need</h2><p style={{ fontSize:16,color:theme.textMuted }}>Built for service businesses who are sick of chasing quotes</p></div>
+        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?16:24 }}>
           {[{icon:"📋",title:"Quote Dashboard",desc:"See every quote at a glance — who's opened it, who's responded, and what needs attention."},{icon:"🔄",title:"Automated Follow-Ups",desc:"Set it and forget it. Configure email sequences that chase at day 2, 5, 10 — whatever works."},{icon:"📎",title:"File Attachments",desc:"Upload your quote file and it gets attached to the email automatically."},{icon:"✅",title:"One-Click Responses",desc:"Customers click Book In, Decline, or Give Feedback right in the email."},{icon:"📊",title:"Track Everything",desc:"Know when emails are opened, which quotes are pending, and your win rate."},{icon:"🔒",title:"Secure & Private",desc:"Your data is encrypted and isolated. Bank-grade security."}].map((f,i) => (
-            <div key={i} style={{ padding:32,borderRadius:16,background:theme.surface,border:`1px solid ${theme.border}`,display:"flex",gap:20 }}>
+            <div key={i} style={{ padding:isMobile?20:32,borderRadius:16,background:theme.surface,border:`1px solid ${theme.border}`,display:"flex",gap:16 }}>
               <div style={{ fontSize:28,flexShrink:0 }}>{f.icon}</div>
               <div><h3 style={{ fontSize:16,fontWeight:600,color:theme.text,marginBottom:8 }}>{f.title}</h3><p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.6 }}>{f.desc}</p></div>
             </div>
@@ -545,12 +580,12 @@ const HomePage = ({ dispatch }) => (
         </div>
       </div>
     </div>
-    <div style={{ padding:"100px 48px",background:theme.surface }}>
+    <div style={{ padding:isMobile?"60px 20px":"100px 48px",background:theme.surface }}>
       <div style={{ maxWidth:900,margin:"0 auto",textAlign:"center" }}>
-        <h2 style={{ fontSize:40,fontWeight:700,color:theme.text,marginBottom:64,fontFamily:theme.fontDisplay }}>Trusted by Businesses Across NZ</h2>
-        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:24 }}>
+        <h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:theme.text,marginBottom:isMobile?32:64,fontFamily:theme.fontDisplay }}>Trusted by Businesses Across NZ</h2>
+        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?16:24 }}>
           {[{name:"Mike R.",trade:"Plumber, Auckland",quote:"I used to spend 30 minutes a day chasing quotes. Now Wynflow does it while I'm on the job. Won 3 extra jobs last month."},{name:"Sarah T.",trade:"Interior Designer, Wellington",quote:"The customer response buttons are genius. People actually reply now. My conversion went from 40% to 65%."},{name:"Dave L.",trade:"Builder, Christchurch",quote:"Dead simple to use. Upload the quote, add the email, done. Exactly what busy businesses need."}].map((t,i) => (
-            <div key={i} style={{ padding:32,borderRadius:16,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"left" }}>
+            <div key={i} style={{ padding:isMobile?20:32,borderRadius:16,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"left" }}>
               <div style={{ display:"flex",gap:4,marginBottom:16 }}>{[1,2,3,4,5].map(s=><span key={s} style={{ color:theme.accent,fontSize:16 }}>★</span>)}</div>
               <p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.7,marginBottom:20,fontStyle:"italic" }}>"{t.quote}"</p>
               <div style={{ fontSize:14,fontWeight:600,color:theme.text }}>{t.name}</div>
@@ -560,35 +595,47 @@ const HomePage = ({ dispatch }) => (
         </div>
       </div>
     </div>
-    <div style={{ padding:"100px 48px",textAlign:"center",background:`radial-gradient(ellipse at 50% 50%,rgba(245,158,11,0.12) 0%,transparent 60%),${theme.bg}` }}>
-      <h2 style={{ fontSize:44,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Ready to Win More Jobs?</h2>
-      <p style={{ fontSize:18,color:theme.textMuted,marginBottom:40 }}>Join hundreds of NZ businesses who've stopped chasing and started winning.</p>
+    <div style={{ padding:isMobile?"60px 20px":"100px 48px",textAlign:"center",background:`radial-gradient(ellipse at 50% 50%,rgba(245,158,11,0.12) 0%,transparent 60%),${theme.bg}` }}>
+      <h2 style={{ fontSize:isMobile?32:44,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Ready to Win More Jobs?</h2>
+      <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,marginBottom:40 }}>Join hundreds of NZ businesses who've stopped chasing and started winning.</p>
       <Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Your Free Trial →</Button>
     </div>
     <Footer dispatch={dispatch} />
   </div>
-);
+  );
+};
 
-const AboutPage = ({ dispatch }) => (
+const AboutPage = ({ dispatch }) => {
+  const isMobile = useIsMobile();
+  return (
   <div>
-    <div style={{ padding:"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(245,158,11,0.08) 0%,transparent 50%),${theme.bg}` }}>
-      <h1 style={{ fontSize:52,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay }}>About Wynflow</h1>
-      <p style={{ fontSize:18,color:theme.textMuted,maxWidth:600,margin:"0 auto",lineHeight:1.6 }}>Built by a Kiwi who got sick of watching businesses lose jobs because they forgot to follow up.</p>
+    <div style={{ padding:isMobile?"100px 20px 60px":"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(245,158,11,0.08) 0%,transparent 50%),${theme.bg}` }}>
+      <h1 style={{ fontSize:isMobile?36:52,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay }}>About Wynflow</h1>
+      <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,maxWidth:600,margin:"0 auto",lineHeight:1.6 }}>Built by a Kiwi who got sick of watching businesses lose jobs because they forgot to follow up.</p>
     </div>
-    <div style={{ padding:"80px 48px",background:theme.surface }}>
+    <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.surface }}>
       <div style={{ maxWidth:800,margin:"0 auto" }}>
-        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:48,alignItems:"center",marginBottom:80 }}>
-          <div><h2 style={{ fontSize:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>The Problem</h2><p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Every service business knows the pain. You spend time scoping a job, write up the quote, send it off... and then what? You wait. Maybe you follow up in a week. Maybe you don't. Meanwhile, the customer's gone with someone who did.</p></div>
-          <div style={{ padding:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}><div style={{ fontSize:56,fontWeight:800,color:theme.red,fontFamily:theme.fontDisplay }}>60%</div><div style={{ fontSize:14,color:theme.textMuted,marginTop:8 }}>of quotes are lost simply because nobody followed up</div></div>
+        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?24:48,alignItems:"center",marginBottom:isMobile?40:80 }}>
+          <div><h2 style={{ fontSize:isMobile?24:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>The Problem</h2><p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Every service business knows the pain. You spend time scoping a job, write up the quote, send it off... and then what? You wait. Maybe you follow up in a week. Maybe you don't. Meanwhile, the customer's gone with someone who did.</p></div>
+          <div style={{ padding:isMobile?24:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}><div style={{ fontSize:isMobile?40:56,fontWeight:800,color:theme.red,fontFamily:theme.fontDisplay }}>60%</div><div style={{ fontSize:14,color:theme.textMuted,marginTop:8 }}>of quotes are lost simply because nobody followed up</div></div>
         </div>
-        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:48,alignItems:"center",marginBottom:80 }}>
-          <div style={{ padding:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}><div style={{ fontSize:56,fontWeight:800,color:theme.green,fontFamily:theme.fontDisplay }}>3x</div><div style={{ fontSize:14,color:theme.textMuted,marginTop:8 }}>more likely to win the job with just one follow-up email</div></div>
-          <div><h2 style={{ fontSize:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>The Solution</h2><p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Wynflow takes the chasing out of your hands. Upload your quote, hit send, and our automated system follows up at exactly the right intervals. Professional, consistent, and hands-free.</p></div>
+        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?24:48,alignItems:"center",marginBottom:isMobile?40:80 }}>
+          {isMobile ? (
+            <>
+              <div><h2 style={{ fontSize:24,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>The Solution</h2><p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Wynflow takes the chasing out of your hands. Upload your quote, hit send, and our automated system follows up at exactly the right intervals. Professional, consistent, and hands-free.</p></div>
+              <div style={{ padding:24,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}><div style={{ fontSize:40,fontWeight:800,color:theme.green,fontFamily:theme.fontDisplay }}>3x</div><div style={{ fontSize:14,color:theme.textMuted,marginTop:8 }}>more likely to win the job with just one follow-up email</div></div>
+            </>
+          ) : (
+            <>
+              <div style={{ padding:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}><div style={{ fontSize:56,fontWeight:800,color:theme.green,fontFamily:theme.fontDisplay }}>3x</div><div style={{ fontSize:14,color:theme.textMuted,marginTop:8 }}>more likely to win the job with just one follow-up email</div></div>
+              <div><h2 style={{ fontSize:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>The Solution</h2><p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Wynflow takes the chasing out of your hands. Upload your quote, hit send, and our automated system follows up at exactly the right intervals. Professional, consistent, and hands-free.</p></div>
+            </>
+          )}
         </div>
-        <div style={{ padding:48,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}>
-          <h2 style={{ fontSize:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Built by Wynfall Automation</h2>
+        <div style={{ padding:isMobile?24:48,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}>
+          <h2 style={{ fontSize:isMobile?24:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Built by Wynfall Automation</h2>
           <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,maxWidth:600,margin:"0 auto 24px" }}>Wynflow is a product of Wynfall Automation, a New Zealand-based company specialising in AI and workflow automation for service businesses. Based in Napier and Auckland, building tools that make sense for how Kiwi businesses work.</p>
-          <div style={{ display:"flex",gap:32,justifyContent:"center",marginTop:32 }}>
+          <div style={{ display:"flex",gap:isMobile?20:32,justifyContent:"center",marginTop:32 }}>
             <div><div style={{ fontSize:28 }}>🇳🇿</div><div style={{ fontSize:13,color:theme.textMuted,marginTop:4 }}>100% NZ Built</div></div>
             <div><div style={{ fontSize:28 }}>⚡</div><div style={{ fontSize:13,color:theme.textMuted,marginTop:4 }}>AI-Powered</div></div>
             <div><div style={{ fontSize:28 }}>🔧</div><div style={{ fontSize:13,color:theme.textMuted,marginTop:4 }}>Made for Business</div></div>
@@ -596,23 +643,26 @@ const AboutPage = ({ dispatch }) => (
         </div>
       </div>
     </div>
-    <div style={{ padding:"80px 48px",background:theme.bg,textAlign:"center" }}>
-      <h2 style={{ fontSize:36,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Got Questions?</h2>
+    <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.bg,textAlign:"center" }}>
+      <h2 style={{ fontSize:isMobile?28:36,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Got Questions?</h2>
       <p style={{ fontSize:16,color:theme.textMuted,marginBottom:32 }}>Drop us an email anytime.</p>
       <div style={{ fontSize:20,color:theme.accent,fontWeight:600 }}>hello@wynflow.com</div>
     </div>
     <Footer dispatch={dispatch} />
   </div>
-);
+  );
+};
 
-const PricingPage = ({ dispatch }) => (
+const PricingPage = ({ dispatch }) => {
+  const isMobile = useIsMobile();
+  return (
   <div>
-    <div style={{ padding:"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(245,158,11,0.08) 0%,transparent 50%),${theme.bg}` }}>
-      <h1 style={{ fontSize:52,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay }}>Simple, Honest Pricing</h1>
-      <p style={{ fontSize:18,color:theme.textMuted,maxWidth:500,margin:"0 auto",lineHeight:1.6 }}>No hidden fees. No lock-in contracts. 14-day free trial on every plan.</p>
+    <div style={{ padding:isMobile?"100px 20px 60px":"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(245,158,11,0.08) 0%,transparent 50%),${theme.bg}` }}>
+      <h1 style={{ fontSize:isMobile?36:52,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay }}>Simple, Honest Pricing</h1>
+      <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,maxWidth:500,margin:"0 auto",lineHeight:1.6 }}>No hidden fees. No lock-in contracts. 14-day free trial on every plan.</p>
     </div>
-    <div style={{ padding:"0 48px 100px",background:theme.bg }}>
-      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:32,maxWidth:800,margin:"0 auto" }}>
+    <div style={{ padding:isMobile?"0 20px 60px":"0 48px 100px",background:theme.bg }}>
+      <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?20:32,maxWidth:800,margin:"0 auto" }}>
         {[
           {name:"Starter",price:"29",desc:"Everything you need to win more jobs",features:["Unlimited quotes","1 follow-up sequence","File attachments","Customer response buttons","Email support","Quote dashboard"],highlighted:true,active:true},
           {name:"Pro",price:"49",desc:"For businesses who want the full toolkit",features:["Everything in Starter","Unlimited sequences","Custom email messages","Advanced analytics","Custom email branding","Team access (up to 3 users)","Priority support"],highlighted:false,active:false},
@@ -647,7 +697,8 @@ const PricingPage = ({ dispatch }) => (
     </div>
     <Footer dispatch={dispatch} />
   </div>
-);
+  );
+};
 
 // ════════════════════════════════════════
 // AUTH & DASHBOARD
@@ -799,8 +850,25 @@ const AuthScreen = ({ dispatch, isSignup }) => {
   );
 };
 
+// ─── Cookie Helpers for Session Persistence ───
+const setCookie = (name, value, minutes) => {
+  const expires = new Date(Date.now() + minutes * 60000).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(JSON.stringify(value))}; expires=${expires}; path=/; SameSite=Strict`;
+};
+const getCookie = (name) => {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  if (match) try { return JSON.parse(decodeURIComponent(match[2])); } catch { return null; }
+  return null;
+};
+const clearCookies = () => {
+  document.cookie = "wynflow_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+  document.cookie = "wynflow_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+  document.cookie = "wynflow_business=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+};
+
 // ─── Sidebar ───
 const Sidebar = ({ screen, dispatch, business }) => {
+  const isMobile = useIsMobile();
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: "📊" },
     { id: "quotes", label: "Quotes", icon: "📋" },
@@ -813,6 +881,28 @@ const Sidebar = ({ screen, dispatch, business }) => {
     clearCookies();
     dispatch({ type: "LOGOUT" });
   };
+
+  if (isMobile) {
+    return (
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100,
+        background: theme.surface, borderTop: `1px solid ${theme.border}`,
+        display: "flex", justifyContent: "space-around", padding: "8px 0 12px",
+      }}>
+        {navItems.map((item) => (
+          <div key={item.id} onClick={() => dispatch({ type: "SET_SCREEN", payload: item.id })}
+            style={{
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+              cursor: "pointer", padding: "4px 12px",
+              color: screen === item.id ? theme.accent : theme.textMuted,
+            }}>
+            <span style={{ fontSize: 20 }}>{item.icon}</span>
+            <span style={{ fontSize: 10, fontWeight: 500 }}>{item.label}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -861,6 +951,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
 
 // ─── Dashboard ───
 const Dashboard = ({ quotes, dispatch }) => {
+  const isMobile = useIsMobile();
   const total = quotes.length;
   const pending = quotes.filter((q) => q.status === "sent" || q.status === "pending" || q.status === "opened").length;
   const accepted = quotes.filter((q) => q.status === "accepted").length;
@@ -874,7 +965,7 @@ const Dashboard = ({ quotes, dispatch }) => {
         <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>Here's what's happening with your quotes</p>
       </div>
 
-      <div style={{ display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 32 }}>
         <Stat label="Total Quotes" value={total} icon="📋" />
         <Stat label="Awaiting Response" value={pending} accent={theme.accent} icon="⏳" />
         <Stat label="Won" value={accepted} accent={theme.green} icon="✅" />
@@ -936,6 +1027,7 @@ const Dashboard = ({ quotes, dispatch }) => {
 
 // ─── Quotes List ───
 const QuotesList = ({ quotes, dispatch }) => {
+  const isMobile = useIsMobile();
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
 
@@ -977,6 +1069,7 @@ const QuotesList = ({ quotes, dispatch }) => {
       </div>
 
       <Card style={{ padding: 0, overflow: "hidden" }}>
+        {!isMobile && (
         <div style={{
           display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 80px",
           padding: "14px 20px", borderBottom: `1px solid ${theme.border}`, fontSize: 12,
@@ -984,26 +1077,45 @@ const QuotesList = ({ quotes, dispatch }) => {
         }}>
           <span>Customer</span><span>Job</span><span>Amount</span><span>Status</span><span></span>
         </div>
+        )}
         {filtered.map((q) => (
           <div key={q.id}
             onClick={() => dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + q.id })}
-            style={{
+            style={isMobile ? {
+              padding: "16px 20px", borderBottom: `1px solid ${theme.border}08`, cursor: "pointer",
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+            } : {
               display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 80px",
               padding: "16px 20px", borderBottom: `1px solid ${theme.border}08`, cursor: "pointer",
             }}
             onMouseEnter={(e) => (e.currentTarget.style.background = theme.surfaceLight)}
             onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>{q.customer_name}</div>
-              <div style={{ fontSize: 12, color: theme.textMuted }}>{q.customer_email}</div>
-            </div>
-            <div style={{ fontSize: 14, color: theme.text, display: "flex", alignItems: "center" }}>{q.job_title}</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, display: "flex", alignItems: "center" }}>${parseFloat(q.amount || 0).toLocaleString()}</div>
-            <div style={{ display: "flex", alignItems: "center" }}><Badge status={q.status} /></div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-              <span style={{ fontSize: 18, color: theme.textDim }}>→</span>
-            </div>
+            {isMobile ? (
+              <>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>{q.customer_name}</div>
+                  <div style={{ fontSize: 12, color: theme.textMuted }}>{q.job_title}</div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>${parseFloat(q.amount || 0).toLocaleString()}</span>
+                  <Badge status={q.status} />
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>{q.customer_name}</div>
+                  <div style={{ fontSize: 12, color: theme.textMuted }}>{q.customer_email}</div>
+                </div>
+                <div style={{ fontSize: 14, color: theme.text, display: "flex", alignItems: "center" }}>{q.job_title}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, display: "flex", alignItems: "center" }}>${parseFloat(q.amount || 0).toLocaleString()}</div>
+                <div style={{ display: "flex", alignItems: "center" }}><Badge status={q.status} /></div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+                  <span style={{ fontSize: 18, color: theme.textDim }}>→</span>
+                </div>
+              </>
+            )}
           </div>
         ))}
         {filtered.length === 0 && (
@@ -1018,6 +1130,7 @@ const QuotesList = ({ quotes, dispatch }) => {
 
 // ─── New Quote Form ───
 const NewQuoteForm = ({ dispatch, business, sequences }) => {
+  const isMobile = useIsMobile();
   const [form, setForm] = useState({
     customerName: "", customerEmail: "", customerPhone: "",
     jobTitle: "", description: "", amount: "", sequenceId: sequences.find(s => s.is_default)?.id || sequences[0]?.id || "",
@@ -1107,7 +1220,7 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
         <h1 style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: "8px 0 0", fontFamily: theme.fontDisplay }}>New Quote</h1>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 24 }}>
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Customer Details</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1177,6 +1290,7 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
 
 // ─── Quote Detail ───
 const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
+  const isMobile = useIsMobile();
   const quote = quotes.find((q) => q.id === quoteId);
   const [steps, setSteps] = useState([]);
   const [responses, setResponses] = useState([]);
@@ -1220,7 +1334,7 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 24 }}>
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Customer</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1309,6 +1423,7 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
             <Button onClick={() => updateStatus("accepted")} style={{ background: theme.greenSoft, color: theme.green }}>✓ Mark Accepted</Button>
             <Button onClick={() => updateStatus("declined")} variant="danger">✗ Mark Declined</Button>
             <Button variant="secondary" onClick={async () => {
+              if (!window.confirm("Are you sure you want to send a follow-up email to " + quote.customer_name + "?")) return;
               try {
                 // Send the follow-up email via N8N
                 await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-follow-up", {
@@ -1457,6 +1572,7 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
 
 // ─── Settings ───
 const Settings = ({ business, dispatch }) => {
+  const isMobile = useIsMobile();
   const [businessName, setBusinessName] = useState(business?.business_name || "");
   const [contactName, setContactName] = useState(business?.contact_name || "");
   const [email, setEmail] = useState(business?.email || "");
@@ -1485,7 +1601,7 @@ const Settings = ({ business, dispatch }) => {
         <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>Manage your business profile</p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 24 }}>
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Business Profile</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1550,22 +1666,6 @@ export default function WynflowApp() {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const { user, business, screen, quotes, sequences, notification, loading } = state;
 
-  // Cookie helpers for session persistence
-  const setCookie = (name, value, minutes) => {
-    const expires = new Date(Date.now() + minutes * 60000).toUTCString();
-    document.cookie = `${name}=${encodeURIComponent(JSON.stringify(value))}; expires=${expires}; path=/; SameSite=Strict`;
-  };
-  const getCookie = (name) => {
-    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    if (match) try { return JSON.parse(decodeURIComponent(match[2])); } catch { return null; }
-    return null;
-  };
-  const clearCookies = () => {
-    document.cookie = "wynflow_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    document.cookie = "wynflow_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    document.cookie = "wynflow_business=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-  };
-
   // Restore session on mount
   useEffect(() => {
     const savedToken = getCookie("wynflow_token");
@@ -1617,6 +1717,11 @@ export default function WynflowApp() {
     ::-webkit-scrollbar-thumb { background:${theme.border};border-radius:3px; }
     @keyframes slideIn { from{transform:translateX(100px);opacity:0} to{transform:translateX(0);opacity:1} }
     @keyframes spin { to{transform:rotate(360deg)} }
+    @media (max-width: 767px) {
+      .mobile-stack { grid-template-columns: 1fr !important; }
+      .mobile-hide { display: none !important; }
+      .mobile-full { grid-column: 1 / -1 !important; }
+    }
   `;
 
   // Public pages
@@ -1664,13 +1769,15 @@ export default function WynflowApp() {
     }
   };
 
+  const isMobile = useIsMobile();
+
   return (
     <>
       <style>{globalStyles}</style>
       {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
-      <div style={{ display: "flex", height: "100vh", fontFamily: theme.font, color: theme.text, overflow: "hidden" }}>
+      <div style={{ display: "flex", height: "100vh", fontFamily: theme.font, color: theme.text, overflow: "hidden", flexDirection: isMobile ? "column" : "row" }}>
         <Sidebar screen={activeScreen} dispatch={dispatch} business={business} />
-        <div style={{ flex: 1, overflow: "auto", padding: "32px 40px" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "20px 16px 80px" : "32px 40px" }}>
           {renderContent()}
         </div>
       </div>
