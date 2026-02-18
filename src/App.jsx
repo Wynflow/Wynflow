@@ -1,4 +1,5 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
+import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Zap, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench } from "lucide-react";
 
 // ─── Mobile Detection Hook ───
 const useIsMobile = () => {
@@ -382,20 +383,22 @@ const Badge = ({ status }) => {
 };
 
 const Button = ({ children, variant = "primary", size = "md", onClick, style = {}, disabled }) => {
+  const [hovered, setHovered] = useState(false);
   const base = {
     fontFamily: theme.font, fontWeight: 600, border: "none", cursor: disabled ? "not-allowed" : "pointer",
     borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 8,
     transition: "all 0.2s ease", opacity: disabled ? 0.5 : 1,
     fontSize: size === "sm" ? 13 : size === "lg" ? 16 : 14,
     padding: size === "sm" ? "8px 16px" : size === "lg" ? "16px 32px" : "12px 24px",
+    transform: hovered && !disabled ? "translateY(-1px)" : "translateY(0)",
   };
   const variants = {
-    primary: { background: theme.accent, color: "#000", boxShadow: `0 0 20px ${theme.accentGlow}` },
-    secondary: { background: theme.surfaceLight, color: theme.text, border: `1px solid ${theme.border}` },
+    primary: { background: hovered ? theme.accentHover : theme.accent, color: "#000", boxShadow: hovered ? `0 4px 24px ${theme.accentGlow}` : `0 0 20px ${theme.accentGlow}` },
+    secondary: { background: hovered ? theme.surfaceHover : theme.surfaceLight, color: theme.text, border: `1px solid ${hovered ? theme.borderLight : theme.border}` },
     ghost: { background: "transparent", color: theme.textMuted },
     danger: { background: theme.redSoft, color: theme.red },
   };
-  return <button onClick={onClick} disabled={disabled} style={{ ...base, ...variants[variant], ...style }}>{children}</button>;
+  return <button onClick={onClick} disabled={disabled} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{ ...base, ...variants[variant], ...style }}>{children}</button>;
 };
 
 const Input = ({ label, value, onChange, type = "text", placeholder, textarea, style = {}, accept, onFileChange }) => (
@@ -406,7 +409,7 @@ const Input = ({ label, value, onChange, type = "text", placeholder, textarea, s
         style={{
           fontFamily: theme.font, fontSize: 14, padding: "12px 16px", borderRadius: 10,
           background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text,
-          outline: "none", resize: "vertical", minHeight: 100,
+          outline: "none", resize: "vertical", minHeight: 100, transition: "border-color 0.2s ease",
         }} />
     ) : type === "file" ? (
       <input type="file" accept={accept} onChange={onFileChange}
@@ -427,20 +430,22 @@ const Input = ({ label, value, onChange, type = "text", placeholder, textarea, s
 const Card = ({ children, style = {}, onClick }) => (
   <div onClick={onClick} style={{
     background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16,
-    padding: 24, transition: "all 0.2s ease", cursor: onClick ? "pointer" : "default", ...style,
-  }}>
+    padding: 24, transition: "all 0.25s ease", cursor: onClick ? "pointer" : "default", ...style,
+  }}
+  onMouseEnter={onClick ? (e) => { e.currentTarget.style.borderColor = theme.accent + "33"; } : undefined}
+  onMouseLeave={onClick ? (e) => { e.currentTarget.style.borderColor = theme.border; } : undefined}>
     {children}
   </div>
 );
 
-const Stat = ({ label, value, accent, icon }) => (
-  <Card style={{ flex: 1, minWidth: 160 }}>
+const Stat = ({ label, value, accent, icon: Icon }) => (
+  <Card style={{ flex: 1, minWidth: 140 }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
       <div>
         <div style={{ fontSize: 13, color: theme.textMuted, marginBottom: 8, fontWeight: 500 }}>{label}</div>
-        <div style={{ fontSize: 32, fontWeight: 700, color: accent || theme.text, fontFamily: theme.fontDisplay }}>{value}</div>
+        <div style={{ fontSize: 28, fontWeight: 700, color: accent || theme.text, fontFamily: theme.fontDisplay }}>{value}</div>
       </div>
-      <div style={{ fontSize: 24, opacity: 0.6 }}>{icon}</div>
+      <div style={{ width: 40, height: 40, borderRadius: 10, background: theme.surfaceLight, display: "flex", alignItems: "center", justifyContent: "center" }}>{Icon && <Icon size={20} color={theme.textMuted} />}</div>
     </div>
   </Card>
 );
@@ -481,12 +486,12 @@ const Navbar = ({ dispatch, transparent }) => {
   return (
     <nav style={{ position:transparent?"absolute":"relative",top:0,left:0,right:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:isMobile?"16px 20px":"20px 48px",background:transparent?"transparent":theme.surface,borderBottom:transparent?"none":`1px solid ${theme.border}`,fontFamily:theme.font }}>
       <div style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer" }} onClick={() => dispatch({ type:"SET_SCREEN",payload:"home" })}>
-        <div style={{ width:36,height:36,borderRadius:10,background:`linear-gradient(135deg,${theme.accent},${theme.accentHover})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,boxShadow:`0 0 20px ${theme.accentGlow}` }}>⚡</div>
+        <div style={{ width:36,height:36,borderRadius:10,background:`linear-gradient(135deg,${theme.accent},${theme.accentHover})`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 20px ${theme.accentGlow}` }}><Zap size={18} color="#000" fill="#000" /></div>
         <span style={{ fontSize:22,fontWeight:700,color:theme.text,fontFamily:theme.fontDisplay }}>Wynflow</span>
       </div>
       {isMobile ? (
         <>
-          <div onClick={() => setMenuOpen(!menuOpen)} style={{ fontSize:24,color:theme.text,cursor:"pointer",padding:8 }}>{menuOpen ? "✕" : "☰"}</div>
+          <div onClick={() => setMenuOpen(!menuOpen)} style={{ color:theme.text,cursor:"pointer",padding:8 }}>{menuOpen ? <X size={24} /> : <Menu size={24} />}</div>
           {menuOpen && (
             <div style={{ position:"absolute",top:"100%",left:0,right:0,background:theme.surface,borderBottom:`1px solid ${theme.border}`,padding:"16px 20px",display:"flex",flexDirection:"column",gap:16,zIndex:200 }}>
               {[["home","Home"],["about","About"],["pricing","Pricing"]].map(([id,label]) => (
@@ -517,7 +522,7 @@ const Footer = ({ dispatch }) => {
     <div style={{ display:"flex",justifyContent:"space-between",maxWidth:1100,margin:"0 auto",flexWrap:"wrap",gap:isMobile?32:48,flexDirection:isMobile?"column":"row" }}>
       <div style={{ maxWidth:300 }}>
         <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
-          <div style={{ width:32,height:32,borderRadius:8,background:`linear-gradient(135deg,${theme.accent},${theme.accentHover})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>⚡</div>
+          <div style={{ width:32,height:32,borderRadius:8,background:`linear-gradient(135deg,${theme.accent},${theme.accentHover})`,display:"flex",alignItems:"center",justifyContent:"center" }}><Zap size={16} color="#000" fill="#000" /></div>
           <span style={{ fontSize:18,fontWeight:700,color:theme.text,fontFamily:theme.fontDisplay }}>Wynflow</span>
         </div>
         <p style={{ fontSize:13,color:theme.textMuted,lineHeight:1.6 }}>Automated quote delivery and follow-up for businesses. Send quotes, chase customers, win more jobs — on autopilot.</p>
@@ -544,7 +549,7 @@ const HomePage = ({ dispatch }) => {
   <div>
     <div style={{ minHeight:isMobile?"auto":"90vh",display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",background:`radial-gradient(ellipse at 30% 20%,rgba(245,158,11,0.1) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(59,130,246,0.06) 0%,transparent 50%),${theme.bg}`,padding:isMobile?"100px 20px 60px":"120px 48px 80px" }}>
       <div style={{ maxWidth:800 }}>
-        <div style={{ display:"inline-block",padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:isMobile?20:32 }}><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>🚀 Built for NZ Businesses</span></div>
+        <div style={{ display:"inline-flex",alignItems:"center",gap:8,padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:isMobile?20:32 }}><Zap size={14} color={theme.accent} /><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>Built for NZ Businesses</span></div>
         <h1 style={{ fontSize:isMobile?36:64,fontWeight:800,color:theme.text,lineHeight:1.1,marginBottom:isMobile?16:24,fontFamily:theme.fontDisplay }}>Stop Chasing Quotes.<br /><span style={{ color:theme.accent }}>Start Winning Jobs.</span></h1>
         <p style={{ fontSize:isMobile?16:20,color:theme.textMuted,lineHeight:1.6,maxWidth:600,margin:"0 auto 40px" }}>Upload your quote, hit send, and let Wynflow handle the follow-ups. Automated emails chase your customers so you can focus on what you do best.</p>
         <div style={{ display:"flex",gap:12,justifyContent:"center",flexDirection:isMobile?"column":"row",alignItems:"center" }}><Button size={isMobile?"md":"lg"} onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Free Trial →</Button><Button size={isMobile?"md":"lg"} variant="secondary" onClick={() => dispatch({ type:"SET_SCREEN",payload:"pricing" })}>View Pricing</Button></div>
@@ -556,10 +561,12 @@ const HomePage = ({ dispatch }) => {
         <h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>How It Works</h2>
         <p style={{ fontSize:16,color:theme.textMuted,marginBottom:isMobile?40:64,maxWidth:500,margin:"0 auto 64px" }}>Three simple steps to never chase a quote again</p>
         <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?20:32 }}>
-          {[{num:"01",icon:"📄",title:"Upload Your Quote",desc:"Create your quote however you normally do. Save it as a file and upload it to Wynflow."},{num:"02",icon:"📧",title:"Hit Send",desc:"Add the customer's email, job title and amount. Wynflow sends a branded email with your quote and response buttons."},{num:"03",icon:"🤖",title:"Wynflow Chases",desc:"If they don't respond, automated follow-ups kick in. When they click Book In, Decline, or Feedback — you're notified."}].map((step,i) => (
-            <div key={i} style={{ padding:isMobile?24:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"left" }}>
+          {[{num:"01",Icon:Upload,title:"Upload Your Quote",desc:"Create your quote however you normally do. Save it as a file and upload it to Wynflow."},{num:"02",Icon:Send,title:"Hit Send",desc:"Add the customer's email, job title and amount. Wynflow sends a branded email with your quote and response buttons."},{num:"03",Icon:Bot,title:"Wynflow Chases",desc:"If they don't respond, automated follow-ups kick in. When they click Book In, Decline, or Feedback — you're notified."}].map((step,i) => (
+            <div key={i} style={{ padding:isMobile?24:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"left",transition:"all 0.3s ease" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + "44"; e.currentTarget.style.transform = "translateY(-4px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.transform = "translateY(0)"; }}>
               <div style={{ fontSize:48,fontWeight:800,color:theme.accent,fontFamily:theme.fontDisplay,opacity:0.3,marginBottom:8 }}>{step.num}</div>
-              <div style={{ fontSize:36,marginBottom:16 }}>{step.icon}</div>
+              <div style={{ width:48,height:48,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16 }}><step.Icon size={24} color={theme.accent} /></div>
               <h3 style={{ fontSize:20,fontWeight:700,color:theme.text,marginBottom:12 }}>{step.title}</h3>
               <p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.7 }}>{step.desc}</p>
             </div>
@@ -571,9 +578,11 @@ const HomePage = ({ dispatch }) => {
       <div style={{ maxWidth:1100,margin:"0 auto" }}>
         <div style={{ textAlign:"center",marginBottom:isMobile?40:64 }}><h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Everything You Need</h2><p style={{ fontSize:16,color:theme.textMuted }}>Built for service businesses who are sick of chasing quotes</p></div>
         <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?16:24 }}>
-          {[{icon:"📋",title:"Quote Dashboard",desc:"See every quote at a glance — who's opened it, who's responded, and what needs attention."},{icon:"🔄",title:"Automated Follow-Ups",desc:"Set it and forget it. Configure email sequences that chase at day 2, 5, 10 — whatever works."},{icon:"📎",title:"File Attachments",desc:"Upload your quote file and it gets attached to the email automatically."},{icon:"✅",title:"One-Click Responses",desc:"Customers click Book In, Decline, or Give Feedback right in the email."},{icon:"📊",title:"Track Everything",desc:"Know when emails are opened, which quotes are pending, and your win rate."},{icon:"🔒",title:"Secure & Private",desc:"Your data is encrypted and isolated. Bank-grade security."}].map((f,i) => (
-            <div key={i} style={{ padding:isMobile?20:32,borderRadius:16,background:theme.surface,border:`1px solid ${theme.border}`,display:"flex",gap:16 }}>
-              <div style={{ fontSize:28,flexShrink:0 }}>{f.icon}</div>
+          {[{Icon:ClipboardList,title:"Quote Dashboard",desc:"See every quote at a glance — who's opened it, who's responded, and what needs attention."},{Icon:RefreshCw,title:"Automated Follow-Ups",desc:"Set it and forget it. Configure email sequences that chase at day 2, 5, 10 — whatever works."},{Icon:Paperclip,title:"File Attachments",desc:"Upload your quote file and it gets attached to the email automatically."},{Icon:CheckCircle2,title:"One-Click Responses",desc:"Customers click Book In, Decline, or Give Feedback right in the email."},{Icon:BarChart3,title:"Track Everything",desc:"Know when emails are opened, which quotes are pending, and your win rate."},{Icon:Lock,title:"Secure & Private",desc:"Your data is encrypted and isolated. Bank-grade security."}].map((f,i) => (
+            <div key={i} style={{ padding:isMobile?20:32,borderRadius:16,background:theme.surface,border:`1px solid ${theme.border}`,display:"flex",gap:16,transition:"all 0.3s ease" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + "33"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; }}>
+              <div style={{ width:44,height:44,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><f.Icon size={20} color={theme.accent} /></div>
               <div><h3 style={{ fontSize:16,fontWeight:600,color:theme.text,marginBottom:8 }}>{f.title}</h3><p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.6 }}>{f.desc}</p></div>
             </div>
           ))}
@@ -586,7 +595,7 @@ const HomePage = ({ dispatch }) => {
         <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?16:24 }}>
           {[{name:"Mike R.",trade:"Plumber, Auckland",quote:"I used to spend 30 minutes a day chasing quotes. Now Wynflow does it while I'm on the job. Won 3 extra jobs last month."},{name:"Sarah T.",trade:"Interior Designer, Wellington",quote:"The customer response buttons are genius. People actually reply now. My conversion went from 40% to 65%."},{name:"Dave L.",trade:"Builder, Christchurch",quote:"Dead simple to use. Upload the quote, add the email, done. Exactly what busy businesses need."}].map((t,i) => (
             <div key={i} style={{ padding:isMobile?20:32,borderRadius:16,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"left" }}>
-              <div style={{ display:"flex",gap:4,marginBottom:16 }}>{[1,2,3,4,5].map(s=><span key={s} style={{ color:theme.accent,fontSize:16 }}>★</span>)}</div>
+              <div style={{ display:"flex",gap:4,marginBottom:16 }}>{[1,2,3,4,5].map(s=><Star key={s} size={16} color={theme.accent} fill={theme.accent} />)}</div>
               <p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.7,marginBottom:20,fontStyle:"italic" }}>"{t.quote}"</p>
               <div style={{ fontSize:14,fontWeight:600,color:theme.text }}>{t.name}</div>
               <div style={{ fontSize:12,color:theme.textDim }}>{t.trade}</div>
@@ -636,9 +645,9 @@ const AboutPage = ({ dispatch }) => {
           <h2 style={{ fontSize:isMobile?24:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Built by Wynfall Automation</h2>
           <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,maxWidth:600,margin:"0 auto 24px" }}>Wynflow is a product of Wynfall Automation, a New Zealand-based company specialising in AI and workflow automation for service businesses. Based in Napier and Auckland, building tools that make sense for how Kiwi businesses work.</p>
           <div style={{ display:"flex",gap:isMobile?20:32,justifyContent:"center",marginTop:32 }}>
-            <div><div style={{ fontSize:28 }}>🇳🇿</div><div style={{ fontSize:13,color:theme.textMuted,marginTop:4 }}>100% NZ Built</div></div>
-            <div><div style={{ fontSize:28 }}>⚡</div><div style={{ fontSize:13,color:theme.textMuted,marginTop:4 }}>AI-Powered</div></div>
-            <div><div style={{ fontSize:28 }}>🔧</div><div style={{ fontSize:13,color:theme.textMuted,marginTop:4 }}>Made for Business</div></div>
+            <div style={{ display:"flex",flexDirection:"column",alignItems:"center" }}><div style={{ width:48,height:48,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8 }}><Globe size={22} color={theme.accent} /></div><div style={{ fontSize:13,color:theme.textMuted }}>100% NZ Built</div></div>
+            <div style={{ display:"flex",flexDirection:"column",alignItems:"center" }}><div style={{ width:48,height:48,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8 }}><Cpu size={22} color={theme.accent} /></div><div style={{ fontSize:13,color:theme.textMuted }}>AI-Powered</div></div>
+            <div style={{ display:"flex",flexDirection:"column",alignItems:"center" }}><div style={{ width:48,height:48,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8 }}><Wrench size={22} color={theme.accent} /></div><div style={{ fontSize:13,color:theme.textMuted }}>Made for Business</div></div>
           </div>
         </div>
       </div>
@@ -667,7 +676,7 @@ const PricingPage = ({ dispatch }) => {
           {name:"Starter",price:"29",desc:"Everything you need to win more jobs",features:["Unlimited quotes","1 follow-up sequence","File attachments","Customer response buttons","Email support","Quote dashboard"],highlighted:true,active:true},
           {name:"Pro",price:"49",desc:"For businesses who want the full toolkit",features:["Everything in Starter","Unlimited sequences","Custom email messages","Advanced analytics","Custom email branding","Team access (up to 3 users)","Priority support"],highlighted:false,active:false},
         ].map((plan,i) => (
-          <div key={i} style={{ padding:40,borderRadius:20,background:theme.surface,border:`${plan.highlighted?"2px":"1px"} solid ${plan.highlighted?theme.accent:theme.border}`,position:"relative",transform:plan.highlighted?"scale(1.05)":"none",boxShadow:plan.highlighted?`0 0 40px ${theme.accentGlow}`:"none" }}>
+          <div key={i} style={{ padding:isMobile?28:40,borderRadius:20,background:theme.surface,border:`${plan.highlighted?"2px":"1px"} solid ${plan.highlighted?theme.accent:theme.border}`,position:"relative",transform:plan.highlighted && !isMobile?"scale(1.03)":"none",boxShadow:plan.highlighted?`0 0 40px ${theme.accentGlow}`:"none",transition:"all 0.3s ease" }}>
             {plan.highlighted && <div style={{ position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",padding:"6px 20px",borderRadius:20,background:theme.accent,color:"#000",fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:1 }}>Most Popular</div>}
             <h3 style={{ fontSize:22,fontWeight:700,color:theme.text,marginBottom:8 }}>{plan.name}</h3>
             <p style={{ fontSize:13,color:theme.textMuted,marginBottom:24 }}>{plan.desc}</p>
@@ -800,9 +809,9 @@ const AuthScreen = ({ dispatch, isSignup }) => {
             <div style={{
               width: 48, height: 48, borderRadius: 14,
               background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
-              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24,
+              display: "flex", alignItems: "center", justifyContent: "center",
               boxShadow: `0 0 30px ${theme.accentGlow}`,
-            }}>⚡</div>
+            }}><Zap size={24} color="#000" fill="#000" /></div>
             <span style={{ fontSize: 28, fontWeight: 700, color: theme.text, fontFamily: theme.fontDisplay }}>Wynflow</span>
           </div>
           <div style={{ fontSize: 15, color: theme.textMuted, lineHeight: 1.5 }}>
@@ -870,10 +879,10 @@ const clearCookies = () => {
 const Sidebar = ({ screen, dispatch, business }) => {
   const isMobile = useIsMobile();
   const navItems = [
-    { id: "dashboard", label: "Dashboard", icon: "📊" },
-    { id: "quotes", label: "Quotes", icon: "📋" },
-    { id: "sequences", label: "Follow-Ups", icon: "🔄" },
-    { id: "settings", label: "Settings", icon: "⚙️" },
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "quotes", label: "Quotes", icon: FileText },
+    { id: "sequences", label: "Follow-Ups", icon: RefreshCw },
+    { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
 
   const handleLogout = async () => {
@@ -889,17 +898,20 @@ const Sidebar = ({ screen, dispatch, business }) => {
         background: theme.surface, borderTop: `1px solid ${theme.border}`,
         display: "flex", justifyContent: "space-around", padding: "8px 0 12px",
       }}>
-        {navItems.map((item) => (
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          return (
           <div key={item.id} onClick={() => dispatch({ type: "SET_SCREEN", payload: item.id })}
             style={{
               display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
               cursor: "pointer", padding: "4px 12px",
               color: screen === item.id ? theme.accent : theme.textMuted,
             }}>
-            <span style={{ fontSize: 20 }}>{item.icon}</span>
+            <Icon size={20} />
             <span style={{ fontSize: 10, fontWeight: 500 }}>{item.label}</span>
           </div>
-        ))}
+          );
+        })}
       </div>
     );
   }
@@ -913,25 +925,29 @@ const Sidebar = ({ screen, dispatch, business }) => {
         <div style={{
           width: 36, height: 36, borderRadius: 10,
           background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
-          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
+          display: "flex", alignItems: "center", justifyContent: "center",
           boxShadow: `0 0 20px ${theme.accentGlow}`,
-        }}>⚡</div>
+        }}><Zap size={18} color="#000" fill="#000" /></div>
         <span style={{ fontSize: 20, fontWeight: 700, color: theme.text, fontFamily: theme.fontDisplay }}>Wynflow</span>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
-        {navItems.map((item) => (
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          return (
           <div key={item.id} onClick={() => dispatch({ type: "SET_SCREEN", payload: item.id })}
             style={{
               display: "flex", alignItems: "center", gap: 12, padding: "12px 14px",
               borderRadius: 10, cursor: "pointer", fontSize: 14, fontWeight: 500,
               background: screen === item.id ? theme.accentSoft : "transparent",
               color: screen === item.id ? theme.accent : theme.textMuted,
+              transition: "all 0.2s ease",
             }}>
-            <span style={{ fontSize: 18 }}>{item.icon}</span>
+            <Icon size={18} />
             {item.label}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div style={{
@@ -966,14 +982,14 @@ const Dashboard = ({ quotes, dispatch }) => {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 32 }}>
-        <Stat label="Total Quotes" value={total} icon="📋" />
-        <Stat label="Awaiting Response" value={pending} accent={theme.accent} icon="⏳" />
-        <Stat label="Won" value={accepted} accent={theme.green} icon="✅" />
-        <Stat label="Revenue Won" value={`$${revenue.toLocaleString()}`} accent={theme.green} icon="💰" />
+        <Stat label="Total Quotes" value={total} icon={FileText} />
+        <Stat label="Awaiting Response" value={pending} accent={theme.accent} icon={Clock} />
+        <Stat label="Won" value={accepted} accent={theme.green} icon={CheckCircle2} />
+        <Stat label="Revenue Won" value={`$${revenue.toLocaleString()}`} accent={theme.green} icon={DollarSign} />
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 32 }}>
-        <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })}>+ New Quote</Button>
+        <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })}><Plus size={16} /> New Quote</Button>
         <Button variant="secondary" onClick={() => dispatch({ type: "SET_SCREEN", payload: "sequences" })}>Manage Follow-Ups</Button>
       </div>
 
@@ -1044,7 +1060,7 @@ const QuotesList = ({ quotes, dispatch }) => {
           <h1 style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Quotes</h1>
           <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>{quotes.length} total quotes</p>
         </div>
-        <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })}>+ New Quote</Button>
+        <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })}><Plus size={16} /> New Quote</Button>
       </div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
@@ -1204,7 +1220,7 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
       });
 
       dispatch({ type: "ADD_QUOTE", payload: newQuote[0] });
-      dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${form.customerName}! Follow-ups scheduled. 🚀`, type: "success" } });
+      dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${form.customerName}! Follow-ups scheduled.`, type: "success" } });
     } catch (err) {
       dispatch({ type: "NOTIFY", payload: { message: err.message, type: "error" } });
     } finally {
@@ -1245,8 +1261,8 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
           <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Upload your quote to attach to the email</p>
           <Input label="Upload File" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" onFileChange={(e) => setPdfFile(e.target.files[0])} />
           {pdfFile && (
-            <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: theme.greenSoft, color: theme.green, fontSize: 13 }}>
-              📎 {pdfFile.name} ({(pdfFile.size / 1024).toFixed(0)} KB)
+            <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: theme.greenSoft, color: theme.green, fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
+              <Paperclip size={14} /> {pdfFile.name} ({(pdfFile.size / 1024).toFixed(0)} KB)
             </div>
           )}
         </Card>
@@ -1355,7 +1371,7 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
             {quote.pdf_filename && (
               <div>
                 <div style={{ fontSize: 12, color: theme.textMuted }}>Attached File</div>
-                <div style={{ fontSize: 14, color: theme.accent }}>📎 {quote.pdf_filename}</div>
+                <div style={{ fontSize: 14, color: theme.accent, display: "flex", alignItems: "center", gap: 6 }}><Paperclip size={14} /> {quote.pdf_filename}</div>
               </div>
             )}
           </div>
@@ -1381,7 +1397,7 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
                     </div>
                     <div style={{ paddingBottom: 24 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: completed ? theme.green : isNext ? theme.accent : theme.textMuted }}>
-                        {completed ? "✓ Sent" : isNext ? "⏳ Next up" : "Scheduled"} — Day {step.delay_days}
+                        {completed ? "Sent" : isNext ? "Next up" : "Scheduled"} — Day {step.delay_days}
                       </div>
                       <div style={{ fontSize: 14, fontWeight: 500, color: theme.text, marginTop: 4 }}>
                         {step.email_subject.replace("{job}", quote.job_title)}
@@ -1405,8 +1421,8 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
                 padding: "12px 16px", borderRadius: 10, background: theme.surfaceLight,
                 border: `1px solid ${theme.border}`, marginBottom: 8,
               }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: r.response_type === "book_in" ? theme.green : r.response_type === "decline" ? theme.red : theme.blue }}>
-                  {r.response_type === "book_in" ? "✅ Booked In" : r.response_type === "decline" ? "❌ Declined" : "💬 Feedback"}
+                <div style={{ fontSize: 14, fontWeight: 600, color: r.response_type === "book_in" ? theme.green : r.response_type === "decline" ? theme.red : theme.blue, display: "flex", alignItems: "center", gap: 6 }}>
+                  {r.response_type === "book_in" ? <><Check size={16} /> Booked In</> : r.response_type === "decline" ? <><XCircle size={16} /> Declined</> : <><MessageSquare size={16} /> Feedback</>}
                 </div>
                 {r.feedback_text && <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 6 }}>{r.feedback_text}</div>}
                 <div style={{ fontSize: 11, color: theme.textDim, marginTop: 4 }}>{new Date(r.responded_at).toLocaleString()}</div>
@@ -1420,8 +1436,8 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
         <Card style={{ gridColumn: "1 / -1" }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Actions</h3>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <Button onClick={() => updateStatus("accepted")} style={{ background: theme.greenSoft, color: theme.green }}>✓ Mark Accepted</Button>
-            <Button onClick={() => updateStatus("declined")} variant="danger">✗ Mark Declined</Button>
+            <Button onClick={() => updateStatus("accepted")} style={{ background: theme.greenSoft, color: theme.green, display: "inline-flex", alignItems: "center", gap: 6 }}><Check size={16} /> Mark Accepted</Button>
+            <Button onClick={() => updateStatus("declined")} variant="danger" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><XCircle size={16} /> Mark Declined</Button>
             <Button variant="secondary" onClick={async () => {
               if (!window.confirm("Are you sure you want to send a follow-up email to " + quote.customer_name + "?")) return;
               try {
@@ -1433,11 +1449,11 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
                 const newStep = (quote.current_step || 0) + 1;
                 await db("quotes").eq("id", quote.id).update({ current_step: newStep });
                 dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, current_step: newStep } });
-                dispatch({ type: "NOTIFY", payload: { message: "Follow-up email sent! 📧", type: "success" } });
+                dispatch({ type: "NOTIFY", payload: { message: "Follow-up email sent!", type: "success" } });
               } catch (err) {
                 dispatch({ type: "NOTIFY", payload: { message: "Failed to send follow-up", type: "error" } });
               }
-            }}>📧 Send Follow-Up Now</Button>
+            }}><Mail size={16} /> Send Follow-Up Now</Button>
           </div>
         </Card>
         )}
