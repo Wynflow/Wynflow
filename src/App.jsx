@@ -561,16 +561,19 @@ const HomePage = ({ dispatch }) => {
         <h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>How It Works</h2>
         <p style={{ fontSize:16,color:theme.textMuted,marginBottom:isMobile?40:64,maxWidth:500,margin:"0 auto 64px" }}>Three simple steps to never chase a quote again</p>
         <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?20:32 }}>
-          {[{num:"01",Icon:Upload,title:"Upload Your Quote",desc:"Create your quote however you normally do. Save it as a file and upload it to Wynflow."},{num:"02",Icon:Send,title:"Hit Send",desc:"Add the customer's email, job title and amount. Wynflow sends a branded email with your quote and response buttons."},{num:"03",Icon:Bot,title:"Wynflow Chases",desc:"If they don't respond, automated follow-ups kick in. When they click Book In, Decline, or Feedback — you're notified."}].map((step,i) => (
+          {[{num:"01",Icon:Upload,title:"Upload Your Quote",desc:"Create your quote however you normally do. Save it as a file and upload it to Wynflow."},{num:"02",Icon:Send,title:"Hit Send",desc:"Add the customer's email, job title and amount. Wynflow sends a branded email with your quote and response buttons."},{num:"03",Icon:Bot,title:"Wynflow Chases",desc:"If they don't respond, automated follow-ups kick in. When they click Book In, Decline, or Feedback — you're notified."}].map((step,i) => {
+            const StepIcon = step.Icon;
+            return (
             <div key={i} style={{ padding:isMobile?24:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"left",transition:"all 0.3s ease" }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + "44"; e.currentTarget.style.transform = "translateY(-4px)"; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.transform = "translateY(0)"; }}>
               <div style={{ fontSize:48,fontWeight:800,color:theme.accent,fontFamily:theme.fontDisplay,opacity:0.3,marginBottom:8 }}>{step.num}</div>
-              <div style={{ width:48,height:48,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16 }}><step.Icon size={24} color={theme.accent} /></div>
+              <div style={{ width:48,height:48,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16 }}><StepIcon size={24} color={theme.accent} /></div>
               <h3 style={{ fontSize:20,fontWeight:700,color:theme.text,marginBottom:12 }}>{step.title}</h3>
               <p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.7 }}>{step.desc}</p>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
@@ -578,14 +581,17 @@ const HomePage = ({ dispatch }) => {
       <div style={{ maxWidth:1100,margin:"0 auto" }}>
         <div style={{ textAlign:"center",marginBottom:isMobile?40:64 }}><h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Everything You Need</h2><p style={{ fontSize:16,color:theme.textMuted }}>Built for service businesses who are sick of chasing quotes</p></div>
         <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?16:24 }}>
-          {[{Icon:ClipboardList,title:"Quote Dashboard",desc:"See every quote at a glance — who's opened it, who's responded, and what needs attention."},{Icon:RefreshCw,title:"Automated Follow-Ups",desc:"Set it and forget it. Configure email sequences that chase at day 2, 5, 10 — whatever works."},{Icon:Paperclip,title:"File Attachments",desc:"Upload your quote file and it gets attached to the email automatically."},{Icon:CheckCircle2,title:"One-Click Responses",desc:"Customers click Book In, Decline, or Give Feedback right in the email."},{Icon:BarChart3,title:"Track Everything",desc:"Know when emails are opened, which quotes are pending, and your win rate."},{Icon:Lock,title:"Secure & Private",desc:"Your data is encrypted and isolated. Bank-grade security."}].map((f,i) => (
+          {[{Icon:ClipboardList,title:"Quote Dashboard",desc:"See every quote at a glance — who's opened it, who's responded, and what needs attention."},{Icon:RefreshCw,title:"Automated Follow-Ups",desc:"Set it and forget it. Configure email sequences that chase at day 2, 5, 10 — whatever works."},{Icon:Paperclip,title:"File Attachments",desc:"Upload your quote file and it gets attached to the email automatically."},{Icon:CheckCircle2,title:"One-Click Responses",desc:"Customers click Book In, Decline, or Give Feedback right in the email."},{Icon:BarChart3,title:"Track Everything",desc:"Know when emails are opened, which quotes are pending, and your win rate."},{Icon:Lock,title:"Secure & Private",desc:"Your data is encrypted and isolated. Bank-grade security."}].map((f,i) => {
+            const FIcon = f.Icon;
+            return (
             <div key={i} style={{ padding:isMobile?20:32,borderRadius:16,background:theme.surface,border:`1px solid ${theme.border}`,display:"flex",gap:16,transition:"all 0.3s ease" }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + "33"; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; }}>
-              <div style={{ width:44,height:44,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><f.Icon size={20} color={theme.accent} /></div>
+              <div style={{ width:44,height:44,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><FIcon size={20} color={theme.accent} /></div>
               <div><h3 style={{ fontSize:16,fontWeight:600,color:theme.text,marginBottom:8 }}>{f.title}</h3><p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.6 }}>{f.desc}</p></div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
@@ -616,35 +622,99 @@ const HomePage = ({ dispatch }) => {
 
 const AboutPage = ({ dispatch }) => {
   const isMobile = useIsMobile();
+  const stats = [
+    { value: "2%", label: "of sales happen on first contact", color: theme.red },
+    { value: "80%", label: "of deals need 5+ follow-ups to close", color: theme.accent },
+    { value: "44%", label: "of salespeople give up after just one follow-up", color: theme.red },
+    { value: "50%", label: "boost in replies from just one follow-up email", color: theme.green },
+  ];
   return (
   <div>
+    {/* Hero */}
     <div style={{ padding:isMobile?"100px 20px 60px":"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(245,158,11,0.08) 0%,transparent 50%),${theme.bg}` }}>
-      <h1 style={{ fontSize:isMobile?36:52,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay }}>About Wynflow</h1>
-      <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,maxWidth:600,margin:"0 auto",lineHeight:1.6 }}>Built by a Kiwi who got sick of watching businesses lose jobs because they forgot to follow up.</p>
+      <h1 style={{ fontSize:isMobile?36:52,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay }}>The Story Behind Wynflow</h1>
+      <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,maxWidth:600,margin:"0 auto",lineHeight:1.6 }}>Built from a real problem, by someone who watched it happen every day.</p>
     </div>
+
+    {/* Origin Story */}
     <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.surface }}>
-      <div style={{ maxWidth:800,margin:"0 auto" }}>
-        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?24:48,alignItems:"center",marginBottom:isMobile?40:80 }}>
-          <div><h2 style={{ fontSize:isMobile?24:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>The Problem</h2><p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Every service business knows the pain. You spend time scoping a job, write up the quote, send it off... and then what? You wait. Maybe you follow up in a week. Maybe you don't. Meanwhile, the customer's gone with someone who did.</p></div>
-          <div style={{ padding:isMobile?24:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}><div style={{ fontSize:isMobile?40:56,fontWeight:800,color:theme.red,fontFamily:theme.fontDisplay }}>60%</div><div style={{ fontSize:14,color:theme.textMuted,marginTop:8 }}>of quotes are lost simply because nobody followed up</div></div>
+      <div style={{ maxWidth:720,margin:"0 auto" }}>
+        <div style={{ padding:isMobile?24:48,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,marginBottom:isMobile?32:64 }}>
+          <div style={{ width:56,height:56,borderRadius:16,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24 }}><Zap size={28} color={theme.accent} /></div>
+          <h2 style={{ fontSize:isMobile?22:28,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay,lineHeight:1.3 }}>It started with my dad's carpet shop.</h2>
+          <div style={{ display:"flex",flexDirection:"column",gap:20 }}>
+            <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,margin:0 }}>My dad ran Carpet Discounters in Napier for years. Good bloke, great at his trade, terrible at admin. I'd watch him spend his evenings writing up quotes at the kitchen table — measuring jobs, working out pricing, sending them off to customers.</p>
+            <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,margin:0 }}>Then nothing. The quote would go out and just... sit there. He'd get busy with the next job, the next quote, the next site visit. By the time he thought about following up, the customer had already gone with someone else. Not because they were cheaper — but because they were faster.</p>
+            <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,margin:0 }}>I remember him telling me once: <span style={{ color:theme.text,fontWeight:500 }}>"I reckon I lose more jobs from not chasing than from being too expensive."</span> That stuck with me.</p>
+            <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,margin:0 }}>Turns out, he was right — and it's not just him. Across every industry, the data tells the same story.</p>
+          </div>
         </div>
-        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?24:48,alignItems:"center",marginBottom:isMobile?40:80 }}>
-          {isMobile ? (
-            <>
-              <div><h2 style={{ fontSize:24,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>The Solution</h2><p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Wynflow takes the chasing out of your hands. Upload your quote, hit send, and our automated system follows up at exactly the right intervals. Professional, consistent, and hands-free.</p></div>
-              <div style={{ padding:24,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}><div style={{ fontSize:40,fontWeight:800,color:theme.green,fontFamily:theme.fontDisplay }}>3x</div><div style={{ fontSize:14,color:theme.textMuted,marginTop:8 }}>more likely to win the job with just one follow-up email</div></div>
-            </>
-          ) : (
-            <>
-              <div style={{ padding:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}><div style={{ fontSize:56,fontWeight:800,color:theme.green,fontFamily:theme.fontDisplay }}>3x</div><div style={{ fontSize:14,color:theme.textMuted,marginTop:8 }}>more likely to win the job with just one follow-up email</div></div>
-              <div><h2 style={{ fontSize:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>The Solution</h2><p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Wynflow takes the chasing out of your hands. Upload your quote, hit send, and our automated system follows up at exactly the right intervals. Professional, consistent, and hands-free.</p></div>
-            </>
-          )}
+
+        {/* The Data Doesn't Lie */}
+        <h2 style={{ fontSize:isMobile?24:32,fontWeight:700,color:theme.text,marginBottom:12,fontFamily:theme.fontDisplay,textAlign:"center" }}>The Data Doesn't Lie</h2>
+        <p style={{ fontSize:15,color:theme.textMuted,textAlign:"center",marginBottom:isMobile?32:48,maxWidth:500,margin:"0 auto",marginBottom:isMobile?32:48,lineHeight:1.6 }}>The research is clear: following up is the single biggest thing you can do to win more work.</p>
+
+        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1fr 1fr 1fr",gap:isMobile?12:16,marginBottom:isMobile?32:64 }}>
+          {stats.map((s,i) => (
+            <div key={i} style={{ padding:isMobile?16:24,borderRadius:16,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}>
+              <div style={{ fontSize:isMobile?28:40,fontWeight:800,color:s.color,fontFamily:theme.fontDisplay,marginBottom:8 }}>{s.value}</div>
+              <div style={{ fontSize:12,color:theme.textMuted,lineHeight:1.5 }}>{s.label}</div>
+            </div>
+          ))}
         </div>
+      </div>
+    </div>
+
+    {/* The Real Problem + Solution */}
+    <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.bg }}>
+      <div style={{ maxWidth:720,margin:"0 auto" }}>
+        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?24:48,alignItems:"start",marginBottom:isMobile?40:64 }}>
+          <div>
+            <div style={{ width:44,height:44,borderRadius:12,background:"rgba(239,68,68,0.1)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16 }}><XCircle size={22} color={theme.red} /></div>
+            <h3 style={{ fontSize:isMobile?20:24,fontWeight:700,color:theme.text,marginBottom:12,fontFamily:theme.fontDisplay }}>The Problem</h3>
+            <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Service businesses spend hours scoping jobs and writing quotes — only to let them die in someone's inbox. Research shows that 92% of people stop following up after just four attempts, even though most deals need five or more touchpoints. The first person to follow up wins the job 35-50% of the time.</p>
+          </div>
+          <div>
+            <div style={{ width:44,height:44,borderRadius:12,background:"rgba(34,197,94,0.1)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16 }}><CheckCircle2 size={22} color={theme.green} /></div>
+            <h3 style={{ fontSize:isMobile?20:24,fontWeight:700,color:theme.text,marginBottom:12,fontFamily:theme.fontDisplay }}>The Solution</h3>
+            <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Wynflow takes the chasing out of your hands. Upload your quote, hit send, and our automated system follows up at exactly the right intervals — professional, consistent, and hands-free. You get notified the moment a customer responds. No more lost jobs from forgotten follow-ups.</p>
+          </div>
+        </div>
+
+        {/* Big stat callout */}
+        <div style={{ padding:isMobile?32:56,borderRadius:24,background:`linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02))`,border:`1px solid ${theme.accent}22`,textAlign:"center",marginBottom:isMobile?40:64 }}>
+          <div style={{ fontSize:isMobile?56:80,fontWeight:800,color:theme.accent,fontFamily:theme.fontDisplay,lineHeight:1 }}>70%</div>
+          <p style={{ fontSize:isMobile?15:17,color:theme.textMuted,marginTop:16,maxWidth:500,margin:"16px auto 0",lineHeight:1.6 }}>increase in conversion rates just by making a few extra follow-up attempts. Most businesses leave this on the table.</p>
+        </div>
+
+        {/* More stats in context */}
+        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?16:24,marginBottom:isMobile?40:64 }}>
+          {[
+            { icon: Clock, stat: "5 mins", desc: "Responding within 5 minutes makes you 9x more likely to convert a lead" },
+            { icon: Mail, stat: "3 emails", desc: "Three follow-up emails hit the sweet spot with a 9.2% reply rate" },
+            { icon: BarChart3, stat: "35-50%", desc: "of jobs go to the vendor who responds first — speed wins" },
+          ].map((item,i) => {
+            const ItemIcon = item.icon;
+            return (
+            <div key={i} style={{ padding:isMobile?20:28,borderRadius:16,background:theme.surface,border:`1px solid ${theme.border}`,textAlign:"center" }}>
+              <div style={{ width:44,height:44,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px" }}><ItemIcon size={20} color={theme.accent} /></div>
+              <div style={{ fontSize:isMobile?24:32,fontWeight:800,color:theme.text,fontFamily:theme.fontDisplay,marginBottom:8 }}>{item.stat}</div>
+              <p style={{ fontSize:13,color:theme.textMuted,lineHeight:1.5 }}>{item.desc}</p>
+            </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+
+    {/* Who Built This */}
+    <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.surface }}>
+      <div style={{ maxWidth:720,margin:"0 auto" }}>
         <div style={{ padding:isMobile?24:48,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}>
           <h2 style={{ fontSize:isMobile?24:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Built by Wynfall Automation</h2>
-          <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,maxWidth:600,margin:"0 auto 24px" }}>Wynflow is a product of Wynfall Automation, a New Zealand-based company specialising in AI and workflow automation for service businesses. Based in Napier and Auckland, building tools that make sense for how Kiwi businesses work.</p>
-          <div style={{ display:"flex",gap:isMobile?20:32,justifyContent:"center",marginTop:32 }}>
+          <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,maxWidth:560,margin:"0 auto 8px" }}>I'm Jesse — a young Kiwi based between Napier and Auckland. I started Wynfall Automation because I saw firsthand how much time and money small businesses waste on things that should be automatic.</p>
+          <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,maxWidth:560,margin:"0 auto 24px" }}>Wynflow is built specifically for how NZ businesses actually work. No complicated setup, no enterprise pricing, no fluff. Just send your quote and let the system do the chasing. New Zealand has over 600,000 small businesses — 97% of all businesses in the country. Most of them are too busy doing the work to chase the paperwork. That's what Wynflow is for.</p>
+          <div style={{ display:"flex",gap:isMobile?16:32,justifyContent:"center",marginTop:32,flexWrap:"wrap" }}>
             <div style={{ display:"flex",flexDirection:"column",alignItems:"center" }}><div style={{ width:48,height:48,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8 }}><Globe size={22} color={theme.accent} /></div><div style={{ fontSize:13,color:theme.textMuted }}>100% NZ Built</div></div>
             <div style={{ display:"flex",flexDirection:"column",alignItems:"center" }}><div style={{ width:48,height:48,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8 }}><Cpu size={22} color={theme.accent} /></div><div style={{ fontSize:13,color:theme.textMuted }}>AI-Powered</div></div>
             <div style={{ display:"flex",flexDirection:"column",alignItems:"center" }}><div style={{ width:48,height:48,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8 }}><Wrench size={22} color={theme.accent} /></div><div style={{ fontSize:13,color:theme.textMuted }}>Made for Business</div></div>
@@ -652,10 +722,12 @@ const AboutPage = ({ dispatch }) => {
         </div>
       </div>
     </div>
+
+    {/* CTA */}
     <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.bg,textAlign:"center" }}>
-      <h2 style={{ fontSize:isMobile?28:36,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Got Questions?</h2>
-      <p style={{ fontSize:16,color:theme.textMuted,marginBottom:32 }}>Drop us an email anytime.</p>
-      <div style={{ fontSize:20,color:theme.accent,fontWeight:600 }}>hello@wynflow.com</div>
+      <h2 style={{ fontSize:isMobile?28:36,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Stop Losing Jobs to Silence</h2>
+      <p style={{ fontSize:16,color:theme.textMuted,marginBottom:32,maxWidth:440,margin:"0 auto 32px" }}>Your quotes deserve a follow-up. Your customers expect one. Let Wynflow handle it.</p>
+      <Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Your Free Trial →</Button>
     </div>
     <Footer dispatch={dispatch} />
   </div>
