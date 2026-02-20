@@ -804,7 +804,15 @@ const AuthScreen = ({ dispatch, isSignup }) => {
     try {
       if (isSignup) {
         const authData = await supabase.auth_signUp(email, password);
-        if (!authData.user) throw new Error("Signup failed — check your email for confirmation");
+        
+        // Supabase returns a user with no session/token when email already exists
+        if (!authData.user) throw new Error("Signup failed — please try again");
+        if (!authData.access_token && authData.user?.identities?.length === 0) {
+          throw new Error("An account with this email already exists. Try signing in instead.");
+        }
+        if (!authData.access_token) {
+          throw new Error("An account with this email already exists. Try signing in instead.");
+        }
 
         // Create business record
         const { data: biz, error: bizErr } = await db("businesses").insert({
