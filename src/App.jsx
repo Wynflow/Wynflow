@@ -806,9 +806,8 @@ const AuthScreen = ({ dispatch, isSignup }) => {
         const authData = await supabase.auth_signUp(email, password);
         
         // Supabase returns a user with no session/token when email already exists
-        if (!authData.user) throw new Error("Signup failed — please try again");
-        if (!authData.access_token && authData.user?.identities?.length === 0) {
-          throw new Error("An account with this email already exists. Try signing in instead.");
+        if (!authData.user) {
+          throw new Error("Signup failed — please try again");
         }
         if (!authData.access_token) {
           throw new Error("An account with this email already exists. Try signing in instead.");
@@ -824,12 +823,29 @@ const AuthScreen = ({ dispatch, isSignup }) => {
           subscription_status: "trialing",
         });
 
-        if (bizErr) throw new Error("Account created but business profile failed. Try logging in.");
+        if (bizErr || !biz || !biz[0]) {
+          // Business insert failed — try fetching it in case it was created
+          const { data: existingBiz } = await db("businesses").eq("user_id", authData.user.id).single().select();
+          if (existingBiz) {
+            dispatch({ type: "SET_USER", payload: authData.user });
+            dispatch({ type: "SET_BUSINESS", payload: existingBiz });
+            setCookie("wynflow_token", supabase.token, 30);
+            setCookie("wynflow_user", authData.user, 30);
+            setCookie("wynflow_business", existingBiz, 30);
+            dispatch({ type: "NOTIFY", payload: { message: "Welcome to Wynflow!", type: "success" } });
+          } else {
+            throw new Error("Account created but business profile failed. Please try logging in.");
+          }
+          setLoading(false);
+          return;
+        }
+
+        const bizRecord = biz[0];
 
         // Create default follow-up sequence
-        if (biz && biz[0]) {
+        if (bizRecord) {
           const { data: seq } = await db("follow_up_sequences").insert({
-            business_id: biz[0].id,
+            business_id: bizRecord.id,
             name: "Standard Follow-Up",
             is_active: true,
             is_default: true,
@@ -845,11 +861,11 @@ const AuthScreen = ({ dispatch, isSignup }) => {
         }
 
         dispatch({ type: "SET_USER", payload: authData.user });
-        dispatch({ type: "SET_BUSINESS", payload: biz?.[0] || null });
+        dispatch({ type: "SET_BUSINESS", payload: bizRecord });
         setCookie("wynflow_token", supabase.token, 30);
         setCookie("wynflow_user", authData.user, 30);
-        setCookie("wynflow_business", biz?.[0] || null, 30);
-        dispatch({ type: "NOTIFY", payload: { message: "Account created! Welcome to Wynflow 🎉", type: "success" } });
+        setCookie("wynflow_business", bizRecord, 30);
+        dispatch({ type: "NOTIFY", payload: { message: "Account created! Welcome to Wynflow!", type: "success" } });
 
         // Trigger welcome email via N8N
         fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
@@ -1848,8 +1864,19 @@ export default function WynflowApp() {
   }
 
   if (!business) {
-    dispatch({ type: "SET_SCREEN", payload: "home" });
-    return null;
+    // If no business data, redirect to home (but don't flash white)
+    if (screen !== "home" && screen !== "about" && screen !== "pricing" && screen !== "login" && screen !== "signup") {
+      dispatch({ type: "SET_SCREEN", payload: "home" });
+    }
+    return (
+      <>
+        <style>{globalStyles}</style>
+        <div style={{ fontFamily: theme.font, color: theme.text }}>
+          <Navbar dispatch={dispatch} transparent />
+          <HomePage dispatch={dispatch} />
+        </div>
+      </>
+    );
   }
 
   const renderContent = () => {
