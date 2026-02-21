@@ -1,5 +1,5 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
-import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Zap, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench } from "lucide-react";
+import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench } from "lucide-react";
 
 // ─── Mobile Detection Hook ───
 const useIsMobile = () => {
@@ -330,18 +330,27 @@ function appReducer(state, action) {
   }
 }
 
+// ─── Logo ───
+const WYNFLOW_LOGO = "/logo.png";
+
+const WynflowLogo = ({ size = 36 }) => (
+  <img src={WYNFLOW_LOGO} alt="Wynflow" style={{ width: size, height: size, borderRadius: size * 0.28, objectFit: "cover" }} />
+);
+
 // ─── Theme ───
 const theme = {
-  bg: "#0C0F14",
-  surface: "#151921",
-  surfaceLight: "#1C2230",
-  surfaceHover: "#232A3A",
-  border: "#2A3244",
-  borderLight: "#3A4560",
-  accent: "#F59E0B",
-  accentHover: "#D97706",
-  accentSoft: "rgba(245, 158, 11, 0.12)",
-  accentGlow: "rgba(245, 158, 11, 0.25)",
+  bg: "#0A0E17",
+  surface: "#111827",
+  surfaceLight: "#1A2235",
+  surfaceHover: "#212D42",
+  border: "#253040",
+  borderLight: "#354560",
+  accent: "#14B8A6",
+  accentHover: "#0D9488",
+  accentSoft: "rgba(20, 184, 166, 0.12)",
+  accentGlow: "rgba(20, 184, 166, 0.25)",
+  accentBlue: "#3B82F6",
+  accentBlueSoft: "rgba(59, 130, 246, 0.12)",
   green: "#22C55E",
   greenSoft: "rgba(34, 197, 94, 0.12)",
   red: "#EF4444",
@@ -359,7 +368,7 @@ const statusConfig = {
   draft: { label: "Draft", color: theme.textMuted, bg: "rgba(139,149,168,0.12)" },
   pending: { label: "Pending", color: theme.blue, bg: theme.blueSoft },
   sent: { label: "Sent", color: theme.accent, bg: theme.accentSoft },
-  opened: { label: "Opened", color: "#A855F7", bg: "rgba(168,85,247,0.12)" },
+  opened: { label: "Opened", color: theme.accentBlue, bg: theme.accentBlueSoft },
   accepted: { label: "Accepted", color: theme.green, bg: theme.greenSoft },
   declined: { label: "Declined", color: theme.red, bg: theme.redSoft },
   feedback: { label: "Feedback", color: theme.blue, bg: theme.blueSoft },
@@ -486,7 +495,7 @@ const Navbar = ({ dispatch, transparent }) => {
   return (
     <nav style={{ position:transparent?"absolute":"relative",top:0,left:0,right:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:isMobile?"16px 20px":"20px 48px",background:transparent?"transparent":theme.surface,borderBottom:transparent?"none":`1px solid ${theme.border}`,fontFamily:theme.font }}>
       <div style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer" }} onClick={() => dispatch({ type:"SET_SCREEN",payload:"home" })}>
-        <div style={{ width:36,height:36,borderRadius:10,background:`linear-gradient(135deg,${theme.accent},${theme.accentHover})`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 0 20px ${theme.accentGlow}` }}><Zap size={18} color="#000" fill="#000" /></div>
+        <div style={{ width:36,height:36,borderRadius:10,overflow:"hidden" }}><WynflowLogo size={36} /></div>
         <span style={{ fontSize:22,fontWeight:700,color:theme.text,fontFamily:theme.fontDisplay }}>Wynflow</span>
       </div>
       {isMobile ? (
@@ -522,7 +531,7 @@ const Footer = ({ dispatch }) => {
     <div style={{ display:"flex",justifyContent:"space-between",maxWidth:1100,margin:"0 auto",flexWrap:"wrap",gap:isMobile?32:48,flexDirection:isMobile?"column":"row" }}>
       <div style={{ maxWidth:300 }}>
         <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
-          <div style={{ width:32,height:32,borderRadius:8,background:`linear-gradient(135deg,${theme.accent},${theme.accentHover})`,display:"flex",alignItems:"center",justifyContent:"center" }}><Zap size={16} color="#000" fill="#000" /></div>
+          <div style={{ width:32,height:32,borderRadius:8,overflow:"hidden" }}><WynflowLogo size={32} /></div>
           <span style={{ fontSize:18,fontWeight:700,color:theme.text,fontFamily:theme.fontDisplay }}>Wynflow</span>
         </div>
         <p style={{ fontSize:13,color:theme.textMuted,lineHeight:1.6 }}>Automated quote delivery and follow-up for businesses. Send quotes, chase customers, win more jobs — on autopilot.</p>
@@ -547,9 +556,9 @@ const HomePage = ({ dispatch }) => {
   const isMobile = useIsMobile();
   return (
   <div>
-    <div style={{ minHeight:isMobile?"auto":"90vh",display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",background:`radial-gradient(ellipse at 30% 20%,rgba(245,158,11,0.1) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(59,130,246,0.06) 0%,transparent 50%),${theme.bg}`,padding:isMobile?"100px 20px 60px":"120px 48px 80px" }}>
+    <div style={{ minHeight:isMobile?"auto":"90vh",display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",background:`radial-gradient(ellipse at 30% 20%,rgba(20,184,166,0.1) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(59,130,246,0.06) 0%,transparent 50%),${theme.bg}`,padding:isMobile?"100px 20px 60px":"120px 48px 80px" }}>
       <div style={{ maxWidth:800 }}>
-        <div style={{ display:"inline-flex",alignItems:"center",gap:8,padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:isMobile?20:32 }}><Zap size={14} color={theme.accent} /><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>Built for NZ Businesses</span></div>
+        <div style={{ display:"inline-flex",alignItems:"center",gap:8,padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:isMobile?20:32 }}><WynflowLogo size={18} /><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>Built for NZ Businesses</span></div>
         <h1 style={{ fontSize:isMobile?36:64,fontWeight:800,color:theme.text,lineHeight:1.1,marginBottom:isMobile?16:24,fontFamily:theme.fontDisplay }}>Stop Chasing Quotes.<br /><span style={{ color:theme.accent }}>Start Winning Jobs.</span></h1>
         <p style={{ fontSize:isMobile?16:20,color:theme.textMuted,lineHeight:1.6,maxWidth:600,margin:"0 auto 40px" }}>Upload your quote, hit send, and let Wynflow handle the follow-ups. Automated emails chase your customers so you can focus on what you do best.</p>
         <div style={{ display:"flex",gap:12,justifyContent:"center",flexDirection:isMobile?"column":"row",alignItems:"center" }}><Button size={isMobile?"md":"lg"} onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Free Trial →</Button><Button size={isMobile?"md":"lg"} variant="secondary" onClick={() => dispatch({ type:"SET_SCREEN",payload:"pricing" })}>View Pricing</Button></div>
@@ -610,7 +619,7 @@ const HomePage = ({ dispatch }) => {
         </div>
       </div>
     </div>
-    <div style={{ padding:isMobile?"60px 20px":"100px 48px",textAlign:"center",background:`radial-gradient(ellipse at 50% 50%,rgba(245,158,11,0.12) 0%,transparent 60%),${theme.bg}` }}>
+    <div style={{ padding:isMobile?"60px 20px":"100px 48px",textAlign:"center",background:`radial-gradient(ellipse at 50% 50%,rgba(20,184,166,0.12) 0%,transparent 60%),${theme.bg}` }}>
       <h2 style={{ fontSize:isMobile?32:44,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Ready to Win More Jobs?</h2>
       <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,marginBottom:40 }}>Join hundreds of NZ businesses who've stopped chasing and started winning.</p>
       <Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Your Free Trial →</Button>
@@ -631,7 +640,7 @@ const AboutPage = ({ dispatch }) => {
   return (
   <div>
     {/* Hero */}
-    <div style={{ padding:isMobile?"100px 20px 60px":"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(245,158,11,0.08) 0%,transparent 50%),${theme.bg}` }}>
+    <div style={{ padding:isMobile?"100px 20px 60px":"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(20,184,166,0.08) 0%,transparent 50%),${theme.bg}` }}>
       <h1 style={{ fontSize:isMobile?36:52,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay }}>The Story Behind Wynflow</h1>
       <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,maxWidth:600,margin:"0 auto",lineHeight:1.6 }}>Built from a real problem, by someone who watched it happen every day.</p>
     </div>
@@ -640,7 +649,7 @@ const AboutPage = ({ dispatch }) => {
     <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.surface }}>
       <div style={{ maxWidth:720,margin:"0 auto" }}>
         <div style={{ padding:isMobile?24:48,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,marginBottom:isMobile?32:64 }}>
-          <div style={{ width:56,height:56,borderRadius:16,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24 }}><Zap size={28} color={theme.accent} /></div>
+          <div style={{ width:56,height:56,borderRadius:16,overflow:"hidden",marginBottom:24 }}><WynflowLogo size={56} /></div>
           <h2 style={{ fontSize:isMobile?22:28,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay,lineHeight:1.3 }}>It started with my dad's carpet shop.</h2>
           <div style={{ display:"flex",flexDirection:"column",gap:20 }}>
             <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,margin:0 }}>My dad ran Carpet Discounters in Napier for years. Good bloke, great at his trade, terrible at admin. I'd watch him spend his evenings writing up quotes at the kitchen table — measuring jobs, working out pricing, sending them off to customers.</p>
@@ -682,7 +691,7 @@ const AboutPage = ({ dispatch }) => {
         </div>
 
         {/* Big stat callout */}
-        <div style={{ padding:isMobile?32:56,borderRadius:24,background:`linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02))`,border:`1px solid ${theme.accent}22`,textAlign:"center",marginBottom:isMobile?40:64 }}>
+        <div style={{ padding:isMobile?32:56,borderRadius:24,background:`linear-gradient(135deg, rgba(20,184,166,0.08), rgba(20,184,166,0.02))`,border:`1px solid ${theme.accent}22`,textAlign:"center",marginBottom:isMobile?40:64 }}>
           <div style={{ fontSize:isMobile?56:80,fontWeight:800,color:theme.accent,fontFamily:theme.fontDisplay,lineHeight:1 }}>70%</div>
           <p style={{ fontSize:isMobile?15:17,color:theme.textMuted,marginTop:16,maxWidth:500,margin:"16px auto 0",lineHeight:1.6 }}>increase in conversion rates just by making a few extra follow-up attempts. Most businesses leave this on the table.</p>
         </div>
@@ -738,7 +747,7 @@ const PricingPage = ({ dispatch }) => {
   const isMobile = useIsMobile();
   return (
   <div>
-    <div style={{ padding:isMobile?"100px 20px 60px":"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(245,158,11,0.08) 0%,transparent 50%),${theme.bg}` }}>
+    <div style={{ padding:isMobile?"100px 20px 60px":"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(20,184,166,0.08) 0%,transparent 50%),${theme.bg}` }}>
       <h1 style={{ fontSize:isMobile?36:52,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay }}>Simple, Honest Pricing</h1>
       <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,maxWidth:500,margin:"0 auto",lineHeight:1.6 }}>No hidden fees. No lock-in contracts. 14-day free trial on every plan.</p>
     </div>
@@ -894,7 +903,7 @@ const AuthScreen = ({ dispatch, isSignup }) => {
   return (
     <div style={{
       minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: `radial-gradient(ellipse at 30% 20%, rgba(245,158,11,0.08) 0%, transparent 50%),
+      background: `radial-gradient(ellipse at 30% 20%, rgba(20,184,166,0.08) 0%, transparent 50%),
                     radial-gradient(ellipse at 70% 80%, rgba(59,130,246,0.05) 0%, transparent 50%),
                     ${theme.bg}`,
       fontFamily: theme.font, padding: 20,
@@ -903,11 +912,8 @@ const AuthScreen = ({ dispatch, isSignup }) => {
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
             <div style={{
-              width: 48, height: 48, borderRadius: 14,
-              background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: `0 0 30px ${theme.accentGlow}`,
-            }}><Zap size={24} color="#000" fill="#000" /></div>
+              width: 48, height: 48, borderRadius: 14, overflow: "hidden",
+            }}><WynflowLogo size={48} /></div>
             <span style={{ fontSize: 28, fontWeight: 700, color: theme.text, fontFamily: theme.fontDisplay }}>Wynflow</span>
           </div>
           <div style={{ fontSize: 15, color: theme.textMuted, lineHeight: 1.5 }}>
@@ -1019,11 +1025,8 @@ const Sidebar = ({ screen, dispatch, business }) => {
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 8px", marginBottom: 36 }}>
         <div style={{
-          width: 36, height: 36, borderRadius: 10,
-          background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: `0 0 20px ${theme.accentGlow}`,
-        }}><Zap size={18} color="#000" fill="#000" /></div>
+          width: 36, height: 36, borderRadius: 10, overflow: "hidden",
+        }}><WynflowLogo size={36} /></div>
         <span style={{ fontSize: 20, fontWeight: 700, color: theme.text, fontFamily: theme.fontDisplay }}>Wynflow</span>
       </div>
 
