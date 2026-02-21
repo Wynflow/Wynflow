@@ -883,15 +883,33 @@ const AuthScreen = ({ dispatch, isSignup }) => {
         }).catch(() => {});
       } else {
         const authData = await supabase.auth_signIn(email, password);
+        if (!authData.user) throw new Error("Login failed — check your email and password");
+        
         dispatch({ type: "SET_USER", payload: authData.user });
 
-        // Fetch business profile
-        const { data: biz } = await db("businesses").eq("user_id", authData.user.id).single().select();
+        // Fetch business profile - try single first, then array fallback
+        let biz = null;
+        const { data: bizSingle, error: bizErr } = await db("businesses").eq("user_id", authData.user.id).single().select();
+        
+        if (bizSingle && !bizErr) {
+          biz = bizSingle;
+        } else {
+          // Fallback: try without .single() in case of PostgREST issues
+          const { data: bizArray } = await db("businesses").eq("user_id", authData.user.id).select();
+          if (bizArray && bizArray.length > 0) {
+            biz = bizArray[0];
+          }
+        }
+        
+        if (!biz) {
+          throw new Error("No business profile found for this account. Please sign up instead.");
+        }
+        
         dispatch({ type: "SET_BUSINESS", payload: biz });
         setCookie("wynflow_token", supabase.token, 30);
         setCookie("wynflow_user", authData.user, 30);
         setCookie("wynflow_business", biz, 30);
-        dispatch({ type: "NOTIFY", payload: { message: "Welcome back! 👋", type: "success" } });
+        dispatch({ type: "NOTIFY", payload: { message: "Welcome back!", type: "success" } });
       }
     } catch (err) {
       setError(err.message);
