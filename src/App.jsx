@@ -392,22 +392,23 @@ const Badge = ({ status }) => {
 };
 
 const Button = ({ children, variant = "primary", size = "md", onClick, style = {}, disabled }) => {
-  const [hovered, setHovered] = useState(false);
   const base = {
     fontFamily: theme.font, fontWeight: 600, border: "none", cursor: disabled ? "not-allowed" : "pointer",
     borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 8,
     transition: "all 0.2s ease", opacity: disabled ? 0.5 : 1,
     fontSize: size === "sm" ? 13 : size === "lg" ? 16 : 14,
     padding: size === "sm" ? "8px 16px" : size === "lg" ? "16px 32px" : "12px 24px",
-    transform: hovered && !disabled ? "translateY(-1px)" : "translateY(0)",
   };
   const variants = {
-    primary: { background: hovered ? theme.accentHover : theme.accent, color: "#000", boxShadow: hovered ? `0 4px 24px ${theme.accentGlow}` : `0 0 20px ${theme.accentGlow}` },
-    secondary: { background: hovered ? theme.surfaceHover : theme.surfaceLight, color: theme.text, border: `1px solid ${hovered ? theme.borderLight : theme.border}` },
+    primary: { background: theme.accent, color: "#000", boxShadow: `0 0 20px ${theme.accentGlow}` },
+    secondary: { background: theme.surfaceLight, color: theme.text, border: `1px solid ${theme.border}` },
     ghost: { background: "transparent", color: theme.textMuted },
     danger: { background: theme.redSoft, color: theme.red },
   };
-  return <button onClick={onClick} disabled={disabled} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} style={{ ...base, ...variants[variant], ...style }}>{children}</button>;
+  return <button onClick={onClick} disabled={disabled}
+    onMouseEnter={e => { if (!disabled) { e.currentTarget.style.transform = "translateY(-1px)"; if (variant === "primary") e.currentTarget.style.boxShadow = `0 4px 24px ${theme.accentGlow}`; }}}
+    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; if (variant === "primary") e.currentTarget.style.boxShadow = `0 0 20px ${theme.accentGlow}`; }}
+    style={{ ...base, ...variants[variant], ...style }}>{children}</button>;
 };
 
 const Input = ({ label, value, onChange, type = "text", placeholder, textarea, style = {}, accept, onFileChange }) => (
