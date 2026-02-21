@@ -16,7 +16,6 @@ const useIsMobile = () => {
 const SUPABASE_URL = "https://hlqbjomeomahoocexljp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhscWJqb21lb21haG9vY2V4bGpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2MTkwMTQsImV4cCI6MjA4NjE5NTAxNH0.X9biLUFgktgw6H8ytkfvF6gnITJCEwLiHMw71IcUhGk";
 
-// Lightweight Supabase client (no SDK needed)
 const supabase = {
   token: null,
   user: null,
@@ -81,88 +80,6 @@ const supabase = {
     return data;
   },
 
-  // Database operations via PostgREST
-  async from(table) {
-    return {
-      _table: table,
-      _filters: [],
-      _order: null,
-      _limit: null,
-      _single: false,
-
-      eq(col, val) { this._filters.push(`${col}=eq.${val}`); return this; },
-      order(col, opts = {}) { this._order = `${col}.${opts.ascending === false ? "desc" : "asc"}`; return this; },
-      limit(n) { this._limit = n; return this; },
-      single() { this._single = true; return this; },
-
-      async select(cols = "*") {
-        let url = `${SUPABASE_URL}/rest/v1/${this._table}?select=${cols}`;
-        this._filters.forEach((f) => (url += `&${f}`));
-        if (this._order) url += `&order=${this._order}`;
-        if (this._limit) url += `&limit=${this._limit}`;
-        const res = await fetch(url, {
-          headers: {
-            ...supabase.headers(),
-            ...(this._single ? { Accept: "application/vnd.pgrst.object+json" } : {}),
-          },
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          return { data: null, error: err };
-        }
-        const data = await res.json();
-        return { data, error: null };
-      },
-
-      async insert(rows) {
-        const body = Array.isArray(rows) ? rows : [rows];
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/${this._table}`, {
-          method: "POST",
-          headers: { ...supabase.headers(), Prefer: "return=representation" },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          return { data: null, error: err };
-        }
-        const data = await res.json();
-        return { data, error: null };
-      },
-
-      async update(values) {
-        let url = `${SUPABASE_URL}/rest/v1/${this._table}?`;
-        url += this._filters.join("&");
-        const res = await fetch(url, {
-          method: "PATCH",
-          headers: { ...supabase.headers(), Prefer: "return=representation" },
-          body: JSON.stringify(values),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          return { data: null, error: err };
-        }
-        const data = await res.json();
-        return { data, error: null };
-      },
-
-      async delete() {
-        let url = `${SUPABASE_URL}/rest/v1/${this._table}?`;
-        url += this._filters.join("&");
-        const res = await fetch(url, {
-          method: "DELETE",
-          headers: { ...supabase.headers(), Prefer: "return=representation" },
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          return { data: null, error: err };
-        }
-        const data = await res.json();
-        return { data, error: null };
-      },
-    };
-  },
-
-  // Storage operations
   async uploadFile(bucket, path, file) {
     const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`, {
       method: "POST",
@@ -196,7 +113,6 @@ const supabase = {
   },
 };
 
-// Helper to get a chainable query builder
 const db = (table) => {
   const obj = {
     _table: table,
@@ -274,7 +190,6 @@ const db = (table) => {
   };
   return obj;
 };
-
 
 // ─── State Management ───
 const initialState = {
@@ -485,7 +400,6 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
-// ─── Auth Screen ───
 // ════════════════════════════════════════
 // PUBLIC PAGES
 // ════════════════════════════════════════
@@ -640,13 +554,10 @@ const AboutPage = ({ dispatch }) => {
   ];
   return (
   <div>
-    {/* Hero */}
     <div style={{ padding:isMobile?"100px 20px 60px":"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(20,184,166,0.08) 0%,transparent 50%),${theme.bg}` }}>
       <h1 style={{ fontSize:isMobile?36:52,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay }}>The Story Behind Wynflow</h1>
       <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,maxWidth:600,margin:"0 auto",lineHeight:1.6 }}>Built from a real problem, by someone who watched it happen every day.</p>
     </div>
-
-    {/* Origin Story */}
     <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.surface }}>
       <div style={{ maxWidth:720,margin:"0 auto" }}>
         <div style={{ padding:isMobile?24:48,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,marginBottom:isMobile?32:64 }}>
@@ -659,11 +570,8 @@ const AboutPage = ({ dispatch }) => {
             <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,margin:0 }}>Turns out, he was right — and it's not just him. Across every industry, the data tells the same story.</p>
           </div>
         </div>
-
-        {/* The Data Doesn't Lie */}
         <h2 style={{ fontSize:isMobile?24:32,fontWeight:700,color:theme.text,marginBottom:12,fontFamily:theme.fontDisplay,textAlign:"center" }}>The Data Doesn't Lie</h2>
-        <p style={{ fontSize:15,color:theme.textMuted,textAlign:"center",marginBottom:isMobile?32:48,maxWidth:500,margin:"0 auto",marginBottom:isMobile?32:48,lineHeight:1.6 }}>The research is clear: following up is the single biggest thing you can do to win more work.</p>
-
+        <p style={{ fontSize:15,color:theme.textMuted,textAlign:"center",marginBottom:isMobile?32:48,maxWidth:500,margin:"0 auto",lineHeight:1.6 }}>The research is clear: following up is the single biggest thing you can do to win more work.</p>
         <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1fr 1fr 1fr",gap:isMobile?12:16,marginBottom:isMobile?32:64 }}>
           {stats.map((s,i) => (
             <div key={i} style={{ padding:isMobile?16:24,borderRadius:16,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}>
@@ -674,8 +582,6 @@ const AboutPage = ({ dispatch }) => {
         </div>
       </div>
     </div>
-
-    {/* The Real Problem + Solution */}
     <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.bg }}>
       <div style={{ maxWidth:720,margin:"0 auto" }}>
         <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?24:48,alignItems:"start",marginBottom:isMobile?40:64 }}>
@@ -690,14 +596,10 @@ const AboutPage = ({ dispatch }) => {
             <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Wynflow takes the chasing out of your hands. Upload your quote, hit send, and our automated system follows up at exactly the right intervals — professional, consistent, and hands-free. You get notified the moment a customer responds. No more lost jobs from forgotten follow-ups.</p>
           </div>
         </div>
-
-        {/* Big stat callout */}
         <div style={{ padding:isMobile?32:56,borderRadius:24,background:`linear-gradient(135deg, rgba(20,184,166,0.08), rgba(20,184,166,0.02))`,border:`1px solid ${theme.accent}22`,textAlign:"center",marginBottom:isMobile?40:64 }}>
           <div style={{ fontSize:isMobile?56:80,fontWeight:800,color:theme.accent,fontFamily:theme.fontDisplay,lineHeight:1 }}>70%</div>
           <p style={{ fontSize:isMobile?15:17,color:theme.textMuted,marginTop:16,maxWidth:500,margin:"16px auto 0",lineHeight:1.6 }}>increase in conversion rates just by making a few extra follow-up attempts. Most businesses leave this on the table.</p>
         </div>
-
-        {/* More stats in context */}
         <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?16:24,marginBottom:isMobile?40:64 }}>
           {[
             { icon: Clock, stat: "5 mins", desc: "Responding within 5 minutes makes you 9x more likely to convert a lead" },
@@ -716,8 +618,6 @@ const AboutPage = ({ dispatch }) => {
         </div>
       </div>
     </div>
-
-    {/* Who Built This */}
     <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.surface }}>
       <div style={{ maxWidth:720,margin:"0 auto" }}>
         <div style={{ padding:isMobile?24:48,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}>
@@ -732,8 +632,6 @@ const AboutPage = ({ dispatch }) => {
         </div>
       </div>
     </div>
-
-    {/* CTA */}
     <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.bg,textAlign:"center" }}>
       <h2 style={{ fontSize:isMobile?28:36,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Stop Losing Jobs to Silence</h2>
       <p style={{ fontSize:16,color:theme.textMuted,marginBottom:32,maxWidth:440,margin:"0 auto 32px" }}>Your quotes deserve a follow-up. Your customers expect one. Let Wynflow handle it.</p>
@@ -766,7 +664,7 @@ const PricingPage = ({ dispatch }) => {
             {plan.active ? (
               <Button onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })} variant={plan.highlighted?"primary":"secondary"} style={{ width:"100%",justifyContent:"center",padding:"14px 24px",marginBottom:32 }}>Start Free Trial</Button>
             ) : (
-              <div style={{ width:"100%",textAlign:"center",padding:"14px 24px",marginBottom:32,borderRadius:10,background:theme.cardBg,border:`1px solid ${theme.border}`,color:theme.textMuted,fontWeight:600,fontSize:15 }}>Coming Soon</div>
+              <div style={{ width:"100%",textAlign:"center",padding:"14px 24px",marginBottom:32,borderRadius:10,background:theme.surfaceLight,border:`1px solid ${theme.border}`,color:theme.textMuted,fontWeight:600,fontSize:15 }}>Coming Soon</div>
             )}
             <div style={{ display:"flex",flexDirection:"column",gap:12 }}>{plan.features.map((f,j) => <div key={j} style={{ display:"flex",alignItems:"center",gap:10,fontSize:14,color:plan.active ? theme.textMuted : theme.textMuted + "88" }}><span style={{ color:plan.active ? theme.green : theme.textMuted,fontSize:16 }}>✓</span> {f}</div>)}</div>
           </div>
@@ -792,8 +690,23 @@ const PricingPage = ({ dispatch }) => {
 };
 
 // ════════════════════════════════════════
-// AUTH & DASHBOARD
+// AUTH
 // ════════════════════════════════════════
+
+const setCookie = (name, value, minutes) => {
+  const expires = new Date(Date.now() + minutes * 60000).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(JSON.stringify(value))}; expires=${expires}; path=/; SameSite=Strict`;
+};
+const getCookie = (name) => {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  if (match) try { return JSON.parse(decodeURIComponent(match[2])); } catch { return null; }
+  return null;
+};
+const clearCookies = () => {
+  document.cookie = "wynflow_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+  document.cookie = "wynflow_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+  document.cookie = "wynflow_business=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+};
 
 const AuthScreen = ({ dispatch, isSignup }) => {
   const [email, setEmail] = useState("");
@@ -807,23 +720,13 @@ const AuthScreen = ({ dispatch, isSignup }) => {
   const handleSubmit = async () => {
     if (!email || !password) { setError("Please enter email and password"); return; }
     if (isSignup && (!businessName || !contactName)) { setError("Please fill in all required fields"); return; }
-    
     setLoading(true);
     setError("");
-
     try {
       if (isSignup) {
         const authData = await supabase.auth_signUp(email, password);
-        
-        // Supabase returns a user with no session/token when email already exists
-        if (!authData.user) {
-          throw new Error("Signup failed — please try again");
-        }
-        if (!authData.access_token) {
-          throw new Error("An account with this email already exists. Try signing in instead.");
-        }
-
-        // Create business record
+        if (!authData.user) throw new Error("Signup failed — please try again");
+        if (!authData.access_token) throw new Error("An account with this email already exists. Try signing in instead.");
         const { data: biz, error: bizErr } = await db("businesses").insert({
           user_id: authData.user.id,
           business_name: businessName,
@@ -832,9 +735,7 @@ const AuthScreen = ({ dispatch, isSignup }) => {
           trade: trade || null,
           subscription_status: "trialing",
         });
-
         if (bizErr || !biz || !biz[0]) {
-          // Business insert failed — try fetching it in case it was created
           const { data: existingBiz } = await db("businesses").eq("user_id", authData.user.id).single().select();
           if (existingBiz) {
             dispatch({ type: "SET_USER", payload: authData.user });
@@ -849,10 +750,7 @@ const AuthScreen = ({ dispatch, isSignup }) => {
           setLoading(false);
           return;
         }
-
         const bizRecord = biz[0];
-
-        // Create default follow-up sequence
         if (bizRecord) {
           const { data: seq } = await db("follow_up_sequences").insert({
             business_id: bizRecord.id,
@@ -860,7 +758,6 @@ const AuthScreen = ({ dispatch, isSignup }) => {
             is_active: true,
             is_default: true,
           });
-
           if (seq && seq[0]) {
             await db("sequence_steps").insert([
               { sequence_id: seq[0].id, step_order: 1, delay_days: 2, email_subject: "Following up on your quote", email_body: "Hi {name}, just checking in on the quote I sent through for {job}. Happy to answer any questions. Cheers, {business_name}" },
@@ -869,15 +766,12 @@ const AuthScreen = ({ dispatch, isSignup }) => {
             ]);
           }
         }
-
         dispatch({ type: "SET_USER", payload: authData.user });
         dispatch({ type: "SET_BUSINESS", payload: bizRecord });
         setCookie("wynflow_token", supabase.token, 30);
         setCookie("wynflow_user", authData.user, 30);
         setCookie("wynflow_business", bizRecord, 30);
         dispatch({ type: "NOTIFY", payload: { message: "Account created! Welcome to Wynflow!", type: "success" } });
-
-        // Trigger welcome email via N8N
         fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, trade }),
@@ -885,27 +779,16 @@ const AuthScreen = ({ dispatch, isSignup }) => {
       } else {
         const authData = await supabase.auth_signIn(email, password);
         if (!authData.user) throw new Error("Login failed — check your email and password");
-        
         dispatch({ type: "SET_USER", payload: authData.user });
-
-        // Fetch business profile - try single first, then array fallback
         let biz = null;
         const { data: bizSingle, error: bizErr } = await db("businesses").eq("user_id", authData.user.id).single().select();
-        
         if (bizSingle && !bizErr) {
           biz = bizSingle;
         } else {
-          // Fallback: try without .single() in case of PostgREST issues
           const { data: bizArray } = await db("businesses").eq("user_id", authData.user.id).select();
-          if (bizArray && bizArray.length > 0) {
-            biz = bizArray[0];
-          }
+          if (bizArray && bizArray.length > 0) biz = bizArray[0];
         }
-        
-        if (!biz) {
-          throw new Error("No business profile found for this account. Please sign up instead.");
-        }
-        
+        if (!biz) throw new Error("No business profile found for this account. Please sign up instead.");
         dispatch({ type: "SET_BUSINESS", payload: biz });
         setCookie("wynflow_token", supabase.token, 30);
         setCookie("wynflow_user", authData.user, 30);
@@ -930,16 +813,13 @@ const AuthScreen = ({ dispatch, isSignup }) => {
       <div style={{ width: "100%", maxWidth: 440 }}>
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: 14, overflow: "hidden",
-            }}><WynflowLogo size={48} /></div>
+            <div style={{ width: 48, height: 48, borderRadius: 14, overflow: "hidden" }}><WynflowLogo size={48} /></div>
             <span style={{ fontSize: 28, fontWeight: 700, color: theme.text, fontFamily: theme.fontDisplay }}>Wynflow</span>
           </div>
           <div style={{ fontSize: 15, color: theme.textMuted, lineHeight: 1.5 }}>
             {isSignup ? "Set up your account in 30 seconds" : "Welcome back — your quotes are waiting"}
           </div>
         </div>
-
         <Card style={{ padding: 32 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             {isSignup && (
@@ -951,20 +831,17 @@ const AuthScreen = ({ dispatch, isSignup }) => {
             )}
             <Input label="Email *" value={email} onChange={setEmail} type="email" />
             <Input label="Password *" value={password} onChange={setPassword} type="password" />
-
             {error && (
               <div style={{ padding: "10px 14px", borderRadius: 8, background: theme.redSoft, color: theme.red, fontSize: 13 }}>
                 {error}
               </div>
             )}
-
             <Button onClick={handleSubmit} disabled={loading}
               style={{ width: "100%", justifyContent: "center", marginTop: 8, padding: "14px 24px" }}>
               {loading ? "Please wait..." : isSignup ? "Create Account →" : "Sign In →"}
             </Button>
           </div>
         </Card>
-
         <div style={{ textAlign: "center", marginTop: 20, fontSize: 14, color: theme.textMuted }}>
           {isSignup ? "Already have an account? " : "Don't have an account? "}
           <span onClick={() => dispatch({ type: "SET_SCREEN", payload: isSignup ? "login" : "signup" })}
@@ -978,22 +855,6 @@ const AuthScreen = ({ dispatch, isSignup }) => {
       </div>
     </div>
   );
-};
-
-// ─── Cookie Helpers for Session Persistence ───
-const setCookie = (name, value, minutes) => {
-  const expires = new Date(Date.now() + minutes * 60000).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(JSON.stringify(value))}; expires=${expires}; path=/; SameSite=Strict`;
-};
-const getCookie = (name) => {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  if (match) try { return JSON.parse(decodeURIComponent(match[2])); } catch { return null; }
-  return null;
-};
-const clearCookies = () => {
-  document.cookie = "wynflow_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-  document.cookie = "wynflow_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-  document.cookie = "wynflow_business=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 };
 
 // ─── Sidebar ───
@@ -1043,12 +904,9 @@ const Sidebar = ({ screen, dispatch, business }) => {
       display: "flex", flexDirection: "column", padding: "24px 16px", flexShrink: 0,
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 8px", marginBottom: 36 }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: 10, overflow: "hidden",
-        }}><WynflowLogo size={36} /></div>
+        <div style={{ width: 36, height: 36, borderRadius: 10, overflow: "hidden" }}><WynflowLogo size={36} /></div>
         <span style={{ fontSize: 20, fontWeight: 700, color: theme.text, fontFamily: theme.fontDisplay }}>Wynflow</span>
       </div>
-
       <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -1067,7 +925,6 @@ const Sidebar = ({ screen, dispatch, business }) => {
           );
         })}
       </div>
-
       <div style={{
         padding: "16px 14px", borderRadius: 12, background: theme.surfaceLight,
         border: `1px solid ${theme.border}`,
@@ -1098,19 +955,16 @@ const Dashboard = ({ quotes, dispatch }) => {
         <h1 style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Dashboard</h1>
         <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>Here's what's happening with your quotes</p>
       </div>
-
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 32 }}>
         <Stat label="Total Quotes" value={total} icon={FileText} />
         <Stat label="Awaiting Response" value={pending} accent={theme.accent} icon={Clock} />
         <Stat label="Won" value={accepted} accent={theme.green} icon={CheckCircle2} />
         <Stat label="Revenue Won" value={`$${revenue.toLocaleString()}`} accent={theme.green} icon={DollarSign} />
       </div>
-
       <div style={{ display: "flex", gap: 12, marginBottom: 32 }}>
         <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })}><Plus size={16} /> New Quote</Button>
         <Button variant="secondary" onClick={() => dispatch({ type: "SET_SCREEN", payload: "sequences" })}>Manage Follow-Ups</Button>
       </div>
-
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: 0 }}>Recent Quotes</h3>
@@ -1180,7 +1034,6 @@ const QuotesList = ({ quotes, dispatch }) => {
         </div>
         <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })}><Plus size={16} /> New Quote</Button>
       </div>
-
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
         {["all", "draft", "sent", "opened", "accepted", "declined"].map((f) => (
           <span key={f} onClick={() => setFilter(f)}
@@ -1196,12 +1049,12 @@ const QuotesList = ({ quotes, dispatch }) => {
         ))}
         <div style={{ flex: 1 }} />
         <input value={search} onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search..."
           style={{
             fontFamily: theme.font, fontSize: 13, padding: "8px 16px", borderRadius: 8,
             background: theme.surfaceLight, border: `1px solid ${theme.border}`, color: theme.text, outline: "none", width: 200,
           }} />
       </div>
-
       <Card style={{ padding: 0, overflow: "hidden" }}>
         {!isMobile && (
         <div style={{
@@ -1283,25 +1136,16 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
       dispatch({ type: "NOTIFY", payload: { message: "Customer email is required for sending quotes", type: "error" } });
       return;
     }
-
     setLoading(true);
     try {
       let pdfUrl = null;
       let pdfFilename = null;
-
-      // Upload PDF if provided
       if (pdfFile) {
         pdfFilename = `${Date.now()}-${pdfFile.name}`;
         const uploadPath = `${business.id}/${pdfFilename}`;
         const { error: uploadErr } = await supabase.uploadFile("quote-pdfs", uploadPath, pdfFile);
-        if (uploadErr) {
-          console.error("PDF upload error:", uploadErr);
-        } else {
-          pdfUrl = uploadPath;
-        }
+        if (!uploadErr) pdfUrl = uploadPath;
       }
-
-      // Calculate first follow-up date
       let nextFollowUp = null;
       if (form.sequenceId) {
         const { data: steps } = await db("sequence_steps").eq("sequence_id", form.sequenceId).order("step_order").limit(1).select();
@@ -1311,10 +1155,9 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
           nextFollowUp = d.toISOString();
         }
       }
-
       const { data: newQuote, error: quoteErr } = await db("quotes").insert({
         business_id: business.id,
-        quote_number: "",  // Auto-generated by trigger
+        quote_number: "",
         customer_name: form.customerName,
         customer_email: form.customerEmail,
         customer_phone: form.customerPhone || null,
@@ -1328,15 +1171,11 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
         sequence_id: form.sequenceId || null,
         next_follow_up_at: nextFollowUp,
       });
-
       if (quoteErr) throw new Error("Failed to create quote");
-
-      // Trigger N8N to send the actual email
       await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quote_id: newQuote[0].id }),
       });
-
       dispatch({ type: "ADD_QUOTE", payload: newQuote[0] });
       dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${form.customerName}! Follow-ups scheduled.`, type: "success" } });
     } catch (err) {
@@ -1353,7 +1192,6 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
           style={{ fontSize: 14, color: theme.textMuted, cursor: "pointer" }}>← Back to Quotes</span>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: "8px 0 0", fontFamily: theme.fontDisplay }}>New Quote</h1>
       </div>
-
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 24 }}>
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Customer Details</h3>
@@ -1363,7 +1201,6 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
             <Input label="Phone (optional)" value={form.customerPhone} onChange={(v) => update("customerPhone", v)} />
           </div>
         </Card>
-
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Job Details</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1372,8 +1209,6 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
             <Input label="Quote Amount ($) *" value={form.amount} onChange={(v) => update("amount", v)} type="number" />
           </div>
         </Card>
-
-        {/* Quote Upload */}
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Quote File</h3>
           <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Upload your quote to attach to the email</p>
@@ -1384,8 +1219,6 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
             </div>
           )}
         </Card>
-
-        {/* Follow-up Sequence */}
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Follow-Up Sequence</h3>
           <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Choose an automated sequence to chase this quote</p>
@@ -1411,7 +1244,6 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
           </div>
         </Card>
       </div>
-
       <div style={{ display: "flex", gap: 12, marginTop: 24, justifyContent: "flex-end" }}>
         <Button variant="secondary" onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}>Cancel</Button>
         <Button onClick={handleCreate} disabled={loading}>
@@ -1448,7 +1280,6 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
     const updates = { status, follow_up_paused: status === "accepted" || status === "declined" };
     if (status === "accepted") updates.responded_at = new Date().toISOString();
     if (status === "declined") updates.responded_at = new Date().toISOString();
-
     await db("quotes").eq("id", quote.id).update(updates);
     dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, ...updates } });
     dispatch({ type: "NOTIFY", payload: { message: `Quote marked as ${status}`, type: "success" } });
@@ -1467,7 +1298,6 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
           <Badge status={quote.status} />
         </div>
       </div>
-
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 24 }}>
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Customer</h3>
@@ -1477,7 +1307,6 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
             {quote.customer_phone && <div><div style={{ fontSize: 12, color: theme.textMuted }}>Phone</div><div style={{ fontSize: 15, color: theme.text }}>{quote.customer_phone}</div></div>}
           </div>
         </Card>
-
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Quote Details</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1494,8 +1323,6 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
             )}
           </div>
         </Card>
-
-        {/* Follow-up Timeline */}
         <Card style={{ gridColumn: "1 / -1" }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Follow-Up Timeline</h3>
           {steps.length > 0 ? (
@@ -1529,8 +1356,6 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
             <p style={{ fontSize: 14, color: theme.textMuted }}>No automated follow-up sequence assigned</p>
           )}
         </Card>
-
-        {/* Customer Responses */}
         {responses.length > 0 && (
           <Card style={{ gridColumn: "1 / -1" }}>
             <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Customer Responses</h3>
@@ -1548,8 +1373,6 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
             ))}
           </Card>
         )}
-
-        {/* Actions */}
         {quote.status !== "accepted" && quote.status !== "declined" && (
         <Card style={{ gridColumn: "1 / -1" }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Actions</h3>
@@ -1559,7 +1382,6 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
             <Button variant="secondary" onClick={async () => {
               if (!window.confirm("Are you sure you want to send a follow-up email to " + quote.customer_name + "?")) return;
               try {
-                // Send the follow-up email via N8N
                 await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-follow-up", {
                   method: "POST", headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ quote_id: quote.id, current_step: quote.current_step || 0, sequence_id: quote.sequence_id }),
@@ -1636,7 +1458,6 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
         <h1 style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Follow-Up Sequences</h1>
         <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>Configure automated email follow-ups. Use {"{name}"}, {"{job}"}, {"{amount}"}, {"{business_name}"} as placeholders.</p>
       </div>
-
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         {sequences.map((seq) => (
           <Card key={seq.id}>
@@ -1660,7 +1481,6 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
                 </Button>
               </div>
             </div>
-
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {(steps[seq.id] || []).map((step, i) => (
                 <div key={step.id} style={{
@@ -1680,7 +1500,6 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
                 </div>
               ))}
             </div>
-
             {editing === seq.id && (
               <div style={{ marginTop: 16, padding: 20, borderRadius: 12, background: theme.bg, border: `1px dashed ${theme.border}` }}>
                 <h4 style={{ fontSize: 14, fontWeight: 600, color: theme.text, margin: "0 0 14px" }}>Add New Step</h4>
@@ -1694,7 +1513,6 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
             )}
           </Card>
         ))}
-
         <Card style={{ border: `1px dashed ${theme.border}`, textAlign: "center", padding: 40, cursor: "pointer" }} onClick={createSequence}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>+</div>
           <div style={{ fontSize: 14, fontWeight: 600, color: theme.textMuted }}>Create New Sequence</div>
@@ -1734,7 +1552,6 @@ const Settings = ({ business, dispatch }) => {
         <h1 style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Settings</h1>
         <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>Manage your business profile</p>
       </div>
-
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 24 }}>
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Business Profile</h3>
@@ -1747,7 +1564,6 @@ const Settings = ({ business, dispatch }) => {
             <Button onClick={saveSettings} disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
           </div>
         </Card>
-
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Email Configuration</h3>
           <div style={{ padding: "14px 18px", borderRadius: 10, background: theme.accentSoft, border: `1px solid ${theme.accent}22` }}>
@@ -1766,7 +1582,6 @@ const Settings = ({ business, dispatch }) => {
             <div style={{ fontSize: 14, color: theme.text, fontWeight: 500, marginTop: 4 }}>{email}</div>
           </div>
         </Card>
-
         <Card style={{ gridColumn: "1 / -1" }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Subscription</h3>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -1796,9 +1611,26 @@ const Settings = ({ business, dispatch }) => {
 };
 
 // ─── Main App ───
+// ✅ FIX: useIsMobile() is now called at the TOP of WynflowApp,
+//    before any conditional returns, to comply with React's Rules of Hooks.
 export default function WynflowApp() {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const { user, business, screen, quotes, sequences, notification, loading } = state;
+
+  // ✅ ALL hooks must be called before any conditional returns
+  const isMobile = useIsMobile();
+
+  const loadData = useCallback(async () => {
+    if (!business) return;
+    dispatch({ type: "SET_LOADING", payload: true });
+    const [quotesRes, seqRes] = await Promise.all([
+      db("quotes").eq("business_id", business.id).order("created_at", { ascending: false }).select(),
+      db("follow_up_sequences").eq("business_id", business.id).select(),
+    ]);
+    if (quotesRes.data) dispatch({ type: "SET_QUOTES", payload: quotesRes.data });
+    if (seqRes.data) dispatch({ type: "SET_SEQUENCES", payload: seqRes.data });
+    dispatch({ type: "SET_LOADING", payload: false });
+  }, [business?.id]);
 
   // Restore session on mount
   useEffect(() => {
@@ -1813,24 +1645,8 @@ export default function WynflowApp() {
     }
   }, []);
 
-  // Load data when business is set
-  const loadData = useCallback(async () => {
-    if (!business) return;
-    dispatch({ type: "SET_LOADING", payload: true });
-
-    const [quotesRes, seqRes] = await Promise.all([
-      db("quotes").eq("business_id", business.id).order("created_at", { ascending: false }).select(),
-      db("follow_up_sequences").eq("business_id", business.id).select(),
-    ]);
-
-    if (quotesRes.data) dispatch({ type: "SET_QUOTES", payload: quotesRes.data });
-    if (seqRes.data) dispatch({ type: "SET_SEQUENCES", payload: seqRes.data });
-    dispatch({ type: "SET_LOADING", payload: false });
-  }, [business?.id]);
-
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Refresh quotes when navigating back to quotes/dashboard
   useEffect(() => {
     if (business && (screen === "dashboard" || screen === "quotes")) {
       loadData();
@@ -1858,7 +1674,7 @@ export default function WynflowApp() {
     }
   `;
 
-  // Public pages
+  // Public pages (conditional returns AFTER all hooks)
   if (["home","about","pricing"].includes(screen)) {
     return (
       <>
@@ -1874,10 +1690,7 @@ export default function WynflowApp() {
     );
   }
 
-  // Auth & fallback handled below after business check
-
   if (!business) {
-    // Show auth screen if on login/signup
     if (screen === "login" || screen === "signup") {
       return (
         <>
@@ -1887,7 +1700,6 @@ export default function WynflowApp() {
         </>
       );
     }
-    // Otherwise show homepage (don't dispatch inside render)
     return (
       <>
         <style>{globalStyles}</style>
@@ -1912,8 +1724,6 @@ export default function WynflowApp() {
       default: return <Dashboard quotes={quotes} dispatch={dispatch} />;
     }
   };
-
-  const isMobile = useIsMobile();
 
   return (
     <>
