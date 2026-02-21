@@ -1873,25 +1873,24 @@ export default function WynflowApp() {
     );
   }
 
-  // Auth screens
-  if (!business && (screen === "login" || screen === "signup")) {
+  // Auth & fallback handled below after business check
+
+  if (!business) {
+    // Show auth screen if on login/signup
+    if (screen === "login" || screen === "signup") {
+      return (
+        <>
+          <style>{globalStyles}</style>
+          {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
+          <AuthScreen dispatch={dispatch} isSignup={screen === "signup"} />
+        </>
+      );
+    }
+    // Otherwise show homepage (don't dispatch inside render)
     return (
       <>
         <style>{globalStyles}</style>
         {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
-        <AuthScreen dispatch={dispatch} isSignup={screen === "signup"} />
-      </>
-    );
-  }
-
-  if (!business) {
-    // If no business data, redirect to home (but don't flash white)
-    if (screen !== "home" && screen !== "about" && screen !== "pricing" && screen !== "login" && screen !== "signup") {
-      dispatch({ type: "SET_SCREEN", payload: "home" });
-    }
-    return (
-      <>
-        <style>{globalStyles}</style>
         <div style={{ fontFamily: theme.font, color: theme.text }}>
           <Navbar dispatch={dispatch} transparent />
           <HomePage dispatch={dispatch} />
