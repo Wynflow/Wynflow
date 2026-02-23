@@ -326,7 +326,8 @@ const statusConfig = {
   pending: { label: "Pending", color: theme.blue, bg: theme.blueSoft },
   sent: { label: "Sent", color: theme.accent, bg: theme.accentSoft },
   opened: { label: "Opened", color: theme.accentBlue, bg: theme.accentBlueSoft },
-  accepted: { label: "Accepted", color: theme.green, bg: theme.greenSoft },
+  accepted: { label: "Accepted", color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
+  booked: { label: "Booked", color: theme.green, bg: theme.greenSoft },
   declined: { label: "Declined", color: theme.red, bg: theme.redSoft },
   feedback: { label: "Feedback", color: theme.blue, bg: theme.blueSoft },
 };
@@ -836,6 +837,27 @@ const AuthScreen = ({ dispatch, isSignup }) => {
   const [trade, setTrade] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resetMode, setResetMode] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  const handleReset = async () => {
+    if (!email) { setError("Please enter your email address"); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) throw new Error("Failed to send reset email");
+      setResetSent(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!email || !password) { setError("Please enter email and password"); return; }
@@ -941,6 +963,40 @@ const AuthScreen = ({ dispatch, isSignup }) => {
           </div>
         </div>
         <Card style={{ padding: 32 }}>
+          {resetMode ? (
+            resetSent ? (
+              <div style={{ textAlign: "center", padding: "20px 0" }}>
+                <CheckCircle2 size={48} color={theme.green} style={{ marginBottom: 16 }} />
+                <h3 style={{ fontSize: 18, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Check Your Email</h3>
+                <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, margin: "0 0 20px" }}>
+                  We've sent a password reset link to <strong style={{ color: theme.text }}>{email}</strong>. Check your inbox and follow the link to reset your password.
+                </p>
+                <Button variant="secondary" onClick={() => { setResetMode(false); setResetSent(false); }}
+                  style={{ width: "100%", justifyContent: "center" }}>Back to Sign In</Button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                <div style={{ textAlign: "center", marginBottom: 8 }}>
+                  <h3 style={{ fontSize: 18, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Reset Password</h3>
+                  <p style={{ fontSize: 14, color: theme.textMuted }}>Enter your email and we'll send you a reset link</p>
+                </div>
+                <Input label="Email *" value={email} onChange={setEmail} type="email" />
+                {error && (
+                  <div style={{ padding: "10px 14px", borderRadius: 8, background: theme.redSoft, color: theme.red, fontSize: 13 }}>
+                    {error}
+                  </div>
+                )}
+                <Button onClick={handleReset} disabled={loading}
+                  style={{ width: "100%", justifyContent: "center", padding: "14px 24px" }}>
+                  {loading ? "Sending..." : "Send Reset Link →"}
+                </Button>
+                <div style={{ textAlign: "center" }}>
+                  <span onClick={() => { setResetMode(false); setError(""); }}
+                    style={{ fontSize: 13, color: theme.accent, cursor: "pointer", fontWeight: 500 }}>Back to Sign In</span>
+                </div>
+              </div>
+            )
+          ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             {isSignup && (
               <>
@@ -951,6 +1007,12 @@ const AuthScreen = ({ dispatch, isSignup }) => {
             )}
             <Input label="Email *" value={email} onChange={setEmail} type="email" />
             <Input label="Password *" value={password} onChange={setPassword} type="password" />
+            {!isSignup && (
+              <div style={{ textAlign: "right", marginTop: -10 }}>
+                <span onClick={() => { setResetMode(true); setError(""); }}
+                  style={{ fontSize: 13, color: theme.accent, cursor: "pointer" }}>Forgot password?</span>
+              </div>
+            )}
             {error && (
               <div style={{ padding: "10px 14px", borderRadius: 8, background: theme.redSoft, color: theme.red, fontSize: 13 }}>
                 {error}
@@ -961,6 +1023,7 @@ const AuthScreen = ({ dispatch, isSignup }) => {
               {loading ? "Please wait..." : isSignup ? "Create Account →" : "Sign In →"}
             </Button>
           </div>
+          )}
         </Card>
         <div style={{ textAlign: "center", marginTop: 20, fontSize: 14, color: theme.textMuted }}>
           {isSignup ? "Already have an account? " : "Don't have an account? "}
@@ -1066,21 +1129,37 @@ const Dashboard = ({ quotes, dispatch }) => {
   const total = quotes.length;
   const pending = quotes.filter((q) => q.status === "sent" || q.status === "pending" || q.status === "opened").length;
   const accepted = quotes.filter((q) => q.status === "accepted").length;
-  const revenue = quotes.filter((q) => q.status === "accepted").reduce((sum, q) => sum + parseFloat(q.amount || 0), 0);
+  const booked = quotes.filter((q) => q.status === "booked").length;
+  const revenue = quotes.filter((q) => q.status === "accepted" || q.status === "booked").reduce((sum, q) => sum + parseFloat(q.amount || 0), 0);
   const recentQuotes = [...quotes].slice(0, 5);
 
   return (
     <div>
       <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Dashboard</h1>
+        <h1 style={{ fontSize: isMobile ? 24 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Dashboard</h1>
         <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>Here's what's happening with your quotes</p>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 32 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 32 }}>
         <Stat label="Total Quotes" value={total} icon={FileText} />
         <Stat label="Awaiting Response" value={pending} accent={theme.accent} icon={Clock} />
-        <Stat label="Won" value={accepted} accent={theme.green} icon={CheckCircle2} />
-        <Stat label="Revenue Won" value={`$${revenue.toLocaleString()}`} accent={theme.green} icon={DollarSign} />
+        <Stat label="Accepted" value={accepted} accent="#F59E0B" icon={CheckCircle2} />
+        <Stat label="Booked" value={booked} accent={theme.green} icon={Check} />
+        <Stat label="Revenue" value={`$${revenue.toLocaleString()}`} accent={theme.green} icon={DollarSign} />
       </div>
+      {/* Alert: quotes needing action */}
+      {accepted > 0 && (
+        <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}
+          style={{
+            padding: "14px 20px", borderRadius: 10, marginBottom: 20, cursor: "pointer",
+            background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)",
+            display: "flex", alignItems: "center", gap: 12,
+          }}>
+          <Clock size={18} color="#F59E0B" />
+          <span style={{ fontSize: 14, color: "#F59E0B", fontWeight: 500 }}>
+            {accepted} accepted quote{accepted > 1 ? "s" : ""} need{accepted === 1 ? "s" : ""} to be booked in — call your customer{accepted > 1 ? "s" : ""}!
+          </span>
+        </div>
+      )}
       <div style={{ display: "flex", gap: 12, marginBottom: 32 }}>
         <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })}><Plus size={16} /> New Quote</Button>
         <Button variant="secondary" onClick={() => dispatch({ type: "SET_SCREEN", payload: "sequences" })}>Manage Follow-Ups</Button>
@@ -1155,7 +1234,7 @@ const QuotesList = ({ quotes, dispatch }) => {
         <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })}><Plus size={16} /> New Quote</Button>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
-        {["all", "draft", "sent", "opened", "accepted", "declined"].map((f) => (
+        {["all", "sent", "opened", "accepted", "booked", "declined"].map((f) => (
           <span key={f} onClick={() => setFilter(f)}
             style={{
               padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: "pointer",
@@ -1397,12 +1476,17 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
   if (!quote) return <div style={{ color: theme.textMuted, padding: 48 }}>Quote not found</div>;
 
   const updateStatus = async (status) => {
-    const updates = { status, follow_up_paused: status === "accepted" || status === "declined" };
-    if (status === "accepted") updates.responded_at = new Date().toISOString();
-    if (status === "declined") updates.responded_at = new Date().toISOString();
+    const updates = { status, follow_up_paused: status === "accepted" || status === "declined" || status === "booked" };
+    if (status === "accepted" || status === "declined") updates.responded_at = new Date().toISOString();
+    if (status === "booked") updates.booked_at = new Date().toISOString();
     await db("quotes").eq("id", quote.id).update(updates);
     dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, ...updates } });
-    dispatch({ type: "NOTIFY", payload: { message: `Quote marked as ${status}`, type: "success" } });
+    const messages = {
+      accepted: "Quote marked as accepted — now call and book it in!",
+      booked: "Job booked! Nice one.",
+      declined: "Quote marked as declined",
+    };
+    dispatch({ type: "NOTIFY", payload: { message: messages[status] || `Quote marked as ${status}`, type: "success" } });
   };
 
   return (
@@ -1493,11 +1577,43 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
             ))}
           </Card>
         )}
-        {quote.status !== "accepted" && quote.status !== "declined" && (
+        {quote.status === "accepted" && (
+        <Card style={{ gridColumn: "1 / -1", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <Clock size={20} color="#F59E0B" />
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#F59E0B", margin: 0 }}>Action Required</h3>
+          </div>
+          <p style={{ fontSize: 14, color: theme.textMuted, margin: "0 0 16px", lineHeight: 1.5 }}>
+            <strong>{quote.customer_name}</strong> has accepted this quote! Call them to confirm the job and lock in a date, then mark it as booked below.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16, padding: 16, borderRadius: 10, background: theme.surfaceLight }}>
+            {quote.customer_phone && <div style={{ fontSize: 14, color: theme.text }}><strong>Phone:</strong> <a href={"tel:" + quote.customer_phone} style={{ color: theme.accent }}>{quote.customer_phone}</a></div>}
+            <div style={{ fontSize: 14, color: theme.text }}><strong>Email:</strong> <a href={"mailto:" + quote.customer_email} style={{ color: theme.accent }}>{quote.customer_email}</a></div>
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <Button onClick={() => updateStatus("booked")} style={{ background: theme.green, color: "#fff", display: "inline-flex", alignItems: "center", gap: 6 }}><Check size={16} /> Mark as Booked</Button>
+            <Button onClick={() => updateStatus("declined")} variant="danger" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><XCircle size={16} /> Actually Declined</Button>
+          </div>
+        </Card>
+        )}
+        {quote.status === "booked" && (
+        <Card style={{ gridColumn: "1 / -1", background: theme.greenSoft, border: `1px solid ${theme.green}33` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <CheckCircle2 size={24} color={theme.green} />
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.green, margin: 0 }}>Job Booked!</h3>
+              <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>
+                {quote.booked_at ? `Booked on ${new Date(quote.booked_at).toLocaleDateString()}` : "This job has been confirmed and booked in."}
+              </p>
+            </div>
+          </div>
+        </Card>
+        )}
+        {quote.status !== "accepted" && quote.status !== "declined" && quote.status !== "booked" && (
         <Card style={{ gridColumn: "1 / -1" }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Actions</h3>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <Button onClick={() => updateStatus("accepted")} style={{ background: theme.greenSoft, color: theme.green, display: "inline-flex", alignItems: "center", gap: 6 }}><Check size={16} /> Mark Accepted</Button>
+            <Button onClick={() => updateStatus("accepted")} style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B", display: "inline-flex", alignItems: "center", gap: 6 }}><Check size={16} /> Mark Accepted</Button>
             <Button onClick={() => updateStatus("declined")} variant="danger" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><XCircle size={16} /> Mark Declined</Button>
             <Button variant="secondary" onClick={async () => {
               if (!window.confirm("Are you sure you want to send a follow-up email to " + quote.customer_name + "?")) return;
@@ -1897,6 +2013,89 @@ const Settings = ({ business, dispatch }) => {
   );
 };
 
+// ─── Onboarding Tutorial ───
+const OnboardingTutorial = ({ business, onComplete }) => {
+  const [step, setStep] = useState(0);
+  const isMobile = useIsMobile();
+  const steps = [
+    {
+      title: "Welcome to Wynflow!",
+      desc: `Hey ${business?.contact_name || "there"}! Let's get you set up in 30 seconds. Here's how Wynflow works:`,
+      icon: "👋",
+      content: "Wynflow sends your quotes to customers and automatically follows up if they don't respond. No more lost jobs from forgotten emails.",
+    },
+    {
+      title: "Step 1: Send a Quote",
+      desc: "Click 'New Quote' to get started",
+      icon: "📤",
+      content: "Enter your customer's details, the job title, and the amount. Upload a quote PDF if you have one — or just send without. Hit send and the customer gets a branded email with your quote.",
+    },
+    {
+      title: "Step 2: Wynflow Chases",
+      desc: "Automated follow-ups do the hard work",
+      icon: "🤖",
+      content: "If your customer doesn't respond, Wynflow sends follow-up emails automatically — day 2, day 5, day 10. You can customise the timing and wording in the Follow-Ups tab.",
+    },
+    {
+      title: "Step 3: Customer Responds",
+      desc: "They click a button, you get notified",
+      icon: "✅",
+      content: "Your customer clicks 'Book It In' or 'Decline' right in the email. You'll get a notification instantly. Once accepted, call them to confirm the job and mark it as 'Booked' in your dashboard.",
+    },
+  ];
+  const s = steps[step];
+  return (
+    <div style={{
+      position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+      background: "rgba(0,0,0,0.7)", zIndex: 9999,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      padding: 20, backdropFilter: "blur(4px)",
+    }}>
+      <div style={{
+        width: "100%", maxWidth: 500, background: theme.surface,
+        borderRadius: 20, overflow: "hidden", border: `1px solid ${theme.border}`,
+      }}>
+        <div style={{
+          background: `linear-gradient(135deg, ${theme.bg}, ${theme.surfaceLight})`,
+          padding: isMobile ? "32px 24px" : "40px 40px", textAlign: "center",
+        }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>{s.icon}</div>
+          <h2 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color: theme.text, margin: "0 0 8px", fontFamily: theme.fontDisplay }}>{s.title}</h2>
+          <p style={{ fontSize: 14, color: theme.accent, fontWeight: 500, margin: 0 }}>{s.desc}</p>
+        </div>
+        <div style={{ padding: isMobile ? "24px 24px 20px" : "32px 40px 24px" }}>
+          <p style={{ fontSize: 15, color: theme.textMuted, lineHeight: 1.7, margin: "0 0 28px" }}>{s.content}</p>
+          {/* Progress dots */}
+          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 20 }}>
+            {steps.map((_, i) => (
+              <div key={i} style={{
+                width: i === step ? 24 : 8, height: 8, borderRadius: 4,
+                background: i === step ? theme.accent : theme.border,
+                transition: "all 0.3s",
+              }} />
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+            {step > 0 && (
+              <Button variant="secondary" size="sm" onClick={() => setStep(step - 1)}>Back</Button>
+            )}
+            {step < steps.length - 1 ? (
+              <Button size="sm" onClick={() => setStep(step + 1)}>Next →</Button>
+            ) : (
+              <Button onClick={onComplete}>Let's Go! →</Button>
+            )}
+          </div>
+          {step < steps.length - 1 && (
+            <div style={{ textAlign: "center", marginTop: 12 }}>
+              <span onClick={onComplete} style={{ fontSize: 12, color: theme.textDim, cursor: "pointer" }}>Skip tutorial</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Main App ───
 // ✅ FIX: useIsMobile() is now called at the TOP of WynflowApp,
 //    before any conditional returns, to comply with React's Rules of Hooks.
@@ -1907,6 +2106,7 @@ export default function WynflowApp() {
   // ✅ ALL hooks must be called before any conditional returns
   const isMobile = useIsMobile();
   useSEO(screen);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!business) return;
@@ -1947,6 +2147,13 @@ export default function WynflowApp() {
   }, [screen, business]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Show onboarding for new users
+  useEffect(() => {
+    if (business && !getCookie("wynflow_onboarded")) {
+      setShowOnboarding(true);
+    }
+  }, [business?.id]);
 
   useEffect(() => {
     if (business && (screen === "dashboard" || screen === "quotes")) {
@@ -2030,6 +2237,7 @@ export default function WynflowApp() {
     <>
       <style>{globalStyles}</style>
       {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
+      {showOnboarding && <OnboardingTutorial business={business} onComplete={() => { setShowOnboarding(false); setCookie("wynflow_onboarded", "true", 365); }} />}
       <div style={{ display: "flex", height: "100vh", fontFamily: theme.font, color: theme.text, overflow: "hidden", flexDirection: isMobile ? "column" : "row" }}>
         <Sidebar screen={activeScreen} dispatch={dispatch} business={business} />
         <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "20px 16px 80px" : "32px 40px" }}>
