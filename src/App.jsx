@@ -1524,9 +1524,14 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
 
 // ─── Sequences Manager ───
 const SequencesManager = ({ sequences, business, dispatch }) => {
-  const [editing, setEditing] = useState(null);
+  const isMobile = useIsMobile();
   const [steps, setSteps] = useState({});
-  const [newStep, setNewStep] = useState({ delay: "", subject: "", template: "" });
+  const [editingStep, setEditingStep] = useState(null);
+  const [editForm, setEditForm] = useState({ delay_days: "", email_subject: "", email_body: "" });
+  const [adding, setAdding] = useState(null);
+  const [newStep, setNewStep] = useState({ delay: "", subject: "", body: "" });
+  const [saving, setSaving] = useState(false);
+  const MAX_STEPS = 5;
 
   const loadSteps = async (seqId) => {
     const { data } = await db("sequence_steps").eq("sequence_id", seqId).order("step_order").select();
@@ -1540,48 +1545,123 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
   const toggleSequence = async (seq) => {
     await db("follow_up_sequences").eq("id", seq.id).update({ is_active: !seq.is_active });
     dispatch({ type: "UPDATE_SEQUENCE", payload: { id: seq.id, is_active: !seq.is_active } });
+    dispatch({ type: "NOTIFY", payload: { message: seq.is_active ? "Sequence paused" : "Sequence activated!", type: "success" } });
+  };
+
+  const startEdit = (step) => {
+    setEditingStep(step.id);
+    setEditForm({ delay_days: step.delay_days, email_subject: step.email_subject, email_body: step.email_body });
+    setAdding(null);
+  };
+
+  const saveEdit = async (stepId) => {
+    setSaving(true);
+    await db("sequence_steps").eq("id", stepId).update({
+      delay_days: parseInt(editForm.delay_days),
+      email_subject: editForm.email_subject,
+      email_body: editForm.email_body,
+    });
+    // Update local state
+    const seqId = Object.keys(steps).find(k => steps[k].some(s => s.id === stepId));
+    if (seqId) {
+      setSteps(prev => ({
+        ...prev,
+        [seqId]: prev[seqId].map(s => s.id === stepId ? { ...s, ...editForm, delay_days: parseInt(editForm.delay_days) } : s)
+      }));
+    }
+    setEditingStep(null);
+    setSaving(false);
+    dispatch({ type: "NOTIFY", payload: { message: "Step updated!", type: "success" } });
+  };
+
+  const deleteStep = async (seqId, stepId) => {
+    await db("sequence_steps").eq("id", stepId).delete();
+    const remaining = (steps[seqId] || []).filter(s => s.id !== stepId);
+    // Re-order remaining steps
+    for (let i = 0; i < remaining.length; i++) {
+      if (remaining[i].step_order !== i + 1) {
+        await db("sequence_steps").eq("id", remaining[i].id).update({ step_order: i + 1 });
+        remaining[i].step_order = i + 1;
+      }
+    }
+    setSteps(prev => ({ ...prev, [seqId]: remaining }));
+    setEditingStep(null);
+    dispatch({ type: "NOTIFY", payload: { message: "Step removed", type: "success" } });
+  };
+
+  const moveStep = async (seqId, index, direction) => {
+    const current = [...(steps[seqId] || [])];
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= current.length) return;
+    [current[index], current[newIndex]] = [current[newIndex], current[index]];
+    // Update step_order in DB
+    for (let i = 0; i < current.length; i++) {
+      current[i].step_order = i + 1;
+      await db("sequence_steps").eq("id", current[i].id).update({ step_order: i + 1 });
+    }
+    setSteps(prev => ({ ...prev, [seqId]: current }));
   };
 
   const addStep = async (seqId) => {
-    if (!newStep.delay || !newStep.subject || !newStep.template) return;
+    if (!newStep.delay || !newStep.subject || !newStep.body) {
+      dispatch({ type: "NOTIFY", payload: { message: "Please fill in all fields", type: "error" } });
+      return;
+    }
     const currentSteps = steps[seqId] || [];
+    if (currentSteps.length >= MAX_STEPS) {
+      dispatch({ type: "NOTIFY", payload: { message: `Maximum ${MAX_STEPS} steps on Starter plan`, type: "error" } });
+      return;
+    }
+    setSaving(true);
     const { data } = await db("sequence_steps").insert({
       sequence_id: seqId,
       step_order: currentSteps.length + 1,
       delay_days: parseInt(newStep.delay),
       email_subject: newStep.subject,
-      email_body: newStep.template,
+      email_body: newStep.body,
     });
     if (data) {
-      setSteps((prev) => ({ ...prev, [seqId]: [...(prev[seqId] || []), data[0]] }));
-      setNewStep({ delay: "", subject: "", template: "" });
+      setSteps(prev => ({ ...prev, [seqId]: [...(prev[seqId] || []), data[0]] }));
+      setNewStep({ delay: "", subject: "", body: "" });
+      setAdding(null);
       dispatch({ type: "NOTIFY", payload: { message: "Step added!", type: "success" } });
     }
+    setSaving(false);
   };
 
-  const createSequence = async () => {
-    const { data } = await db("follow_up_sequences").insert({
-      business_id: business.id,
-      name: "New Sequence",
-      is_active: false,
-      is_default: false,
-    });
-    if (data) {
-      dispatch({ type: "ADD_SEQUENCE", payload: data[0] });
-      setEditing(data[0].id);
-    }
-  };
+  const placeholders = [
+    { tag: "{name}", desc: "Customer name" },
+    { tag: "{job}", desc: "Job title" },
+    { tag: "{amount}", desc: "Quote amount" },
+    { tag: "{business_name}", desc: "Your business name" },
+  ];
 
   return (
     <div>
       <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Follow-Up Sequences</h1>
-        <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>Configure automated email follow-ups. Use {"{name}"}, {"{job}"}, {"{amount}"}, {"{business_name}"} as placeholders.</p>
+        <h1 style={{ fontSize: isMobile ? 24 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Follow-Up Sequences</h1>
+        <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>Customise the automated emails that chase your quotes. Up to {MAX_STEPS} steps per sequence.</p>
       </div>
+
+      {/* Placeholder reference */}
+      <Card style={{ marginBottom: 20, padding: isMobile ? 16 : 20 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 10 }}>Available Placeholders</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {placeholders.map(p => (
+            <span key={p.tag} style={{
+              padding: "4px 10px", borderRadius: 6, fontSize: 12,
+              background: theme.accentSoft, color: theme.accent, fontFamily: "monospace",
+            }}>{p.tag} <span style={{ color: theme.textMuted, fontFamily: theme.font }}>= {p.desc}</span></span>
+          ))}
+        </div>
+      </Card>
+
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        {sequences.map((seq) => (
+        {sequences.map((seq) => {
+          const seqSteps = steps[seq.id] || [];
+          return (
           <Card key={seq.id}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: 20, flexDirection: isMobile ? "column" : "row", gap: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <h3 style={{ fontSize: 18, fontWeight: 600, color: theme.text, margin: 0 }}>{seq.name}</h3>
                 <span style={{
@@ -1591,52 +1671,139 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
                 }}>
                   {seq.is_active ? "ACTIVE" : "PAUSED"}
                 </span>
+                <span style={{ fontSize: 12, color: theme.textDim }}>{seqSteps.length}/{MAX_STEPS} steps</span>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <Button size="sm" variant={seq.is_active ? "danger" : "primary"} onClick={() => toggleSequence(seq)}>
                   {seq.is_active ? "Pause" : "Activate"}
                 </Button>
-                <Button size="sm" variant="secondary" onClick={() => { setEditing(editing === seq.id ? null : seq.id); }}>
-                  {editing === seq.id ? "Close" : "Edit Steps"}
-                </Button>
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {(steps[seq.id] || []).map((step, i) => (
-                <div key={step.id} style={{
-                  padding: "14px 18px", borderRadius: 10, background: theme.surfaceLight,
-                  border: `1px solid ${theme.border}`,
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{
-                      width: 28, height: 28, borderRadius: 8, background: theme.accentSoft,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 12, fontWeight: 700, color: theme.accent,
-                    }}>{i + 1}</span>
-                    <span style={{ fontSize: 13, color: theme.textMuted }}>Day {step.delay_days}</span>
+
+            {/* Steps timeline */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {seqSteps.map((step, i) => (
+                <div key={step.id}>
+                  {/* Timeline connector */}
+                  {i > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0 6px 13px" }}>
+                      <div style={{ width: 2, height: 20, background: theme.border }} />
+                      <span style={{ fontSize: 11, color: theme.textDim }}>+{step.delay_days} days</span>
+                    </div>
+                  )}
+                  
+                  <div style={{
+                    padding: "16px 18px", borderRadius: 10, background: editingStep === step.id ? theme.bg : theme.surfaceLight,
+                    border: `1px solid ${editingStep === step.id ? theme.accent + "44" : theme.border}`,
+                    transition: "all 0.2s",
+                  }}>
+                    {editingStep === step.id ? (
+                      /* Editing mode */
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <div style={{ display: "flex", gap: 12, flexDirection: isMobile ? "column" : "row" }}>
+                          <div style={{ flex: "0 0 100px" }}>
+                            <Input label="Delay (days)" value={editForm.delay_days} onChange={v => setEditForm({ ...editForm, delay_days: v })} type="number" />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <Input label="Subject Line" value={editForm.email_subject} onChange={v => setEditForm({ ...editForm, email_subject: v })} />
+                          </div>
+                        </div>
+                        <Input label="Email Body" value={editForm.email_body} onChange={v => setEditForm({ ...editForm, email_body: v })} textarea />
+                        <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
+                          <Button size="sm" variant="danger" onClick={() => deleteStep(seq.id, step.id)}>
+                            <XCircle size={14} /> Delete Step
+                          </Button>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <Button size="sm" variant="secondary" onClick={() => setEditingStep(null)}>Cancel</Button>
+                            <Button size="sm" onClick={() => saveEdit(step.id)} disabled={saving}>
+                              <Check size={14} /> {saving ? "Saving..." : "Save"}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Display mode */
+                      <div style={{ cursor: "pointer" }} onClick={() => startEdit(step)}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{
+                              width: 28, height: 28, borderRadius: 8, background: theme.accentSoft,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontSize: 12, fontWeight: 700, color: theme.accent,
+                            }}>{i + 1}</span>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>{step.email_subject}</div>
+                              <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>
+                                {i === 0 ? `${step.delay_days} days after quote sent` : `${step.delay_days} days after previous`}
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 4 }}>
+                            {i > 0 && (
+                              <button onClick={(e) => { e.stopPropagation(); moveStep(seq.id, i, -1); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: theme.textMuted, fontSize: 16 }}>↑</button>
+                            )}
+                            {i < seqSteps.length - 1 && (
+                              <button onClick={(e) => { e.stopPropagation(); moveStep(seq.id, i, 1); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: theme.textMuted, fontSize: 16 }}>↓</button>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 8, lineHeight: 1.5, whiteSpace: "pre-line" }}>{step.email_body}</div>
+                        <div style={{ fontSize: 11, color: theme.textDim, marginTop: 8 }}>Click to edit</div>
+                      </div>
+                    )}
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: theme.text, marginTop: 10 }}>{step.email_subject}</div>
-                  <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 6, lineHeight: 1.5 }}>{step.email_body}</div>
                 </div>
               ))}
             </div>
-            {editing === seq.id && (
-              <div style={{ marginTop: 16, padding: 20, borderRadius: 12, background: theme.bg, border: `1px dashed ${theme.border}` }}>
-                <h4 style={{ fontSize: 14, fontWeight: 600, color: theme.text, margin: "0 0 14px" }}>Add New Step</h4>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <Input label="Delay (days after quote sent)" value={newStep.delay} onChange={(v) => setNewStep({ ...newStep, delay: v })} type="number" />
-                  <Input label="Email Subject" value={newStep.subject} onChange={(v) => setNewStep({ ...newStep, subject: v })} />
-                  <Input label="Email Body" value={newStep.template} onChange={(v) => setNewStep({ ...newStep, template: v })} textarea />
-                  <Button size="sm" onClick={() => addStep(seq.id)}>+ Add Step</Button>
+
+            {/* Add step */}
+            {seqSteps.length < MAX_STEPS ? (
+              adding === seq.id ? (
+                <div style={{ marginTop: 16, padding: 20, borderRadius: 12, background: theme.bg, border: `1px dashed ${theme.accent}44` }}>
+                  <h4 style={{ fontSize: 14, fontWeight: 600, color: theme.text, margin: "0 0 14px" }}>Add Follow-Up Step {seqSteps.length + 1}</h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div style={{ display: "flex", gap: 12, flexDirection: isMobile ? "column" : "row" }}>
+                      <div style={{ flex: "0 0 100px" }}>
+                        <Input label="Delay (days)" value={newStep.delay} onChange={v => setNewStep({ ...newStep, delay: v })} type="number" placeholder="e.g. 3" />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <Input label="Subject Line" value={newStep.subject} onChange={v => setNewStep({ ...newStep, subject: v })} placeholder="e.g. Following up on your quote for {job}" />
+                      </div>
+                    </div>
+                    <Input label="Email Body" value={newStep.body} onChange={v => setNewStep({ ...newStep, body: v })} textarea placeholder="e.g. Hi {name}, just checking in on the quote I sent for {job}. Let me know if you have any questions. Cheers, {business_name}" />
+                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                      <Button size="sm" variant="secondary" onClick={() => { setAdding(null); setNewStep({ delay: "", subject: "", body: "" }); }}>Cancel</Button>
+                      <Button size="sm" onClick={() => addStep(seq.id)} disabled={saving}>
+                        <Plus size={14} /> {saving ? "Adding..." : "Add Step"}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
+              ) : (
+                <div
+                  onClick={() => { setAdding(seq.id); setEditingStep(null); }}
+                  style={{
+                    marginTop: 16, padding: "14px 18px", borderRadius: 10,
+                    border: `1px dashed ${theme.border}`, textAlign: "center",
+                    cursor: "pointer", transition: "all 0.2s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.background = theme.accentSoft; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.background = "transparent"; }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 600, color: theme.textMuted }}>
+                    <Plus size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />
+                    Add Step ({seqSteps.length}/{MAX_STEPS})
+                  </span>
+                </div>
+              )
+            ) : (
+              <div style={{ marginTop: 16, padding: "12px 18px", borderRadius: 10, background: theme.accentSoft, textAlign: "center" }}>
+                <span style={{ fontSize: 13, color: theme.accent, fontWeight: 500 }}>Maximum {MAX_STEPS} steps reached on Starter plan</span>
               </div>
             )}
           </Card>
-        ))}
-        <Card style={{ border: `1px dashed ${theme.border}`, textAlign: "center", padding: 40, cursor: "pointer" }} onClick={createSequence}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>+</div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: theme.textMuted }}>Create New Sequence</div>
-        </Card>
+          );
+        })}
       </div>
     </div>
   );
