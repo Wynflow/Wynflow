@@ -1,6 +1,48 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
 import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench } from "lucide-react";
 
+// ─── SEO Helper ───
+const SEO_CONFIG = {
+  home: {
+    title: "Wynflow — Quote Management & Automated Follow-Ups for NZ Businesses",
+    description: "Send quotes, automate follow-ups, and win more jobs. Built for New Zealand trades and service businesses. Start your free trial today.",
+    canonical: "https://www.wynflow.co.nz",
+  },
+  about: {
+    title: "About Wynflow — Built by a Kiwi, for Kiwi Businesses",
+    description: "Born from watching a Napier carpet layer lose jobs to forgotten follow-ups. Wynflow automates quote follow-ups so NZ tradies never lose a job to silence again.",
+    canonical: "https://www.wynflow.co.nz/about",
+  },
+  pricing: {
+    title: "Wynflow Pricing — Free Trial, No Credit Card Required",
+    description: "Simple pricing for NZ businesses. Send quotes, automate follow-ups, and track customer responses. Start free, upgrade when you're ready.",
+    canonical: "https://www.wynflow.co.nz/pricing",
+  },
+};
+
+const useSEO = (screen) => {
+  useEffect(() => {
+    const config = SEO_CONFIG[screen];
+    if (!config) return;
+    document.title = config.title;
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute("content", config.description);
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.setAttribute("rel", "canonical");
+      document.head.appendChild(canonical);
+    }
+    canonical.setAttribute("href", config.canonical);
+    // OG tags
+    const ogTags = { "og:title": config.title, "og:description": config.description, "og:url": config.canonical };
+    Object.entries(ogTags).forEach(([prop, content]) => {
+      let tag = document.querySelector(`meta[property="${prop}"]`);
+      if (tag) tag.setAttribute("content", content);
+    });
+  }, [screen]);
+};
+
 // ─── Mobile Detection Hook ───
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
@@ -469,8 +511,86 @@ const Footer = ({ dispatch }) => {
 
 const HomePage = ({ dispatch }) => {
   const isMobile = useIsMobile();
+  
+  // JSON-LD Structured Data
+  useEffect(() => {
+    const schemas = [
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Wynflow",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "description": "Quote management and automated follow-up system for New Zealand businesses",
+        "url": "https://www.wynflow.co.nz",
+        "image": "https://www.wynflow.co.nz/og-image.png",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "NZD",
+          "description": "14-day free trial"
+        },
+        "author": {
+          "@type": "Organization",
+          "name": "Wynflow",
+          "url": "https://www.wynflow.co.nz"
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Wynflow",
+        "url": "https://www.wynflow.co.nz",
+        "description": "Quote management for NZ businesses",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://www.wynflow.co.nz/?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is Wynflow?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Wynflow is a quote management platform that automates follow-up emails for New Zealand trades and service businesses. Upload your quote, hit send, and Wynflow chases your customers automatically." }
+          },
+          {
+            "@type": "Question",
+            "name": "How much does Wynflow cost?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Wynflow offers a 14-day free trial with no credit card required. After that, plans start from $29/month for the Starter plan which includes up to 50 quotes per month and automated follow-ups." }
+          },
+          {
+            "@type": "Question",
+            "name": "How do automated follow-ups work?",
+            "acceptedAnswer": { "@type": "Answer", "text": "When you send a quote through Wynflow, automated follow-up emails are sent on a customisable schedule if the customer hasn't responded. Customers can click Book In, Decline, or provide Feedback directly from the email." }
+          },
+          {
+            "@type": "Question",
+            "name": "Is Wynflow built for New Zealand businesses?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes! Wynflow is built in New Zealand specifically for Kiwi trades and service businesses — builders, electricians, plumbers, carpet layers, landscapers, and more." }
+          }
+        ]
+      }
+    ];
+    const existing = document.querySelectorAll('script[data-wynflow-schema]');
+    existing.forEach(el => el.remove());
+    schemas.forEach(schema => {
+      const script = document.createElement("script");
+      script.type = "application/ld+json";
+      script.setAttribute("data-wynflow-schema", "true");
+      script.textContent = JSON.stringify(schema);
+      document.head.appendChild(script);
+    });
+    return () => {
+      document.querySelectorAll('script[data-wynflow-schema]').forEach(el => el.remove());
+    };
+  }, []);
+
   return (
-  <div>
+  <main role="main">
     <div style={{ minHeight:isMobile?"auto":"90vh",display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",background:`radial-gradient(ellipse at 30% 20%,rgba(20,184,166,0.1) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(59,130,246,0.06) 0%,transparent 50%),${theme.bg}`,padding:isMobile?"100px 20px 60px":"120px 48px 80px" }}>
       <div style={{ maxWidth:800 }}>
         <div style={{ display:"inline-flex",alignItems:"center",gap:8,padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:isMobile?20:32 }}><WynflowLogo size={18} /><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>Built for NZ Businesses</span></div>
@@ -540,7 +660,7 @@ const HomePage = ({ dispatch }) => {
       <Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Your Free Trial →</Button>
     </div>
     <Footer dispatch={dispatch} />
-  </div>
+  </main>
   );
 };
 
@@ -1619,6 +1739,7 @@ export default function WynflowApp() {
 
   // ✅ ALL hooks must be called before any conditional returns
   const isMobile = useIsMobile();
+  useSEO(screen);
 
   const loadData = useCallback(async () => {
     if (!business) return;
@@ -1642,8 +1763,21 @@ export default function WynflowApp() {
       supabase.user = savedUser;
       dispatch({ type: "SET_USER", payload: savedUser });
       dispatch({ type: "SET_BUSINESS", payload: savedBusiness });
+    } else {
+      // Route based on URL path for public pages
+      const path = window.location.pathname.replace(/^\//, "").toLowerCase();
+      const routes = { "about": "about", "pricing": "pricing", "login": "login", "signup": "signup" };
+      if (routes[path]) dispatch({ type: "SET_SCREEN", payload: routes[path] });
     }
   }, []);
+
+  // Update URL when screen changes (public pages only)
+  useEffect(() => {
+    const publicPages = { home: "/", about: "/about", pricing: "/pricing" };
+    if (publicPages[screen] !== undefined && !business) {
+      window.history.replaceState(null, "", publicPages[screen]);
+    }
+  }, [screen, business]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
