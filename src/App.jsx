@@ -1521,6 +1521,7 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
       declined: "Quote marked as declined",
     };
     dispatch({ type: "NOTIFY", payload: { message: messages[status] || `Quote marked as ${status}`, type: "success" } });
+    if (status === "booked") dispatch({ type: "GO_BACK" });
   };
 
   return (
