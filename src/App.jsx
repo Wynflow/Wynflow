@@ -217,6 +217,7 @@ const initialState = {
   user: null,
   business: null,
   screen: "home",
+  prevScreen: "dashboard",
   quotes: [],
   sequences: [],
   notification: null,
@@ -234,7 +235,9 @@ function appReducer(state, action) {
     case "LOGOUT":
       return { ...initialState };
     case "SET_SCREEN":
-      return { ...state, screen: action.payload };
+      return { ...state, screen: action.payload, prevScreen: state.screen };
+    case "GO_BACK":
+      return { ...state, screen: state.prevScreen || "dashboard" };
     case "SET_QUOTES":
       return { ...state, quotes: action.payload };
     case "ADD_QUOTE":
@@ -943,6 +946,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "quotes", label: "Quotes", icon: FileText },
+    { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "sequences", label: "Follow-Ups", icon: RefreshCw },
     { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
@@ -1210,6 +1214,140 @@ const QuotesList = ({ quotes, dispatch }) => {
   );
 };
 
+// ─── Analytics ───
+const Analytics = ({ quotes }) => {
+  const isMobile = useIsMobile();
+  
+  // Quote stats
+  const total = quotes.length;
+  const sent = quotes.filter(q => q.status === "sent" || q.status === "opened").length;
+  const accepted = quotes.filter(q => q.status === "accepted").length;
+  const booked = quotes.filter(q => q.status === "booked").length;
+  const declined = quotes.filter(q => q.status === "declined").length;
+  const won = accepted + booked;
+  const responded = won + declined;
+  const winRate = responded > 0 ? Math.round((won / responded) * 100) : 0;
+  const totalRevenue = quotes.filter(q => q.status === "accepted" || q.status === "booked").reduce((sum, q) => sum + parseFloat(q.amount || 0), 0);
+  const avgQuoteValue = total > 0 ? Math.round(totalRevenue / Math.max(won, 1)) : 0;
+
+  // Follow-up effectiveness: which step did they accept on?
+  const acceptedQuotes = quotes.filter(q => q.status === "accepted" || q.status === "booked");
+  const stepCounts = {};
+  acceptedQuotes.forEach(q => {
+    const step = q.current_step || 0;
+    const label = step === 0 ? "Before follow-ups" : `After follow-up ${step}`;
+    stepCounts[label] = (stepCounts[label] || 0) + 1;
+  });
+  const stepData = Object.entries(stepCounts).sort((a, b) => {
+    if (a[0] === "Before follow-ups") return -1;
+    if (b[0] === "Before follow-ups") return 1;
+    return a[0].localeCompare(b[0]);
+  });
+
+  // Monthly trend
+  const monthlyData = {};
+  quotes.forEach(q => {
+    if (!q.created_at) return;
+    const d = new Date(q.created_at);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (!monthlyData[key]) monthlyData[key] = { sent: 0, won: 0, declined: 0, revenue: 0 };
+    monthlyData[key].sent++;
+    if (q.status === "accepted" || q.status === "booked") { monthlyData[key].won++; monthlyData[key].revenue += parseFloat(q.amount || 0); }
+    if (q.status === "declined") monthlyData[key].declined++;
+  });
+  const months = Object.entries(monthlyData).sort((a, b) => a[0].localeCompare(b[0]));
+
+  // Response time
+  const responseTimes = quotes.filter(q => q.sent_at && q.responded_at).map(q => {
+    const sent = new Date(q.sent_at);
+    const resp = new Date(q.responded_at);
+    return Math.round((resp - sent) / (1000 * 60 * 60 * 24));
+  });
+  const avgResponseDays = responseTimes.length > 0 ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length) : null;
+
+  const BarSimple = ({ value, max, color, label, count }) => (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: theme.textMuted, marginBottom: 4 }}>
+        <span>{label}</span><span style={{ fontWeight: 600, color: theme.text }}>{count}</span>
+      </div>
+      <div style={{ height: 8, borderRadius: 4, background: theme.surfaceLight, overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${max > 0 ? (value / max) * 100 : 0}%`, borderRadius: 4, background: color, transition: "width 0.5s" }} />
+      </div>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: isMobile ? 24 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Analytics</h1>
+        <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>See how your quotes are performing</p>
+      </div>
+
+      {/* Top stats */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 24 }}>
+        <Stat label="Win Rate" value={`${winRate}%`} accent={theme.green} icon={BarChart3} />
+        <Stat label="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} accent={theme.green} icon={DollarSign} />
+        <Stat label="Avg Quote Value" value={`$${avgQuoteValue.toLocaleString()}`} accent={theme.accent} icon={DollarSign} />
+        {avgResponseDays !== null && <Stat label="Avg Response Time" value={`${avgResponseDays}d`} accent={theme.accent} icon={Clock} />}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 24, marginBottom: 24 }}>
+        {/* Quote funnel */}
+        <Card>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Quote Funnel</h3>
+          <BarSimple label="Total Sent" value={total} max={total} color={theme.accent} count={total} />
+          <BarSimple label="Awaiting Response" value={sent} max={total} color={theme.blue} count={sent} />
+          <BarSimple label="Accepted" value={accepted} max={total} color="#F59E0B" count={accepted} />
+          <BarSimple label="Booked" value={booked} max={total} color={theme.green} count={booked} />
+          <BarSimple label="Declined" value={declined} max={total} color={theme.red} count={declined} />
+        </Card>
+
+        {/* Which follow-up converts */}
+        <Card>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>When Do Customers Accept?</h3>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 20px" }}>Which follow-up email triggered the acceptance</p>
+          {stepData.length > 0 ? (
+            stepData.map(([label, count]) => (
+              <BarSimple key={label} label={label} value={count} max={Math.max(...stepData.map(s => s[1]))} color={theme.accent} count={count} />
+            ))
+          ) : (
+            <p style={{ fontSize: 14, color: theme.textDim, textAlign: "center", padding: 20 }}>No accepted quotes yet</p>
+          )}
+        </Card>
+      </div>
+
+      {/* Monthly trend */}
+      {months.length > 0 && (
+        <Card>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Monthly Overview</h3>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <thead>
+                <tr>
+                  {["Month", "Sent", "Won", "Declined", "Revenue"].map(h => (
+                    <th key={h} style={{ textAlign: h === "Month" ? "left" : "right", padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, color: theme.textMuted, fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {months.map(([month, data]) => (
+                  <tr key={month}>
+                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}08`, color: theme.text, fontWeight: 500 }}>{new Date(month + "-01").toLocaleDateString("en-NZ", { month: "short", year: "numeric" })}</td>
+                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}08`, color: theme.textMuted, textAlign: "right" }}>{data.sent}</td>
+                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}08`, color: theme.green, textAlign: "right", fontWeight: 600 }}>{data.won}</td>
+                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}08`, color: theme.red, textAlign: "right" }}>{data.declined}</td>
+                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}08`, color: theme.green, textAlign: "right", fontWeight: 600 }}>${data.revenue.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
 // ─── New Quote Form ───
 const NewQuoteForm = ({ dispatch, business, sequences }) => {
   const isMobile = useIsMobile();
@@ -1283,8 +1421,8 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
   return (
     <div>
       <div style={{ marginBottom: 32 }}>
-        <span onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}
-          style={{ fontSize: 14, color: theme.textMuted, cursor: "pointer" }}>← Back to Quotes</span>
+        <span onClick={() => dispatch({ type: "GO_BACK" })}
+          style={{ fontSize: 14, color: theme.textMuted, cursor: "pointer" }}>← Back</span>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: "8px 0 0", fontFamily: theme.fontDisplay }}>New Quote</h1>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 24 }}>
@@ -1388,12 +1526,12 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
   return (
     <div>
       <div style={{ marginBottom: 32 }}>
-        <span onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}
-          style={{ fontSize: 14, color: theme.textMuted, cursor: "pointer", display: "block", marginBottom: 8 }}>← Back to Quotes</span>
+        <span onClick={() => dispatch({ type: "GO_BACK" })}
+          style={{ fontSize: 14, color: theme.textMuted, cursor: "pointer", display: "block", marginBottom: 8 }}>← Back</span>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h1 style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>{quote.job_title}</h1>
-            <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>Quote {quote.quote_number} • Created {new Date(quote.created_at).toLocaleDateString()}</p>
+            <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>Quote {quote.quote_number} • Created {new Date(quote.created_at).toLocaleDateString()}{quote.sent_at ? ` • Sent ${new Date(quote.sent_at).toLocaleDateString()}` : ""}</p>
           </div>
           <Badge status={quote.status} />
         </div>
@@ -2041,6 +2179,7 @@ export default function WynflowApp() {
     switch (activeScreen) {
       case "dashboard": return <Dashboard quotes={quotes} dispatch={dispatch} />;
       case "quotes": return <QuotesList quotes={quotes} dispatch={dispatch} />;
+      case "analytics": return <Analytics quotes={quotes} />;
       case "newQuote": return <NewQuoteForm dispatch={dispatch} business={business} sequences={sequences} />;
       case "sequences": return <SequencesManager sequences={sequences} business={business} dispatch={dispatch} />;
       case "quoteDetail": return <QuoteDetail quoteId={detailId} quotes={quotes} sequences={sequences} dispatch={dispatch} business={business} />;
