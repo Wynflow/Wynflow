@@ -1318,7 +1318,7 @@ const Analytics = ({ quotes }) => {
 
       {/* Monthly trend */}
       {months.length > 0 && (
-        <Card>
+        <Card style={{ marginBottom: 24 }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Monthly Overview</h3>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
@@ -1344,6 +1344,25 @@ const Analytics = ({ quotes }) => {
           </div>
         </Card>
       )}
+
+      {/* Decline reasons */}
+      {(() => {
+        const declinedQuotes = quotes.filter(q => q.status === "declined" && q.decline_reason);
+        if (declinedQuotes.length === 0) return null;
+        const reasonCounts = {};
+        declinedQuotes.forEach(q => { reasonCounts[q.decline_reason] = (reasonCounts[q.decline_reason] || 0) + 1; });
+        const reasonData = Object.entries(reasonCounts).sort((a, b) => b[1] - a[1]);
+        const maxCount = Math.max(...reasonData.map(r => r[1]));
+        return (
+          <Card>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Why Customers Decline</h3>
+            <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 20px" }}>Feedback from {declinedQuotes.length} declined quote{declinedQuotes.length > 1 ? "s" : ""}</p>
+            {reasonData.map(([reason, count]) => (
+              <BarSimple key={reason} label={reason} value={count} max={maxCount} color={theme.red} count={count} />
+            ))}
+          </Card>
+        );
+      })()}
     </div>
   );
 };
@@ -1644,6 +1663,31 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
           </div>
         </Card>
         )}
+        {quote.status === "declined" && (
+        <Card style={{ gridColumn: "1 / -1", background: theme.redSoft, border: `1px solid ${theme.red}33` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: quote.decline_reason ? 16 : 0 }}>
+            <XCircle size={24} color={theme.red} />
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.red, margin: 0 }}>Quote Declined</h3>
+              <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>
+                {quote.responded_at ? `Declined on ${new Date(quote.responded_at).toLocaleDateString()}` : "This quote was declined."}
+              </p>
+            </div>
+          </div>
+          {quote.decline_reason && (
+            <div style={{ padding: 16, borderRadius: 10, background: theme.surfaceLight, marginTop: 8 }}>
+              <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 6 }}>Reason</div>
+              <div style={{ fontSize: 14, color: theme.text, fontWeight: 500 }}>{quote.decline_reason}</div>
+              {quote.decline_comment && (
+                <>
+                  <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 6, marginTop: 12 }}>Comment</div>
+                  <div style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.5, fontStyle: "italic" }}>"{quote.decline_comment}"</div>
+                </>
+              )}
+            </div>
+          )}
+        </Card>
+        )}
         {quote.status !== "accepted" && quote.status !== "declined" && quote.status !== "booked" && (
         <Card style={{ gridColumn: "1 / -1" }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Actions</h3>
@@ -1931,6 +1975,8 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
 };
 
 // ─── Settings ───
+const DEFAULT_DECLINE_REASONS = ["Too expensive", "Went with someone else", "Changed my mind", "Timing isn't right", "Other"];
+
 const Settings = ({ business, dispatch }) => {
   const isMobile = useIsMobile();
   const [businessName, setBusinessName] = useState(business?.business_name || "");
@@ -1939,6 +1985,8 @@ const Settings = ({ business, dispatch }) => {
   const [trade, setTrade] = useState(business?.trade || "");
   const [phone, setPhone] = useState(business?.phone || "");
   const [saving, setSaving] = useState(false);
+  const [declineReasons, setDeclineReasons] = useState(business?.decline_reasons || DEFAULT_DECLINE_REASONS);
+  const [newReason, setNewReason] = useState("");
 
   const saveSettings = async () => {
     setSaving(true);
@@ -1948,10 +1996,29 @@ const Settings = ({ business, dispatch }) => {
       email: email,
       trade: trade,
       phone: phone,
+      decline_reasons: declineReasons,
     });
-    dispatch({ type: "SET_BUSINESS", payload: { ...business, business_name: businessName, contact_name: contactName, email, trade, phone } });
+    dispatch({ type: "SET_BUSINESS", payload: { ...business, business_name: businessName, contact_name: contactName, email, trade, phone, decline_reasons: declineReasons } });
     dispatch({ type: "NOTIFY", payload: { message: "Settings saved!", type: "success" } });
     setSaving(false);
+  };
+
+  const addReason = () => {
+    if (!newReason.trim() || declineReasons.length >= 8) return;
+    setDeclineReasons([...declineReasons, newReason.trim()]);
+    setNewReason("");
+  };
+
+  const removeReason = (index) => {
+    setDeclineReasons(declineReasons.filter((_, i) => i !== index));
+  };
+
+  const moveReason = (index, direction) => {
+    const arr = [...declineReasons];
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= arr.length) return;
+    [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
+    setDeclineReasons(arr);
   };
 
   return (
@@ -1989,6 +2056,30 @@ const Settings = ({ business, dispatch }) => {
             <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>Reply-to:</div>
             <div style={{ fontSize: 14, color: theme.text, fontWeight: 500, marginTop: 4 }}>{email}</div>
           </div>
+        </Card>
+        <Card style={{ gridColumn: "1 / -1" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Decline Questionnaire</h3>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 20px" }}>When a customer declines a quote, they'll see these options. Customise them to get the feedback that matters to you.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+            {declineReasons.map((reason, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {i > 0 && <button onClick={() => moveReason(i, -1)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 12, color: theme.textMuted, lineHeight: 1 }}>↑</button>}
+                  {i < declineReasons.length - 1 && <button onClick={() => moveReason(i, 1)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 12, color: theme.textMuted, lineHeight: 1 }}>↓</button>}
+                </div>
+                <span style={{ flex: 1, fontSize: 14, color: theme.text }}>{reason}</span>
+                <button onClick={() => removeReason(i)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: theme.red, fontSize: 16, lineHeight: 1 }}>×</button>
+              </div>
+            ))}
+          </div>
+          {declineReasons.length < 8 && (
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ flex: 1 }}><Input label="" value={newReason} onChange={setNewReason} placeholder="Add a new reason..." /></div>
+              <Button size="sm" onClick={addReason} style={{ alignSelf: "flex-end" }}><Plus size={14} /> Add</Button>
+            </div>
+          )}
+          {declineReasons.length >= 8 && <div style={{ fontSize: 12, color: theme.textDim }}>Maximum 8 reasons</div>}
+          <p style={{ fontSize: 12, color: theme.textDim, margin: "12px 0 0" }}>Customers can also leave a comment. Hit "Save Changes" above to update.</p>
         </Card>
         <Card style={{ gridColumn: "1 / -1" }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Subscription</h3>
