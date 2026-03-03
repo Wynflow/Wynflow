@@ -1877,6 +1877,33 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
         <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>Customise the automated emails that chase your quotes. Up to {MAX_STEPS} steps per sequence.</p>
       </div>
 
+      <Card style={{ marginBottom: 24, padding: isMobile ? 16 : 24 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 12px" }}>How Follow-Ups Work</h3>
+        <p style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.7, margin: "0 0 16px" }}>
+          When you send a quote, Wynflow automatically sends follow-up emails if the customer doesn't respond.
+          Each step below is one email in the sequence — you control the timing and the message.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <div style={{ width: 24, height: 24, borderRadius: 6, background: theme.accentSoft, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 12, fontWeight: 700, color: theme.accent }}>1</div>
+            <p style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.6, margin: 0 }}><strong style={{ color: theme.text }}>Delay</strong> — how many days after the previous email to send this one. E.g. "2 days" means the customer gets this email 2 days after the quote was sent (or 2 days after the last follow-up).</p>
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <div style={{ width: 24, height: 24, borderRadius: 6, background: theme.accentSoft, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 12, fontWeight: 700, color: theme.accent }}>2</div>
+            <p style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.6, margin: 0 }}><strong style={{ color: theme.text }}>Subject & Body</strong> — write your email message. Use the placeholder buttons to insert customer details that get filled in automatically.</p>
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <div style={{ width: 24, height: 24, borderRadius: 6, background: theme.accentSoft, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 12, fontWeight: 700, color: theme.accent }}>3</div>
+            <p style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.6, margin: 0 }}><strong style={{ color: theme.text }}>Placeholders</strong> — these are the tags like <code style={{ padding: "1px 5px", borderRadius: 3, background: theme.accentSoft, color: theme.accent, fontSize: 12, fontFamily: "monospace" }}>{"{name}"}</code> that automatically become the customer's first name, <code style={{ padding: "1px 5px", borderRadius: 3, background: theme.accentSoft, color: theme.accent, fontSize: 12, fontFamily: "monospace" }}>{"{job}"}</code> becomes the job title, and so on. Click the buttons below each field to insert them.</p>
+          </div>
+        </div>
+        <div style={{ marginTop: 16, padding: 12, borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
+          <p style={{ fontSize: 12, color: theme.textDim, margin: 0, lineHeight: 1.6 }}>
+            <strong style={{ color: theme.textMuted }}>Example:</strong> If your email says "Hi {"{name}"}, just following up on {"{job}"}" and the customer is Kim with a Bathroom Reno quote — they'll receive "Hi Kim, just following up on Bathroom Reno".
+          </p>
+        </div>
+      </Card>
+
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         {sequences.map((seq) => {
           const seqSteps = steps[seq.id] || [];
