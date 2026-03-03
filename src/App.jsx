@@ -543,21 +543,6 @@ const HomePage = ({ dispatch }) => {
         </div>
       </div>
     </div>
-    <div style={{ padding:isMobile?"60px 20px":"100px 48px",background:theme.surface }}>
-      <div style={{ maxWidth:900,margin:"0 auto",textAlign:"center" }}>
-        <h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:theme.text,marginBottom:isMobile?32:64,fontFamily:theme.fontDisplay }}>Trusted by Businesses Across NZ</h2>
-        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?16:24 }}>
-          {[{name:"Mike R.",trade:"Plumber, Auckland",quote:"I used to spend 30 minutes a day chasing quotes. Now Wynflow does it while I'm on the job. Won 3 extra jobs last month."},{name:"Sarah T.",trade:"Interior Designer, Wellington",quote:"The customer response buttons are genius. People actually reply now. My conversion went from 40% to 65%."},{name:"Dave L.",trade:"Builder, Christchurch",quote:"Dead simple to use. Upload the quote, add the email, done. Exactly what busy businesses need."}].map((t,i) => (
-            <div key={i} style={{ padding:isMobile?20:32,borderRadius:16,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"left" }}>
-              <div style={{ display:"flex",gap:4,marginBottom:16 }}>{[1,2,3,4,5].map(s=><Star key={s} size={16} color={theme.accent} fill={theme.accent} />)}</div>
-              <p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.7,marginBottom:20,fontStyle:"italic" }}>"{t.quote}"</p>
-              <div style={{ fontSize:14,fontWeight:600,color:theme.text }}>{t.name}</div>
-              <div style={{ fontSize:12,color:theme.textDim }}>{t.trade}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
     <div style={{ padding:isMobile?"60px 20px":"100px 48px",textAlign:"center",background:`radial-gradient(ellipse at 50% 50%,rgba(20,184,166,0.12) 0%,transparent 60%),${theme.bg}` }}>
       <h2 style={{ fontSize:isMobile?32:44,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Ready to Win More Jobs?</h2>
       <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,marginBottom:40 }}>Join hundreds of NZ businesses who've stopped chasing and started winning.</p>
@@ -1027,6 +1012,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
 // ─── Dashboard ───
 const Dashboard = ({ quotes, dispatch }) => {
   const isMobile = useIsMobile();
+  const [alertDismissed, setAlertDismissed] = useState(false);
   const total = quotes.length;
   const pending = quotes.filter((q) => q.status === "sent" || q.status === "pending" || q.status === "opened").length;
   const accepted = quotes.filter((q) => q.status === "accepted").length;
@@ -1047,17 +1033,19 @@ const Dashboard = ({ quotes, dispatch }) => {
         <Stat label="Booked" value={booked} accent={theme.green} icon={Check} />
         <Stat label="Revenue" value={`$${revenue.toLocaleString()}`} accent={theme.green} icon={DollarSign} />
       </div>
-      {accepted > 0 && (
-        <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}
-          style={{
-            padding: "14px 20px", borderRadius: 10, marginBottom: 20, cursor: "pointer",
+      {accepted > 0 && !alertDismissed && (
+        <div style={{
+            padding: "14px 20px", borderRadius: 10, marginBottom: 20,
             background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)",
             display: "flex", alignItems: "center", gap: 12,
           }}>
           <Clock size={18} color="#F59E0B" />
-          <span style={{ fontSize: 14, color: "#F59E0B", fontWeight: 500 }}>
+          <span onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}
+            style={{ fontSize: 14, color: "#F59E0B", fontWeight: 500, flex: 1, cursor: "pointer" }}>
             {accepted} accepted quote{accepted > 1 ? "s" : ""} need{accepted === 1 ? "s" : ""} to be booked in — call your customer{accepted > 1 ? "s" : ""}!
           </span>
+          <button onClick={() => setAlertDismissed(true)}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#F59E0B", fontSize: 18, lineHeight: 1 }}>×</button>
         </div>
       )}
       <div style={{ display: "flex", gap: 12, marginBottom: 32 }}>
@@ -1532,7 +1520,11 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
     const updates = { status, follow_up_paused: status === "accepted" || status === "declined" || status === "booked" };
     if (status === "accepted" || status === "declined") updates.responded_at = new Date().toISOString();
     if (status === "booked") updates.booked_at = new Date().toISOString();
-    await db("quotes").eq("id", quote.id).update(updates);
+    const { error } = await db("quotes").eq("id", quote.id).update(updates);
+    if (error) {
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to update — try again", type: "error" } });
+      return;
+    }
     dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, ...updates } });
     const messages = {
       accepted: "Quote marked as accepted — now call and book it in!",
@@ -1540,7 +1532,9 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
       declined: "Quote marked as declined",
     };
     dispatch({ type: "NOTIFY", payload: { message: messages[status] || `Quote marked as ${status}`, type: "success" } });
-    if (status === "booked") dispatch({ type: "GO_BACK" });
+    if (status === "booked" || status === "declined") {
+      setTimeout(() => dispatch({ type: "GO_BACK" }), 300);
+    }
   };
 
   return (
@@ -1758,6 +1752,10 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
   };
 
   const saveEdit = async (stepId) => {
+    if (!editForm.email_body.includes("{name}")) {
+      dispatch({ type: "NOTIFY", payload: { message: "Email body must include {name} — click the tag below to re-add it", type: "error" } });
+      return;
+    }
     setSaving(true);
     await db("sequence_steps").eq("id", stepId).update({
       delay_days: parseInt(editForm.delay_days),
@@ -1775,6 +1773,29 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
     setSaving(false);
     dispatch({ type: "NOTIFY", payload: { message: "Step updated!", type: "success" } });
   };
+
+  const insertPlaceholder = (field, tag) => {
+    if (field === "subject") {
+      setEditForm(prev => ({ ...prev, email_subject: prev.email_subject + tag }));
+    } else if (field === "body") {
+      setEditForm(prev => ({ ...prev, email_body: prev.email_body + tag }));
+    } else if (field === "new_subject") {
+      setNewStep(prev => ({ ...prev, subject: prev.subject + tag }));
+    } else if (field === "new_body") {
+      setNewStep(prev => ({ ...prev, body: prev.body + tag }));
+    }
+  };
+
+  const PlaceholderButtons = ({ field }) => (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+      {["{name}", "{job}", "{amount}", "{business_name}"].map(tag => (
+        <button key={tag} onClick={() => insertPlaceholder(field, tag)}
+          style={{ padding: "3px 8px", borderRadius: 4, fontSize: 11, fontFamily: "monospace", background: theme.accentSoft, color: theme.accent, border: "none", cursor: "pointer" }}>
+          + {tag}
+        </button>
+      ))}
+    </div>
+  );
 
   const deleteStep = async (seqId, stepId) => {
     await db("sequence_steps").eq("id", stepId).delete();
@@ -1856,18 +1877,6 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
         <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>Customise the automated emails that chase your quotes. Up to {MAX_STEPS} steps per sequence.</p>
       </div>
 
-      <Card style={{ marginBottom: 20, padding: isMobile ? 16 : 20 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 10 }}>Available Placeholders</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {[{ tag: "{name}", desc: "Customer name" }, { tag: "{job}", desc: "Job title" }, { tag: "{amount}", desc: "Quote amount" }, { tag: "{business_name}", desc: "Your business name" }].map(p => (
-            <span key={p.tag} style={{
-              padding: "4px 10px", borderRadius: 6, fontSize: 12,
-              background: theme.accentSoft, color: theme.accent, fontFamily: "monospace",
-            }}>{p.tag} <span style={{ color: theme.textMuted, fontFamily: theme.font }}>= {p.desc}</span></span>
-          ))}
-        </div>
-      </Card>
-
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         {sequences.map((seq) => {
           const seqSteps = steps[seq.id] || [];
@@ -1900,9 +1909,15 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div style={{ display: "flex", gap: 12, flexDirection: isMobile ? "column" : "row" }}>
                           <div style={{ flex: "0 0 100px" }}><Input label="Delay (days)" value={editForm.delay_days} onChange={v => setEditForm({ ...editForm, delay_days: v })} type="number" /></div>
-                          <div style={{ flex: 1 }}><Input label="Subject Line" value={editForm.email_subject} onChange={v => setEditForm({ ...editForm, email_subject: v })} /></div>
+                          <div style={{ flex: 1 }}>
+                            <Input label="Subject Line" value={editForm.email_subject} onChange={v => setEditForm({ ...editForm, email_subject: v })} />
+                            <PlaceholderButtons field="subject" />
+                          </div>
                         </div>
-                        <Input label="Email Body" value={editForm.email_body} onChange={v => setEditForm({ ...editForm, email_body: v })} textarea />
+                        <div>
+                          <Input label="Email Body" value={editForm.email_body} onChange={v => setEditForm({ ...editForm, email_body: v })} textarea />
+                          <PlaceholderButtons field="body" />
+                        </div>
                         <EmailPreview subject={editForm.email_subject} body={editForm.email_body} />
                         <div style={{ display: "flex", gap: 8, justifyContent: "space-between", flexWrap: "wrap" }}>
                           <Button size="sm" variant="danger" onClick={() => deleteStep(seq.id, step.id)}><XCircle size={14} /> Delete</Button>
@@ -1942,9 +1957,15 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div style={{ display: "flex", gap: 12, flexDirection: isMobile ? "column" : "row" }}>
                       <div style={{ flex: "0 0 100px" }}><Input label="Delay (days)" value={newStep.delay} onChange={v => setNewStep({ ...newStep, delay: v })} type="number" placeholder="e.g. 3" /></div>
-                      <div style={{ flex: 1 }}><Input label="Subject Line" value={newStep.subject} onChange={v => setNewStep({ ...newStep, subject: v })} placeholder="e.g. Following up on your quote for {job}" /></div>
+                      <div style={{ flex: 1 }}>
+                        <Input label="Subject Line" value={newStep.subject} onChange={v => setNewStep({ ...newStep, subject: v })} placeholder="e.g. Following up on your quote for {job}" />
+                        <PlaceholderButtons field="new_subject" />
+                      </div>
                     </div>
-                    <Input label="Email Body" value={newStep.body} onChange={v => setNewStep({ ...newStep, body: v })} textarea placeholder="e.g. Hi {name}, just checking in on the quote for {job}. Cheers, {business_name}" />
+                    <div>
+                      <Input label="Email Body" value={newStep.body} onChange={v => setNewStep({ ...newStep, body: v })} textarea placeholder="e.g. Hi {name}, just checking in on the quote for {job}. Cheers, {business_name}" />
+                      <PlaceholderButtons field="new_body" />
+                    </div>
                     <EmailPreview subject={newStep.subject} body={newStep.body} />
                     <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                       <Button size="sm" variant="secondary" onClick={() => { setAdding(null); setNewStep({ delay: "", subject: "", body: "" }); }}>Cancel</Button>
