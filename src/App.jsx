@@ -1,5 +1,5 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
-import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench } from "lucide-react";
+import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle } from "lucide-react";
 
 // ─── SEO Helper ───
 const SEO_CONFIG = {
@@ -933,6 +933,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
     { id: "quotes", label: "Quotes", icon: FileText },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "sequences", label: "Follow-Ups", icon: RefreshCw },
+    { id: "help", label: "Help", icon: HelpCircle },
     { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
 
@@ -2023,6 +2024,153 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
 };
 
 // ─── Settings ───
+// ─── Help Centre ───
+const HELP_ARTICLES = [
+  { category: "Getting Started", items: [
+    { q: "How do I send my first quote?", a: "Go to your Dashboard and click '+ New Quote'. Fill in your customer's name, email, job title, and amount. If you have a quote PDF, upload it. Choose a follow-up sequence and hit 'Send Quote'. Your customer will receive a branded email with your quote and response buttons." },
+    { q: "What happens after I send a quote?", a: "Your customer gets an email with your quote details (and the PDF if you attached one). They'll see an 'Accept Quote' button and a subtle 'No thanks' link. If they don't respond, Wynflow automatically sends follow-up emails based on your sequence schedule." },
+    { q: "How do I know when a customer responds?", a: "You'll get an email notification when a customer accepts or declines. The quote status also updates in your dashboard in real time. Accepted quotes show an amber alert reminding you to call and book the job in." },
+    { q: "What does the onboarding tutorial cover?", a: "It walks you through the three main steps: sending a quote, how automated follow-ups work, and how to book a job once it's accepted. You'll see it the first time you log in." },
+  ]},
+  { category: "Quotes", items: [
+    { q: "What statuses can a quote have?", a: "Sent (waiting for response), Accepted (customer clicked Accept — you need to call and book), Booked (you've confirmed the job), and Declined (customer chose 'No thanks' and gave feedback)." },
+    { q: "How do I mark a quote as booked?", a: "Click on an accepted quote to open it, then click 'Mark as Booked'. This moves it from the Accepted tab to the Booked tab and updates your analytics." },
+    { q: "Can I attach a PDF to my quote?", a: "Yes! When creating a new quote, click the upload area to attach your quote PDF. It gets sent as an email attachment to your customer." },
+    { q: "What's the quote number (e.g. WF-0001)?", a: "Wynflow automatically generates a unique quote number for every quote you send. It helps you and your customer reference the right job." },
+    { q: "Can I send a follow-up manually?", a: "Yes — open the quote detail page and click 'Send Follow-Up Now'. This sends the next follow-up email in the sequence immediately, regardless of the schedule." },
+    { q: "What happens when a customer declines?", a: "They're shown a short questionnaire asking why (e.g. 'Too expensive', 'Went with someone else'). Their feedback shows up in your quote detail and in the Analytics tab so you can spot trends." },
+  ]},
+  { category: "Follow-Up Sequences", items: [
+    { q: "What is a follow-up sequence?", a: "It's a series of automated emails sent to customers who haven't responded to your quote. You set the timing (e.g. Day 2, Day 5, Day 10) and the message for each step. Wynflow sends them automatically." },
+    { q: "How do I edit my follow-up emails?", a: "Go to the Follow-Ups tab, find the step you want to change, and click 'Edit'. You can change the delay, subject line, and email body. Use the placeholder buttons below each field to insert customer details." },
+    { q: "What are placeholders?", a: "{name} becomes the customer's first name, {job} becomes the job title, {amount} becomes the quote amount, and {business_name} becomes your business name. They're automatically filled in when the email sends." },
+    { q: "How many follow-up steps can I have?", a: "Up to 5 steps per sequence on the Starter plan. Most businesses find 3-4 steps works well — e.g. Day 2 (friendly check-in), Day 5 (gentle nudge), Day 10 (last chance)." },
+    { q: "Can I pause follow-ups for a specific quote?", a: "Follow-ups automatically pause when a customer accepts, declines, or when the sequence completes. Currently you can't pause individual quotes manually, but you can pause the entire sequence." },
+    { q: "Do follow-ups stop when someone responds?", a: "Yes, immediately. As soon as a customer clicks Accept or Decline, all future follow-ups for that quote are cancelled." },
+  ]},
+  { category: "Emails", items: [
+    { q: "What do the emails look like?", a: "Your customer sees a clean, branded email with the Wynflow logo, your business name, the quote details, and response buttons. You can preview exactly how it looks in the Follow-Ups tab when editing a step." },
+    { q: "What email address do quotes come from?", a: "All emails are sent from quotes@wynflow.co.nz on behalf of your business name. When a customer replies, it goes to your business email address." },
+    { q: "Can I customise the email design?", a: "You can customise the subject line and body text of every follow-up email. The overall email design (header, buttons, footer) is consistent across all Wynflow emails for a professional look." },
+    { q: "What if my emails aren't being received?", a: "Check your customer's email address for typos. Some corporate email servers block automated emails — ask your customer to check their spam/junk folder. If the problem persists, contact us." },
+  ]},
+  { category: "Analytics & Dashboard", items: [
+    { q: "What does the Analytics tab show?", a: "Your win rate, total revenue, average quote value, a visual quote funnel (sent → accepted → booked → declined), which follow-up email triggers the most acceptances, monthly trends, and why customers decline." },
+    { q: "What's the 'Win Rate'?", a: "The percentage of responded quotes that were accepted or booked. If 10 customers responded and 7 accepted, your win rate is 70%." },
+    { q: "What does 'When Do Customers Accept?' mean?", a: "It shows which follow-up email triggered the acceptance. If most customers accept after Follow-Up 2, you know your second email is doing the heavy lifting." },
+    { q: "What does the amber alert on the dashboard mean?", a: "It means you have accepted quotes that haven't been booked yet. Click the alert to see them, then call your customers to confirm the job and mark the quote as 'Booked'." },
+  ]},
+  { category: "Settings & Account", items: [
+    { q: "How do I update my business details?", a: "Go to Settings and update your business name, contact name, email, phone, and trade. Hit 'Save Changes'. Your business name appears in all customer emails." },
+    { q: "What are the decline questionnaire options?", a: "When a customer clicks 'No thanks', they see a list of reasons to choose from. You can customise these in Settings under 'Decline Questionnaire' — add, remove, and reorder up to 8 options." },
+    { q: "How do I change my password?", a: "Log out and click 'Forgot password' on the login screen. You'll receive a reset link via email." },
+    { q: "Is my data secure?", a: "Yes. Wynflow uses Supabase for database and authentication, which provides bank-grade encryption. Your data is isolated per business and never shared." },
+  ]},
+  { category: "Billing & Plans", items: [
+    { q: "How does the free trial work?", a: "You get full access to all Starter features with no credit card required. Send unlimited quotes, set up follow-up sequences, and track everything." },
+    { q: "What's included in the Starter plan?", a: "Unlimited quotes, 1 follow-up sequence (up to 5 steps), file attachments, customer response buttons, email support, and the full quote dashboard." },
+    { q: "What do I get with the Pro plan?", a: "Everything in Starter plus unlimited sequences, custom email messages, advanced analytics, custom email branding, team access (up to 3 users), and priority support." },
+  ]},
+];
+
+const HelpCentre = () => {
+  const isMobile = useIsMobile();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [openItem, setOpenItem] = useState(null);
+
+  const filtered = searchQuery.trim()
+    ? HELP_ARTICLES.map(cat => ({
+        ...cat,
+        items: cat.items.filter(item =>
+          item.q.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.a.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      })).filter(cat => cat.items.length > 0)
+    : HELP_ARTICLES;
+
+  const totalResults = filtered.reduce((sum, cat) => sum + cat.items.length, 0);
+
+  return (
+    <div>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: isMobile ? 24 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Help Centre</h1>
+        <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>Find answers to common questions about Wynflow</p>
+      </div>
+
+      <div style={{ position: "relative", marginBottom: 24 }}>
+        <Search size={18} style={{ position: "absolute", left: 14, top: 13, color: theme.textDim }} />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="Search for help... e.g. 'follow-up', 'booked', 'placeholder'"
+          style={{
+            width: "100%", padding: "12px 14px 12px 42px", borderRadius: 10,
+            background: theme.surface, border: `1px solid ${theme.border}`,
+            color: theme.text, fontSize: 14, outline: "none", fontFamily: theme.font,
+          }}
+        />
+        {searchQuery && (
+          <button onClick={() => setSearchQuery("")}
+            style={{ position: "absolute", right: 14, top: 12, background: "none", border: "none", cursor: "pointer", color: theme.textDim, fontSize: 16 }}>×</button>
+        )}
+      </div>
+
+      {searchQuery && (
+        <p style={{ fontSize: 13, color: theme.textMuted, marginBottom: 16 }}>
+          {totalResults} result{totalResults !== 1 ? "s" : ""} for "{searchQuery}"
+        </p>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {filtered.map((cat) => (
+          <Card key={cat.category}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.accent, margin: "0 0 12px", textTransform: "uppercase", letterSpacing: 0.5, fontSize: 12 }}>{cat.category}</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {cat.items.map((item, i) => {
+                const itemKey = cat.category + i;
+                const isOpen = openItem === itemKey;
+                return (
+                  <div key={i}>
+                    <div onClick={() => setOpenItem(isOpen ? null : itemKey)}
+                      style={{
+                        padding: "14px 0", cursor: "pointer",
+                        borderBottom: i < cat.items.length - 1 ? `1px solid ${theme.border}08` : "none",
+                        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
+                      }}>
+                      <span style={{ fontSize: 14, color: theme.text, fontWeight: 500, flex: 1 }}>{item.q}</span>
+                      <span style={{ fontSize: 18, color: theme.textDim, transition: "transform 0.2s", transform: isOpen ? "rotate(45deg)" : "none", flexShrink: 0 }}>+</span>
+                    </div>
+                    {isOpen && (
+                      <div style={{ padding: "0 0 16px", fontSize: 13, color: theme.textMuted, lineHeight: 1.7 }}>
+                        {item.a}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {filtered.length === 0 && (
+        <div style={{ textAlign: "center", padding: 48 }}>
+          <HelpCircle size={32} color={theme.textDim} style={{ marginBottom: 12 }} />
+          <p style={{ fontSize: 14, color: theme.textMuted }}>No results found. Try different keywords.</p>
+          <p style={{ fontSize: 13, color: theme.textDim, marginTop: 8 }}>Still stuck? Email us at <a href="mailto:jesse@wynflow.co.nz" style={{ color: theme.accent }}>jesse@wynflow.co.nz</a></p>
+        </div>
+      )}
+
+      <div style={{ marginTop: 24, padding: 20, borderRadius: 12, background: theme.surface, border: `1px solid ${theme.border}`, textAlign: "center" }}>
+        <p style={{ fontSize: 14, color: theme.textMuted, margin: 0 }}>
+          Can't find what you need? Email us at <a href="mailto:jesse@wynflow.co.nz" style={{ color: theme.accent, fontWeight: 500 }}>jesse@wynflow.co.nz</a> and we'll get back to you.
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const DEFAULT_DECLINE_REASONS = ["Too expensive", "Went with someone else", "Changed my mind", "Timing isn't right", "Other"];
 
 const Settings = ({ business, dispatch }) => {
@@ -2323,6 +2471,7 @@ export default function WynflowApp() {
       case "newQuote": return <NewQuoteForm dispatch={dispatch} business={business} sequences={sequences} />;
       case "sequences": return <SequencesManager sequences={sequences} business={business} dispatch={dispatch} />;
       case "quoteDetail": return <QuoteDetail quoteId={detailId} quotes={quotes} sequences={sequences} dispatch={dispatch} business={business} />;
+      case "help": return <HelpCentre />;
       case "settings": return <Settings business={business} dispatch={dispatch} />;
       default: return <Dashboard quotes={quotes} dispatch={dispatch} />;
     }
