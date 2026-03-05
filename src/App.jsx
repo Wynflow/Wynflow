@@ -48,6 +48,7 @@ const supabase = {
       ...extra,
     };
     if (this.token) h["Authorization"] = `Bearer ${this.token}`;
+    else h["Authorization"] = `Bearer ${SUPABASE_ANON_KEY}`;
     return h;
   },
 
