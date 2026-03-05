@@ -306,6 +306,7 @@ const theme = {
 const statusConfig = {
   draft: { label: "Draft", color: theme.textMuted, bg: "rgba(139,149,168,0.12)" },
   pending: { label: "Pending", color: theme.blue, bg: theme.blueSoft },
+  requested: { label: "Requested", color: "#8B5CF6", bg: "rgba(139,92,246,0.12)" },
   sent: { label: "Sent", color: theme.accent, bg: theme.accentSoft },
   opened: { label: "Opened", color: theme.accentBlue, bg: theme.accentBlueSoft },
   accepted: { label: "Accepted", color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
@@ -491,17 +492,58 @@ const Footer = ({ dispatch }) => {
   );
 };
 
-const HomePage = ({ dispatch }) => {
+const EmailPreviewModal = ({ onClose }) => {
   const isMobile = useIsMobile();
   return (
+    <div onClick={onClose} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(4px)" }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto", borderRadius: 16, boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
+        <div style={{ background: "#ffffff", borderRadius: 16, overflow: "hidden" }}>
+          <div style={{ background: "#ffffff", padding: "28px 32px", textAlign: "center", borderBottom: "3px solid #14B8A6" }}>
+            <img src="https://www.wynflow.co.nz/logo.png" alt="Wynflow" style={{ width: 44, height: "auto", marginBottom: 10 }} />
+            <h1 style={{ color: "#0A0E17", margin: 0, fontSize: 22, fontWeight: 700 }}>Quote from Smith's Plumbing</h1>
+          </div>
+          <div style={{ padding: 32 }}>
+            <p style={{ fontSize: 16, color: "#374151", margin: "0 0 8px" }}>Hi Sarah,</p>
+            <p style={{ fontSize: 15, color: "#6b7280", lineHeight: 1.6, margin: "0 0 24px" }}>Please find attached our quote for <strong>Bathroom Renovation</strong>.</p>
+            <div style={{ background: "#f9fafb", borderRadius: 10, padding: 20, margin: "0 0 24px" }}>
+              <table style={{ width: "100%" }}><tbody>
+                <tr><td style={{ color: "#6b7280", fontSize: 14, padding: "4px 0" }}>Job:</td><td style={{ color: "#111827", fontSize: 14, fontWeight: 600, textAlign: "right" }}>Bathroom Renovation</td></tr>
+                <tr><td style={{ color: "#6b7280", fontSize: 14, padding: "4px 0" }}>Amount:</td><td style={{ color: "#14B8A6", fontSize: 20, fontWeight: 700, textAlign: "right" }}>$4,500</td></tr>
+                <tr><td style={{ color: "#6b7280", fontSize: 14, padding: "4px 0" }}>Quote #:</td><td style={{ color: "#111827", fontSize: 14, textAlign: "right" }}>WF-0042</td></tr>
+              </tbody></table>
+            </div>
+            <div style={{ textAlign: "center", margin: "0 0 16px" }}>
+              <span style={{ display: "inline-block", background: "#22C55E", color: "#fff", padding: "16px 48px", borderRadius: 8, fontWeight: 700, fontSize: 16 }}>Accept Quote</span>
+            </div>
+            <div style={{ textAlign: "center", margin: "0 0 24px" }}>
+              <span style={{ color: "#9ca3af", fontSize: 13, textDecoration: "underline" }}>No thanks</span>
+            </div>
+            <hr style={{ border: "none", borderTop: "1px solid #e5e7eb", margin: "24px 0" }} />
+            <p style={{ fontSize: 12, color: "#9ca3af", textAlign: "center" }}>Sent via <span style={{ color: "#14B8A6" }}>Wynflow</span> on behalf of Smith's Plumbing</p>
+          </div>
+        </div>
+        <div style={{ textAlign: "center", padding: "16px 0" }}>
+          <span onClick={onClose} style={{ fontSize: 14, color: "#fff", cursor: "pointer", fontWeight: 500 }}>Close preview ×</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const HomePage = ({ dispatch }) => {
+  const isMobile = useIsMobile();
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  return (
   <div>
+    {showEmailPreview && <EmailPreviewModal onClose={() => setShowEmailPreview(false)} />}
     <div style={{ minHeight:isMobile?"auto":"90vh",display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",background:`radial-gradient(ellipse at 30% 20%,rgba(20,184,166,0.1) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(59,130,246,0.06) 0%,transparent 50%),${theme.bg}`,padding:isMobile?"100px 20px 60px":"120px 48px 80px" }}>
       <div style={{ maxWidth:800 }}>
         <div style={{ display:"inline-flex",alignItems:"center",gap:8,padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:isMobile?20:32 }}><WynflowLogo size={18} /><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>Built for NZ Businesses</span></div>
         <h1 style={{ fontSize:isMobile?36:64,fontWeight:800,color:theme.text,lineHeight:1.1,marginBottom:isMobile?16:24,fontFamily:theme.fontDisplay }}>Stop Chasing Quotes.<br /><span style={{ color:theme.accent }}>Start Winning Jobs.</span></h1>
         <p style={{ fontSize:isMobile?16:20,color:theme.textMuted,lineHeight:1.6,maxWidth:600,margin:"0 auto 40px" }}>Upload your quote, hit send, and let Wynflow handle the follow-ups. Automated emails chase your customers so you can focus on what you do best.</p>
         <div style={{ display:"flex",gap:12,justifyContent:"center",flexDirection:isMobile?"column":"row",alignItems:"center" }}><Button size={isMobile?"md":"lg"} onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Free Trial →</Button><Button size={isMobile?"md":"lg"} variant="secondary" onClick={() => dispatch({ type:"SET_SCREEN",payload:"pricing" })}>View Pricing</Button></div>
-        <p style={{ fontSize:13,color:theme.textDim,marginTop:16 }}>No credit card required • 14-day free trial • Cancel anytime</p>
+        <div style={{ marginTop:16 }}><span onClick={() => setShowEmailPreview(true)} style={{ fontSize:14,color:theme.accent,cursor:"pointer",fontWeight:500,textDecoration:"underline",textUnderlineOffset:3 }}>See what your customers receive →</span></div>
+        <p style={{ fontSize:13,color:theme.textDim,marginTop:12 }}>No credit card required • 14-day free trial • Cancel anytime</p>
       </div>
     </div>
     <div style={{ padding:isMobile?"60px 20px":"100px 48px",background:theme.surface }}>
@@ -550,6 +592,108 @@ const HomePage = ({ dispatch }) => {
     </div>
     <Footer dispatch={dispatch} />
   </div>
+  );
+};
+
+// ─── Request Quote Page (Public) ───
+const RequestQuotePage = ({ businessId }) => {
+  const isMobile = useIsMobile();
+  const [form, setForm] = useState({ name: "", email: "", phone: "", jobTitle: "", description: "" });
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [businessName, setBusinessName] = useState("");
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (businessId) {
+      db("businesses").eq("id", businessId).select("business_name").then(({ data }) => {
+        if (data && data[0]) setBusinessName(data[0].business_name);
+        else setError("Business not found");
+      });
+    }
+  }, [businessId]);
+
+  const handleSubmit = async () => {
+    if (!form.name || !form.email || !form.jobTitle) {
+      setError("Please fill in your name, email, and job description");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const { error: insertErr } = await db("quotes").insert({
+        business_id: businessId,
+        quote_number: "",
+        customer_name: form.name,
+        customer_email: form.email,
+        customer_phone: form.phone || null,
+        job_title: form.jobTitle,
+        description: form.description || null,
+        amount: 0,
+        status: "requested",
+      });
+      if (insertErr) throw new Error("Failed to submit");
+      setSubmitted(true);
+    } catch (err) {
+      setError("Something went wrong — please try again or contact the business directly.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (error === "Business not found") {
+    return (
+      <div style={{ minHeight: "100vh", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <div style={{ textAlign: "center", color: theme.textMuted }}>
+          <h1 style={{ fontSize: 24, color: theme.text, fontFamily: theme.fontDisplay }}>Page not found</h1>
+          <p style={{ marginTop: 8 }}>This quote request link is invalid.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (submitted) {
+    return (
+      <div style={{ minHeight: "100vh", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <div style={{ width: "100%", maxWidth: 480, background: theme.surface, borderRadius: 20, overflow: "hidden", border: `1px solid ${theme.border}`, textAlign: "center" }}>
+          <div style={{ padding: "40px 32px", background: `linear-gradient(135deg, ${theme.bg}, ${theme.surfaceLight})` }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: theme.text, margin: "0 0 12px", fontFamily: theme.fontDisplay }}>Request Sent!</h1>
+            <p style={{ fontSize: 15, color: theme.textMuted, lineHeight: 1.6 }}>
+              Thanks {form.name.split(" ")[0]}! <strong style={{ color: theme.text }}>{businessName}</strong> has received your quote request and will be in touch soon.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ width: "100%", maxWidth: 480, background: theme.surface, borderRadius: 20, overflow: "hidden", border: `1px solid ${theme.border}` }}>
+        <div style={{ padding: "28px 32px", textAlign: "center", borderBottom: `3px solid ${theme.accent}` }}>
+          <WynflowLogo size={36} />
+          {businessName && <h1 style={{ fontSize: 20, fontWeight: 700, color: theme.text, margin: "12px 0 0", fontFamily: theme.fontDisplay }}>Request a Quote from {businessName}</h1>}
+          <p style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>Fill in your details and we'll get back to you with a quote</p>
+        </div>
+        <div style={{ padding: isMobile ? 24 : 32 }}>
+          {error && <div style={{ padding: "10px 14px", borderRadius: 8, background: theme.redSoft, color: theme.red, fontSize: 13, marginBottom: 16 }}>{error}</div>}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <Input label="Your Name *" value={form.name} onChange={v => setForm({ ...form, name: v })} placeholder="e.g. Kim Smith" />
+            <Input label="Email *" value={form.email} onChange={v => setForm({ ...form, email: v })} type="email" placeholder="e.g. kim@email.com" />
+            <Input label="Phone (optional)" value={form.phone} onChange={v => setForm({ ...form, phone: v })} placeholder="e.g. 021 123 4567" />
+            <Input label="What do you need a quote for? *" value={form.jobTitle} onChange={v => setForm({ ...form, jobTitle: v })} placeholder="e.g. Bathroom renovation, rewiring, etc." />
+            <Input label="Any extra details? (optional)" value={form.description} onChange={v => setForm({ ...form, description: v })} textarea placeholder="e.g. 3-bedroom house, timeframe, specific requirements..." />
+            <Button onClick={handleSubmit} disabled={loading} style={{ width: "100%", justifyContent: "center", padding: "14px 24px", marginTop: 4 }}>
+              {loading ? "Submitting..." : "Request Quote →"}
+            </Button>
+          </div>
+          <p style={{ fontSize: 11, color: theme.textDim, textAlign: "center", marginTop: 16 }}>
+            Powered by <a href="https://www.wynflow.co.nz" style={{ color: theme.accent }} target="_blank" rel="noopener">Wynflow</a>
+          </p>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -1014,6 +1158,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
 const Dashboard = ({ quotes, dispatch }) => {
   const isMobile = useIsMobile();
   const [alertDismissed, setAlertDismissed] = useState(false);
+  const requested = quotes.filter((q) => q.status === "requested").length;
   const total = quotes.length;
   const pending = quotes.filter((q) => q.status === "sent" || q.status === "pending" || q.status === "opened").length;
   const accepted = quotes.filter((q) => q.status === "accepted").length;
@@ -1034,6 +1179,19 @@ const Dashboard = ({ quotes, dispatch }) => {
         <Stat label="Booked" value={booked} accent={theme.green} icon={Check} />
         <Stat label="Revenue" value={`$${revenue.toLocaleString()}`} accent={theme.green} icon={DollarSign} />
       </div>
+      {requested > 0 && (
+        <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}
+          style={{
+            padding: "14px 20px", borderRadius: 10, marginBottom: 12, cursor: "pointer",
+            background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)",
+            display: "flex", alignItems: "center", gap: 12,
+          }}>
+          <MessageSquare size={18} color="#8B5CF6" />
+          <span style={{ fontSize: 14, color: "#8B5CF6", fontWeight: 500 }}>
+            {requested} new quote request{requested > 1 ? "s" : ""} — review and send a quote!
+          </span>
+        </div>
+      )}
       {accepted > 0 && !alertDismissed && (
         <div style={{
             padding: "14px 20px", borderRadius: 10, marginBottom: 20,
@@ -1123,7 +1281,7 @@ const QuotesList = ({ quotes, dispatch }) => {
         <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })}><Plus size={16} /> New Quote</Button>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
-        {["all", "sent", "opened", "accepted", "booked", "declined"].map((f) => (
+        {["all", "requested", "sent", "opened", "accepted", "booked", "declined"].map((f) => (
           <span key={f} onClick={() => setFilter(f)}
             style={{
               padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: "pointer",
@@ -2252,6 +2410,17 @@ const Settings = ({ business, dispatch }) => {
           </div>
         </Card>
         <Card style={{ gridColumn: "1 / -1" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Request a Quote Link</h3>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Share this link on your website or social media. Customers can request a quote directly and it'll appear in your dashboard.</p>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ flex: 1, padding: "12px 16px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}`, fontSize: 13, color: theme.accent, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {`https://www.wynflow.co.nz/request/${business.id}`}
+            </div>
+            <Button size="sm" onClick={() => { navigator.clipboard.writeText(`https://www.wynflow.co.nz/request/${business.id}`); dispatch({ type: "NOTIFY", payload: { message: "Link copied!", type: "success" } }); }}>Copy</Button>
+          </div>
+          <p style={{ fontSize: 12, color: theme.textDim, margin: "12px 0 0" }}>Add this as a button on your website like "Request a Quote" — customers fill in their details and you'll see it in your Quotes tab.</p>
+        </Card>
+        <Card style={{ gridColumn: "1 / -1" }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Feedback Questionnaire</h3>
           <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 20px" }}>When a customer clicks 'No thanks', they'll see these options. Customise them to get the feedback that matters to your business.</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
@@ -2375,7 +2544,12 @@ export default function WynflowApp() {
     } else {
       const path = window.location.pathname.replace(/^\//, "").toLowerCase();
       const routes = { "about": "about", "pricing": "pricing", "login": "login", "signup": "signup" };
-      if (routes[path]) dispatch({ type: "SET_SCREEN", payload: routes[path] });
+      if (path.startsWith("request/")) {
+        const bizId = window.location.pathname.split("/request/")[1];
+        if (bizId) dispatch({ type: "SET_SCREEN", payload: "requestQuote:" + bizId });
+      } else if (routes[path]) {
+        dispatch({ type: "SET_SCREEN", payload: routes[path] });
+      }
     }
   }, []);
 
@@ -2438,6 +2612,15 @@ export default function WynflowApp() {
           {screen === "about" && <AboutPage dispatch={dispatch} />}
           {screen === "pricing" && <PricingPage dispatch={dispatch} />}
         </div>
+      </>
+    );
+  }
+
+  if (activeScreen === "requestQuote" && detailId) {
+    return (
+      <>
+        <style>{globalStyles}</style>
+        <RequestQuotePage businessId={detailId} />
       </>
     );
   }
