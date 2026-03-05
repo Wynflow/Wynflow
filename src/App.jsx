@@ -1428,67 +1428,65 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
 
   return (
     <div>
-      <div style={{ marginBottom: 32 }}>
+      <div style={{ marginBottom: isMobile ? 16 : 32 }}>
         <span onClick={() => dispatch({ type: "GO_BACK" })}
           style={{ fontSize: 14, color: theme.textMuted, cursor: "pointer" }}>← Back</span>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: "8px 0 0", fontFamily: theme.fontDisplay }}>New Quote</h1>
+        <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: "8px 0 0", fontFamily: theme.fontDisplay }}>New Quote</h1>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 24 }}>
-        <Card>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Customer Details</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 24 }}>
+        <Card style={isMobile ? { padding: 16 } : {}}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 12px" }}>Customer Details</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <Input label="Customer Name *" value={form.customerName} onChange={(v) => update("customerName", v)} />
             <Input label="Email *" value={form.customerEmail} onChange={(v) => update("customerEmail", v)} type="email" />
             <Input label="Phone (optional)" value={form.customerPhone} onChange={(v) => update("customerPhone", v)} />
           </div>
         </Card>
-        <Card>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Job Details</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <Card style={isMobile ? { padding: 16 } : {}}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 12px" }}>Job Details</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <Input label="Job Title *" value={form.jobTitle} onChange={(v) => update("jobTitle", v)} />
             <Input label="Description" value={form.description} onChange={(v) => update("description", v)} textarea />
             <Input label="Quote Amount ($) *" value={form.amount} onChange={(v) => update("amount", v)} type="number" />
           </div>
         </Card>
-        <Card>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Quote File</h3>
-          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Upload your quote to attach to the email</p>
+        <Card style={isMobile ? { padding: 16 } : {}}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 10px" }}>Quote File</h3>
           <Input label="Upload File" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" onFileChange={(e) => setPdfFile(e.target.files[0])} />
           {pdfFile && (
-            <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: theme.greenSoft, color: theme.green, fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
-              <Paperclip size={14} /> {pdfFile.name} ({(pdfFile.size / 1024).toFixed(0)} KB)
+            <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 8, background: theme.greenSoft, color: theme.green, fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
+              <Paperclip size={12} /> {pdfFile.name}
             </div>
           )}
         </Card>
-        <Card>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Follow-Up Sequence</h3>
-          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Choose an automated sequence to chase this quote</p>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <Card style={isMobile ? { padding: 16 } : {}}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 10px" }}>Follow-Up Sequence</h3>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {sequences.map((seq) => (
               <div key={seq.id} onClick={() => update("sequenceId", seq.id)}
                 style={{
-                  padding: "14px 20px", borderRadius: 12, cursor: "pointer",
+                  padding: "10px 16px", borderRadius: 10, cursor: "pointer",
                   background: form.sequenceId === seq.id ? theme.accentSoft : theme.surfaceLight,
                   border: `1px solid ${form.sequenceId === seq.id ? theme.accent + "44" : theme.border}`,
                 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: form.sequenceId === seq.id ? theme.accent : theme.text }}>{seq.name}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: form.sequenceId === seq.id ? theme.accent : theme.text }}>{seq.name}</div>
               </div>
             ))}
             <div onClick={() => update("sequenceId", "")}
               style={{
-                padding: "14px 20px", borderRadius: 12, cursor: "pointer",
+                padding: "10px 16px", borderRadius: 10, cursor: "pointer",
                 background: !form.sequenceId ? theme.redSoft : theme.surfaceLight,
                 border: `1px solid ${!form.sequenceId ? theme.red + "44" : theme.border}`,
               }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: !form.sequenceId ? theme.red : theme.text }}>No Follow-Up</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: !form.sequenceId ? theme.red : theme.text }}>No Follow-Up</div>
             </div>
           </div>
         </Card>
       </div>
-      <div style={{ display: "flex", gap: 12, marginTop: 24, justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", gap: 12, marginTop: isMobile ? 16 : 24, justifyContent: "flex-end" }}>
         <Button variant="secondary" onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}>Cancel</Button>
         <Button onClick={handleCreate} disabled={loading}>
-          {loading ? "Sending..." : "Send Quote & Start Follow-Ups →"}
+          {loading ? "Sending..." : isMobile ? "Send Quote →" : "Send Quote & Start Follow-Ups →"}
         </Button>
       </div>
     </div>
