@@ -2533,6 +2533,12 @@ export default function WynflowApp() {
 
   // Restore session on mount
   useEffect(() => {
+    const path = window.location.pathname.replace(/^\//, "").toLowerCase();
+    if (path.startsWith("request/")) {
+      const bizId = window.location.pathname.split("/request/")[1];
+      if (bizId) dispatch({ type: "SET_SCREEN", payload: "requestQuote:" + bizId });
+      return;
+    }
     const savedToken = getCookie("wynflow_token");
     const savedUser = getCookie("wynflow_user");
     const savedBusiness = getCookie("wynflow_business");
@@ -2542,12 +2548,8 @@ export default function WynflowApp() {
       dispatch({ type: "SET_USER", payload: savedUser });
       dispatch({ type: "SET_BUSINESS", payload: savedBusiness });
     } else {
-      const path = window.location.pathname.replace(/^\//, "").toLowerCase();
       const routes = { "about": "about", "pricing": "pricing", "login": "login", "signup": "signup" };
-      if (path.startsWith("request/")) {
-        const bizId = window.location.pathname.split("/request/")[1];
-        if (bizId) dispatch({ type: "SET_SCREEN", payload: "requestQuote:" + bizId });
-      } else if (routes[path]) {
+      if (routes[path]) {
         dispatch({ type: "SET_SCREEN", payload: routes[path] });
       }
     }
