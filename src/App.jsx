@@ -605,12 +605,21 @@ const RequestQuotePage = ({ businessId }) => {
   const [businessName, setBusinessName] = useState("");
   const [error, setError] = useState(null);
 
+  const anonHeaders = {
+    "Content-Type": "application/json",
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  };
+
   useEffect(() => {
     if (businessId) {
-      db("businesses").eq("id", businessId).select("business_name").then(({ data }) => {
-        if (data && data[0]) setBusinessName(data[0].business_name);
-        else setError("Business not found");
-      });
+      fetch(`${SUPABASE_URL}/rest/v1/businesses?id=eq.${businessId}&select=business_name`, { headers: anonHeaders })
+        .then(r => r.json())
+        .then(data => {
+          if (data && data[0]) setBusinessName(data[0].business_name);
+          else setError("Business not found");
+        })
+        .catch(() => setError("Business not found"));
     }
   }, [businessId]);
 
@@ -622,18 +631,22 @@ const RequestQuotePage = ({ businessId }) => {
     setLoading(true);
     setError(null);
     try {
-      const { error: insertErr } = await db("quotes").insert({
-        business_id: businessId,
-        quote_number: "",
-        customer_name: form.name,
-        customer_email: form.email,
-        customer_phone: form.phone || null,
-        job_title: form.jobTitle,
-        description: form.description || null,
-        amount: 0,
-        status: "requested",
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/quotes`, {
+        method: "POST",
+        headers: { ...anonHeaders, Prefer: "return=representation" },
+        body: JSON.stringify([{
+          business_id: businessId,
+          quote_number: "",
+          customer_name: form.name,
+          customer_email: form.email,
+          customer_phone: form.phone || null,
+          job_title: form.jobTitle,
+          description: form.description || null,
+          amount: 0,
+          status: "requested",
+        }]),
       });
-      if (insertErr) throw new Error("Failed to submit");
+      if (!res.ok) throw new Error("Failed to submit");
       setSubmitted(true);
     } catch (err) {
       setError("Something went wrong — please try again or contact the business directly.");
