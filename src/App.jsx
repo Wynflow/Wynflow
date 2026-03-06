@@ -641,6 +641,27 @@ const RequestQuotePage = ({ businessId }) => {
     reader.readAsDataURL(file);
   });
 
+  const compressImage = (file, maxSize = 1200) => new Promise((resolve) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let w = img.width, h = img.height;
+        if (w > maxSize || h > maxSize) {
+          if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+          else { w = Math.round(w * maxSize / h); h = maxSize; }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
   const handleSubmit = async () => {
     if (!form.name || !form.email || !form.jobTitle) {
       setError("Please fill in your name, email, and job description");
@@ -651,8 +672,8 @@ const RequestQuotePage = ({ businessId }) => {
     try {
       const photoData = [];
       for (const photo of photos) {
-        const base64 = await toBase64(photo);
-        photoData.push({ name: photo.name, type: photo.type, data: base64 });
+        const compressed = await compressImage(photo);
+        photoData.push({ name: photo.name, type: "image/jpeg", data: compressed });
       }
       const res = await fetch("https://wynfallautomation.app.n8n.cloud/webhook/quote-request", {
         method: "POST",
