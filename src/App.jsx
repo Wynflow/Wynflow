@@ -600,10 +600,14 @@ const HomePage = ({ dispatch }) => {
 const RequestQuotePage = ({ businessId }) => {
   const isMobile = useIsMobile();
   const [form, setForm] = useState({ name: "", email: "", phone: "", jobTitle: "", description: "" });
+  const [photos, setPhotos] = useState([]);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [businessName, setBusinessName] = useState("");
+  const [businessData, setBusinessData] = useState(null);
   const [error, setError] = useState(null);
+  const [aiEstimate, setAiEstimate] = useState(null);
 
   const anonHeaders = {
     "Content-Type": "application/json",
@@ -613,15 +617,87 @@ const RequestQuotePage = ({ businessId }) => {
 
   useEffect(() => {
     if (businessId) {
-      fetch(`${SUPABASE_URL}/rest/v1/businesses?id=eq.${businessId}&select=business_name`, { headers: anonHeaders })
+      fetch(`${SUPABASE_URL}/rest/v1/businesses?id=eq.${businessId}&select=business_name,trade_category,hourly_rate,callout_fee,common_jobs,show_estimate_to_customer`, { headers: anonHeaders })
         .then(r => r.json())
         .then(data => {
-          if (data && data[0]) setBusinessName(data[0].business_name);
+          if (data && data[0]) setBusinessData(data[0]);
           else setError("Business not found");
         })
         .catch(() => setError("Business not found"));
     }
   }, [businessId]);
+
+  const handlePhotoAdd = (e) => {
+    const files = Array.from(e.target.files).slice(0, 5 - photos.length);
+    setPhotos(prev => [...prev, ...files]);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => setPhotoPreviews(prev => [...prev, ev.target.result]);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removePhoto = (index) => {
+    setPhotos(prev => prev.filter((_, i) => i !== index));
+    setPhotoPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadPhotos = async () => {
+    const urls = [];
+    for (const photo of photos) {
+      const filename = `${businessId}/${Date.now()}-${Math.random().toString(36).slice(2)}-${photo.name}`;
+      const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/quote-request-photos/${filename}`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": photo.type },
+        body: photo,
+      });
+      if (uploadRes.ok) {
+        urls.push(`${SUPABASE_URL}/storage/v1/object/public/quote-request-photos/${filename}`);
+      }
+    }
+    return urls;
+  };
+
+  const getAiEstimate = async (photoUrls) => {
+    if (!businessData?.hourly_rate && (!businessData?.common_jobs || businessData.common_jobs.length === 0)) return null;
+    setAiLoading(true);
+    try {
+      const imageContent = photoUrls.slice(0, 3).map(url => ({ type: "image", source: { type: "url", url } }));
+      const prompt = `You are a quoting assistant for a ${businessData.trade_category || "trades"} business in New Zealand.
+
+Their pricing:
+- Hourly rate: $${businessData.hourly_rate || "not set"}/hr
+- Callout fee: $${businessData.callout_fee || 0}
+${businessData.common_jobs && businessData.common_jobs.length > 0 ? "- Common jobs: " + businessData.common_jobs.map(j => j.name + ": $" + j.typical_price).join(", ") : ""}
+
+Customer request:
+- Job: "${form.jobTitle}"
+- Details: "${form.description || "None"}"
+${photoUrls.length > 0 ? "- " + photoUrls.length + " photo(s) attached" : ""}
+
+Estimate a price range in NZD. Consider labour, materials, complexity.
+Respond ONLY with JSON, no markdown: {"estimate_low": NUMBER, "estimate_high": NUMBER, "estimated_hours": NUMBER, "notes": "Brief explanation", "job_category": "Type of job"}`;
+
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          messages: [{ role: "user", content: [...imageContent, { type: "text", text: prompt }] }],
+        }),
+      });
+      const data = await res.json();
+      const text = data.content?.find(c => c.type === "text")?.text || "";
+      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+      setAiEstimate(parsed);
+      return parsed;
+    } catch (err) {
+      return null;
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!form.name || !form.email || !form.jobTitle) {
@@ -631,6 +707,8 @@ const RequestQuotePage = ({ businessId }) => {
     setLoading(true);
     setError(null);
     try {
+      const photoUrls = photos.length > 0 ? await uploadPhotos() : [];
+      const estimate = await getAiEstimate(photoUrls);
       const res = await fetch(`${SUPABASE_URL}/rest/v1/quotes`, {
         method: "POST",
         headers: { ...anonHeaders, Prefer: "return=representation" },
@@ -644,6 +722,11 @@ const RequestQuotePage = ({ businessId }) => {
           description: form.description || null,
           amount: 0,
           status: "requested",
+          photos: photoUrls,
+          ai_estimate: estimate ? Math.round((estimate.estimate_low + estimate.estimate_high) / 2) : null,
+          ai_estimate_range_low: estimate?.estimate_low || null,
+          ai_estimate_range_high: estimate?.estimate_high || null,
+          ai_estimate_notes: estimate?.notes || null,
         }]),
       });
       if (!res.ok) throw new Error("Failed to submit");
@@ -671,11 +754,18 @@ const RequestQuotePage = ({ businessId }) => {
       <div style={{ minHeight: "100vh", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
         <div style={{ width: "100%", maxWidth: 480, background: theme.surface, borderRadius: 20, overflow: "hidden", border: `1px solid ${theme.border}`, textAlign: "center" }}>
           <div style={{ padding: "40px 32px", background: `linear-gradient(135deg, ${theme.bg}, ${theme.surfaceLight})` }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>\u2705</div>
             <h1 style={{ fontSize: 24, fontWeight: 700, color: theme.text, margin: "0 0 12px", fontFamily: theme.fontDisplay }}>Request Sent!</h1>
             <p style={{ fontSize: 15, color: theme.textMuted, lineHeight: 1.6 }}>
-              Thanks {form.name.split(" ")[0]}! <strong style={{ color: theme.text }}>{businessName}</strong> has received your quote request and will be in touch soon.
+              Thanks {form.name.split(" ")[0]}! <strong style={{ color: theme.text }}>{businessData?.business_name}</strong> has received your request and will be in touch soon.
             </p>
+            {aiEstimate && businessData?.show_estimate_to_customer && (
+              <div style={{ marginTop: 20, padding: 16, borderRadius: 12, background: theme.accentSoft, border: `1px solid ${theme.accent}22` }}>
+                <div style={{ fontSize: 12, color: theme.accent, fontWeight: 600, marginBottom: 4 }}>Estimated Price Range</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: theme.accent }}>${aiEstimate.estimate_low} \u2014 ${aiEstimate.estimate_high}</div>
+                <div style={{ fontSize: 12, color: theme.textDim, marginTop: 4 }}>This is an AI estimate only \u2014 the final quote may differ</div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -684,22 +774,42 @@ const RequestQuotePage = ({ businessId }) => {
 
   return (
     <div style={{ minHeight: "100vh", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div style={{ width: "100%", maxWidth: 480, background: theme.surface, borderRadius: 20, overflow: "hidden", border: `1px solid ${theme.border}` }}>
+      <div style={{ width: "100%", maxWidth: 500, background: theme.surface, borderRadius: 20, overflow: "hidden", border: `1px solid ${theme.border}` }}>
         <div style={{ padding: "28px 32px", textAlign: "center", borderBottom: `3px solid ${theme.accent}` }}>
           <WynflowLogo size={36} />
-          {businessName && <h1 style={{ fontSize: 20, fontWeight: 700, color: theme.text, margin: "12px 0 0", fontFamily: theme.fontDisplay }}>Request a Quote from {businessName}</h1>}
-          <p style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>Fill in your details and we'll get back to you with a quote</p>
+          {businessData && <h1 style={{ fontSize: 20, fontWeight: 700, color: theme.text, margin: "12px 0 0", fontFamily: theme.fontDisplay }}>Request a Quote from {businessData.business_name}</h1>}
+          <p style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>Fill in your details, add photos if you can, and we'll get back to you</p>
         </div>
         <div style={{ padding: isMobile ? 24 : 32 }}>
-          {error && <div style={{ padding: "10px 14px", borderRadius: 8, background: theme.redSoft, color: theme.red, fontSize: 13, marginBottom: 16 }}>{error}</div>}
+          {error && error !== "Business not found" && <div style={{ padding: "10px 14px", borderRadius: 8, background: theme.redSoft, color: theme.red, fontSize: 13, marginBottom: 16 }}>{error}</div>}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Input label="Your Name *" value={form.name} onChange={v => setForm({ ...form, name: v })} placeholder="e.g. Kim Smith" />
             <Input label="Email *" value={form.email} onChange={v => setForm({ ...form, email: v })} type="email" placeholder="e.g. kim@email.com" />
             <Input label="Phone (optional)" value={form.phone} onChange={v => setForm({ ...form, phone: v })} placeholder="e.g. 021 123 4567" />
-            <Input label="What do you need a quote for? *" value={form.jobTitle} onChange={v => setForm({ ...form, jobTitle: v })} placeholder="e.g. Bathroom renovation, rewiring, etc." />
-            <Input label="Any extra details? (optional)" value={form.description} onChange={v => setForm({ ...form, description: v })} textarea placeholder="e.g. 3-bedroom house, timeframe, specific requirements..." />
-            <Button onClick={handleSubmit} disabled={loading} style={{ width: "100%", justifyContent: "center", padding: "14px 24px", marginTop: 4 }}>
-              {loading ? "Submitting..." : "Request Quote →"}
+            <Input label="What do you need done? *" value={form.jobTitle} onChange={v => setForm({ ...form, jobTitle: v })} placeholder="e.g. Bathroom renovation, fix leaking tap, etc." />
+            <Input label="Any extra details? (optional)" value={form.description} onChange={v => setForm({ ...form, description: v })} textarea placeholder="e.g. Size of area, urgency, specific requirements..." />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 8 }}>Photos (optional, up to 5)</div>
+              <p style={{ fontSize: 12, color: theme.textDim, margin: "0 0 10px" }}>Adding photos helps us give a more accurate quote</p>
+              {photoPreviews.length > 0 && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                  {photoPreviews.map((src, i) => (
+                    <div key={i} style={{ position: "relative", width: 72, height: 72, borderRadius: 8, overflow: "hidden", border: `1px solid ${theme.border}` }}>
+                      <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <button onClick={() => removePhoto(i)} style={{ position: "absolute", top: 2, right: 2, width: 20, height: 20, borderRadius: 10, background: "rgba(0,0,0,0.7)", color: "#fff", border: "none", cursor: "pointer", fontSize: 12, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>\u00d7</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {photos.length < 5 && (
+                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", borderRadius: 10, border: `1px dashed ${theme.border}`, cursor: "pointer", color: theme.textMuted, fontSize: 13 }}>
+                  <Upload size={16} /> Add Photos
+                  <input type="file" accept="image/*" multiple onChange={handlePhotoAdd} style={{ display: "none" }} />
+                </label>
+              )}
+            </div>
+            <Button onClick={handleSubmit} disabled={loading || aiLoading} style={{ width: "100%", justifyContent: "center", padding: "14px 24px", marginTop: 4 }}>
+              {loading || aiLoading ? (aiLoading ? "AI is analysing your photos..." : "Submitting...") : "Request Quote \u2192"}
             </Button>
           </div>
           <p style={{ fontSize: 11, color: theme.textDim, textAlign: "center", marginTop: 16 }}>
@@ -710,6 +820,7 @@ const RequestQuotePage = ({ businessId }) => {
     </div>
   );
 };
+
 
 const AboutPage = ({ dispatch }) => {
   const isMobile = useIsMobile();
@@ -876,12 +987,21 @@ const clearCookies = () => {
   document.cookie = "wynflow_business=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 };
 
+const TRADE_CATEGORIES = [
+  "Plumber", "Electrician", "Builder", "Painter", "Roofer", "Landscaper",
+  "Carpet Layer", "Tiler", "Cleaner", "Handyman", "Mechanic", "Fencer",
+  "Locksmith", "Gasfitter", "Drainlayer", "Plasterer", "Concreter",
+  "Pest Control", "Arborist", "Interior Designer", "Other",
+];
+
 const AuthScreen = ({ dispatch, isSignup }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [contactName, setContactName] = useState("");
   const [trade, setTrade] = useState("");
+  const [hourlyRate, setHourlyRate] = useState("");
+  const [calloutFee, setCalloutFee] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resetMode, setResetMode] = useState(false);
@@ -922,6 +1042,9 @@ const AuthScreen = ({ dispatch, isSignup }) => {
           contact_name: contactName,
           email: email,
           trade: trade || null,
+          trade_category: trade || null,
+          hourly_rate: parseFloat(hourlyRate) || 0,
+          callout_fee: parseFloat(calloutFee) || 0,
           subscription_status: "trialing",
         });
         if (bizErr || !biz || !biz[0]) {
@@ -963,7 +1086,7 @@ const AuthScreen = ({ dispatch, isSignup }) => {
         dispatch({ type: "NOTIFY", payload: { message: "Account created! Welcome to Wynflow!", type: "success" } });
         fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, trade }),
+          body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, trade, hourly_rate: hourlyRate, callout_fee: calloutFee }),
         }).catch(() => {});
       } else {
         const authData = await supabase.auth_signIn(email, password);
@@ -1045,7 +1168,18 @@ const AuthScreen = ({ dispatch, isSignup }) => {
               <>
                 <Input label="Business Name *" value={businessName} onChange={setBusinessName} />
                 <Input label="Your Name *" value={contactName} onChange={setContactName} />
-                <Input label="Industry" value={trade} onChange={setTrade} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 6 }}>Trade / Industry *</div>
+                  <select value={trade} onChange={e => setTrade(e.target.value)}
+                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}`, color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", appearance: "auto" }}>
+                    <option value="">Select your trade...</option>
+                    {TRADE_CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: "flex", gap: 12 }}>
+                  <div style={{ flex: 1 }}><Input label="Hourly Rate ($)" value={hourlyRate} onChange={setHourlyRate} type="number" placeholder="e.g. 85" /></div>
+                  <div style={{ flex: 1 }}><Input label="Callout Fee ($)" value={calloutFee} onChange={setCalloutFee} type="number" placeholder="e.g. 50" /></div>
+                </div>
               </>
             )}
             <Input label="Email *" value={email} onChange={setEmail} type="email" />
@@ -1737,7 +1871,28 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
               <div style={{ fontSize: 12, color: theme.textMuted }}>Amount</div>
               <div style={{ fontSize: 28, color: theme.accent, fontWeight: 700, fontFamily: theme.fontDisplay }}>${parseFloat(quote.amount || 0).toLocaleString()}</div>
             </div>
+            {quote.ai_estimate && (
+              <div style={{ padding: 14, borderRadius: 10, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)" }}>
+                <div style={{ fontSize: 12, color: "#8B5CF6", fontWeight: 600, marginBottom: 4 }}>AI Estimate</div>
+                <div style={{ fontSize: 18, color: "#8B5CF6", fontWeight: 700 }}>
+                  ${quote.ai_estimate_range_low} — ${quote.ai_estimate_range_high}
+                </div>
+                {quote.ai_estimate_notes && <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 6, lineHeight: 1.5 }}>{quote.ai_estimate_notes}</div>}
+              </div>
+            )}
             {quote.description && <div><div style={{ fontSize: 12, color: theme.textMuted }}>Description</div><div style={{ fontSize: 14, color: theme.text, lineHeight: 1.5 }}>{quote.description}</div></div>}
+            {quote.photos && quote.photos.length > 0 && (
+              <div>
+                <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 8 }}>Customer Photos</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {quote.photos.map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noopener" style={{ display: "block", width: 80, height: 80, borderRadius: 8, overflow: "hidden", border: `1px solid ${theme.border}` }}>
+                      <img src={url} alt={`Photo ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
             {quote.pdf_filename && (
               <div>
                 <div style={{ fontSize: 12, color: theme.textMuted }}>Attached File</div>
@@ -2349,25 +2504,45 @@ const Settings = ({ business, dispatch }) => {
   const [contactName, setContactName] = useState(business?.contact_name || "");
   const [email, setEmail] = useState(business?.email || "");
   const [trade, setTrade] = useState(business?.trade || "");
+  const [tradeCategory, setTradeCategory] = useState(business?.trade_category || business?.trade || "");
   const [phone, setPhone] = useState(business?.phone || "");
+  const [hourlyRate, setHourlyRate] = useState(business?.hourly_rate || "");
+  const [calloutFee, setCalloutFee] = useState(business?.callout_fee || "");
+  const [showEstimate, setShowEstimate] = useState(business?.show_estimate_to_customer || false);
+  const [commonJobs, setCommonJobs] = useState(business?.common_jobs || []);
+  const [newJob, setNewJob] = useState({ name: "", typical_price: "" });
   const [saving, setSaving] = useState(false);
   const [declineReasons, setDeclineReasons] = useState(business?.decline_reasons || DEFAULT_DECLINE_REASONS);
   const [newReason, setNewReason] = useState("");
 
   const saveSettings = async () => {
     setSaving(true);
-    await db("businesses").eq("id", business.id).update({
+    const updates = {
       business_name: businessName,
       contact_name: contactName,
       email: email,
-      trade: trade,
+      trade: tradeCategory || trade,
+      trade_category: tradeCategory,
       phone: phone,
+      hourly_rate: parseFloat(hourlyRate) || 0,
+      callout_fee: parseFloat(calloutFee) || 0,
+      show_estimate_to_customer: showEstimate,
+      common_jobs: commonJobs,
       decline_reasons: declineReasons,
-    });
-    dispatch({ type: "SET_BUSINESS", payload: { ...business, business_name: businessName, contact_name: contactName, email, trade, phone, decline_reasons: declineReasons } });
+    };
+    await db("businesses").eq("id", business.id).update(updates);
+    dispatch({ type: "SET_BUSINESS", payload: { ...business, ...updates } });
     dispatch({ type: "NOTIFY", payload: { message: "Settings saved!", type: "success" } });
     setSaving(false);
   };
+
+  const addCommonJob = () => {
+    if (!newJob.name || !newJob.typical_price) return;
+    setCommonJobs([...commonJobs, { name: newJob.name, typical_price: parseFloat(newJob.typical_price) }]);
+    setNewJob({ name: "", typical_price: "" });
+  };
+
+  const removeCommonJob = (index) => setCommonJobs(commonJobs.filter((_, i) => i !== index));
 
   const addReason = () => {
     if (!newReason.trim() || declineReasons.length >= 8) return;
@@ -2401,8 +2576,50 @@ const Settings = ({ business, dispatch }) => {
             <Input label="Contact Name" value={contactName} onChange={setContactName} />
             <Input label="Email" value={email} onChange={setEmail} type="email" />
             <Input label="Phone" value={phone} onChange={setPhone} />
-            <Input label="Trade" value={trade} onChange={setTrade} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 6 }}>Trade / Industry</div>
+              <select value={tradeCategory} onChange={e => setTradeCategory(e.target.value)}
+                style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}`, color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", appearance: "auto" }}>
+                <option value="">Select your trade...</option>
+                {TRADE_CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
             <Button onClick={saveSettings} disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
+          </div>
+        </Card>
+        <Card>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Pricing & AI Estimates</h3>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Set your rates so our AI can estimate quotes from customer photos and descriptions.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", gap: 12 }}>
+              <div style={{ flex: 1 }}><Input label="Hourly Rate ($)" value={hourlyRate} onChange={setHourlyRate} type="number" /></div>
+              <div style={{ flex: 1 }}><Input label="Callout Fee ($)" value={calloutFee} onChange={setCalloutFee} type="number" /></div>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 8 }}>Common Jobs & Typical Prices</div>
+              <p style={{ fontSize: 12, color: theme.textDim, margin: "0 0 10px" }}>Help the AI estimate more accurately by adding jobs you commonly do and what you'd typically charge.</p>
+              {commonJobs.map((job, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}`, marginBottom: 6 }}>
+                  <span style={{ flex: 1, fontSize: 13, color: theme.text }}>{job.name}</span>
+                  <span style={{ fontSize: 13, color: theme.accent, fontWeight: 600 }}>${job.typical_price}</span>
+                  <button onClick={() => removeCommonJob(i)} style={{ background: "none", border: "none", cursor: "pointer", color: theme.red, fontSize: 16, lineHeight: 1 }}>×</button>
+                </div>
+              ))}
+              <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                <div style={{ flex: 2 }}><Input label="" value={newJob.name} onChange={v => setNewJob({ ...newJob, name: v })} placeholder="e.g. Unblock drain" /></div>
+                <div style={{ flex: 1 }}><Input label="" value={newJob.typical_price} onChange={v => setNewJob({ ...newJob, typical_price: v })} type="number" placeholder="$" /></div>
+                <Button size="sm" onClick={addCommonJob} style={{ alignSelf: "flex-end" }}><Plus size={14} /></Button>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>Show estimate to customer</div>
+                <div style={{ fontSize: 12, color: theme.textDim }}>Display a price range on the request confirmation page</div>
+              </div>
+              <div onClick={() => setShowEstimate(!showEstimate)} style={{ width: 44, height: 24, borderRadius: 12, background: showEstimate ? theme.accent : theme.border, cursor: "pointer", position: "relative", transition: "background 0.2s" }}>
+                <div style={{ width: 20, height: 20, borderRadius: 10, background: "#fff", position: "absolute", top: 2, left: showEstimate ? 22 : 2, transition: "left 0.2s" }} />
+              </div>
+            </div>
           </div>
         </Card>
         <Card>
