@@ -603,24 +603,17 @@ const RequestQuotePage = ({ businessId }) => {
   const [photos, setPhotos] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [businessData, setBusinessData] = useState(null);
+  const [businessName, setBusinessName] = useState("");
   const [error, setError] = useState(null);
-  const [aiEstimate, setAiEstimate] = useState(null);
-
-  const anonHeaders = {
-    "Content-Type": "application/json",
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-  };
+  const [estimateData, setEstimateData] = useState(null);
 
   useEffect(() => {
     if (businessId) {
-      fetch(`${SUPABASE_URL}/rest/v1/businesses?id=eq.${businessId}&select=business_name,trade_category,hourly_rate,callout_fee,common_jobs,show_estimate_to_customer`, { headers: anonHeaders })
+      fetch(`https://wynfallautomation.app.n8n.cloud/webhook/get-business-name?id=${businessId}`)
         .then(r => r.json())
         .then(data => {
-          if (data && data[0]) setBusinessData(data[0]);
+          if (data.business_name) setBusinessName(data.business_name);
           else setError("Business not found");
         })
         .catch(() => setError("Business not found"));
@@ -642,62 +635,11 @@ const RequestQuotePage = ({ businessId }) => {
     setPhotoPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
-  const uploadPhotos = async () => {
-    const urls = [];
-    for (const photo of photos) {
-      const filename = `${businessId}/${Date.now()}-${Math.random().toString(36).slice(2)}-${photo.name}`;
-      const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/quote-request-photos/${filename}`, {
-        method: "POST",
-        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": photo.type },
-        body: photo,
-      });
-      if (uploadRes.ok) {
-        urls.push(`${SUPABASE_URL}/storage/v1/object/public/quote-request-photos/${filename}`);
-      }
-    }
-    return urls;
-  };
-
-  const getAiEstimate = async (photoUrls) => {
-    if (!businessData?.hourly_rate && (!businessData?.common_jobs || businessData.common_jobs.length === 0)) return null;
-    setAiLoading(true);
-    try {
-      const imageContent = photoUrls.slice(0, 3).map(url => ({ type: "image", source: { type: "url", url } }));
-      const prompt = `You are a quoting assistant for a ${businessData.trade_category || "trades"} business in New Zealand.
-
-Their pricing:
-- Hourly rate: $${businessData.hourly_rate || "not set"}/hr
-- Callout fee: $${businessData.callout_fee || 0}
-${businessData.common_jobs && businessData.common_jobs.length > 0 ? "- Common jobs: " + businessData.common_jobs.map(j => j.name + ": $" + j.typical_price).join(", ") : ""}
-
-Customer request:
-- Job: "${form.jobTitle}"
-- Details: "${form.description || "None"}"
-${photoUrls.length > 0 ? "- " + photoUrls.length + " photo(s) attached" : ""}
-
-Estimate a price range in NZD. Consider labour, materials, complexity.
-Respond ONLY with JSON, no markdown: {"estimate_low": NUMBER, "estimate_high": NUMBER, "estimated_hours": NUMBER, "notes": "Brief explanation", "job_category": "Type of job"}`;
-
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: [...imageContent, { type: "text", text: prompt }] }],
-        }),
-      });
-      const data = await res.json();
-      const text = data.content?.find(c => c.type === "text")?.text || "";
-      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
-      setAiEstimate(parsed);
-      return parsed;
-    } catch (err) {
-      return null;
-    } finally {
-      setAiLoading(false);
-    }
-  };
+  const toBase64 = (file) => new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.readAsDataURL(file);
+  });
 
   const handleSubmit = async () => {
     if (!form.name || !form.email || !form.jobTitle) {
@@ -707,29 +649,26 @@ Respond ONLY with JSON, no markdown: {"estimate_low": NUMBER, "estimate_high": N
     setLoading(true);
     setError(null);
     try {
-      const photoUrls = photos.length > 0 ? await uploadPhotos() : [];
-      const estimate = await getAiEstimate(photoUrls);
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/quotes`, {
+      const photoData = [];
+      for (const photo of photos) {
+        const base64 = await toBase64(photo);
+        photoData.push({ name: photo.name, type: photo.type, data: base64 });
+      }
+      const res = await fetch("https://wynfallautomation.app.n8n.cloud/webhook/quote-request", {
         method: "POST",
-        headers: { ...anonHeaders, Prefer: "return=representation" },
-        body: JSON.stringify([{
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           business_id: businessId,
-          quote_number: "",
           customer_name: form.name,
           customer_email: form.email,
           customer_phone: form.phone || null,
           job_title: form.jobTitle,
           description: form.description || null,
-          amount: 0,
-          status: "requested",
-          photos: photoUrls,
-          ai_estimate: estimate ? Math.round((estimate.estimate_low + estimate.estimate_high) / 2) : null,
-          ai_estimate_range_low: estimate?.estimate_low || null,
-          ai_estimate_range_high: estimate?.estimate_high || null,
-          ai_estimate_notes: estimate?.notes || null,
-        }]),
+          photos: photoData,
+        }),
       });
-      if (!res.ok) throw new Error("Failed to submit");
+      const result = await res.json();
+      if (result.estimate) setEstimateData(result.estimate);
       setSubmitted(true);
     } catch (err) {
       setError("Something went wrong — please try again or contact the business directly.");
@@ -754,16 +693,16 @@ Respond ONLY with JSON, no markdown: {"estimate_low": NUMBER, "estimate_high": N
       <div style={{ minHeight: "100vh", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
         <div style={{ width: "100%", maxWidth: 480, background: theme.surface, borderRadius: 20, overflow: "hidden", border: `1px solid ${theme.border}`, textAlign: "center" }}>
           <div style={{ padding: "40px 32px", background: `linear-gradient(135deg, ${theme.bg}, ${theme.surfaceLight})` }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>\u2705</div>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
             <h1 style={{ fontSize: 24, fontWeight: 700, color: theme.text, margin: "0 0 12px", fontFamily: theme.fontDisplay }}>Request Sent!</h1>
             <p style={{ fontSize: 15, color: theme.textMuted, lineHeight: 1.6 }}>
-              Thanks {form.name.split(" ")[0]}! <strong style={{ color: theme.text }}>{businessData?.business_name}</strong> has received your request and will be in touch soon.
+              Thanks {form.name.split(" ")[0]}! <strong style={{ color: theme.text }}>{businessName}</strong> has received your request and will be in touch soon.
             </p>
-            {aiEstimate && businessData?.show_estimate_to_customer && (
+            {estimateData && (
               <div style={{ marginTop: 20, padding: 16, borderRadius: 12, background: theme.accentSoft, border: `1px solid ${theme.accent}22` }}>
                 <div style={{ fontSize: 12, color: theme.accent, fontWeight: 600, marginBottom: 4 }}>Estimated Price Range</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: theme.accent }}>${aiEstimate.estimate_low} \u2014 ${aiEstimate.estimate_high}</div>
-                <div style={{ fontSize: 12, color: theme.textDim, marginTop: 4 }}>This is an AI estimate only \u2014 the final quote may differ</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: theme.accent }}>${estimateData.estimate_low} — ${estimateData.estimate_high}</div>
+                <div style={{ fontSize: 12, color: theme.textDim, marginTop: 4 }}>This is an AI estimate only — the final quote may differ</div>
               </div>
             )}
           </div>
@@ -777,7 +716,7 @@ Respond ONLY with JSON, no markdown: {"estimate_low": NUMBER, "estimate_high": N
       <div style={{ width: "100%", maxWidth: 500, background: theme.surface, borderRadius: 20, overflow: "hidden", border: `1px solid ${theme.border}` }}>
         <div style={{ padding: "28px 32px", textAlign: "center", borderBottom: `3px solid ${theme.accent}` }}>
           <WynflowLogo size={36} />
-          {businessData && <h1 style={{ fontSize: 20, fontWeight: 700, color: theme.text, margin: "12px 0 0", fontFamily: theme.fontDisplay }}>Request a Quote from {businessData.business_name}</h1>}
+          {businessName && <h1 style={{ fontSize: 20, fontWeight: 700, color: theme.text, margin: "12px 0 0", fontFamily: theme.fontDisplay }}>Request a Quote from {businessName}</h1>}
           <p style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>Fill in your details, add photos if you can, and we'll get back to you</p>
         </div>
         <div style={{ padding: isMobile ? 24 : 32 }}>
@@ -796,7 +735,7 @@ Respond ONLY with JSON, no markdown: {"estimate_low": NUMBER, "estimate_high": N
                   {photoPreviews.map((src, i) => (
                     <div key={i} style={{ position: "relative", width: 72, height: 72, borderRadius: 8, overflow: "hidden", border: `1px solid ${theme.border}` }}>
                       <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      <button onClick={() => removePhoto(i)} style={{ position: "absolute", top: 2, right: 2, width: 20, height: 20, borderRadius: 10, background: "rgba(0,0,0,0.7)", color: "#fff", border: "none", cursor: "pointer", fontSize: 12, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>\u00d7</button>
+                      <button onClick={() => removePhoto(i)} style={{ position: "absolute", top: 2, right: 2, width: 20, height: 20, borderRadius: 10, background: "rgba(0,0,0,0.7)", color: "#fff", border: "none", cursor: "pointer", fontSize: 12, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
                     </div>
                   ))}
                 </div>
@@ -808,8 +747,8 @@ Respond ONLY with JSON, no markdown: {"estimate_low": NUMBER, "estimate_high": N
                 </label>
               )}
             </div>
-            <Button onClick={handleSubmit} disabled={loading || aiLoading} style={{ width: "100%", justifyContent: "center", padding: "14px 24px", marginTop: 4 }}>
-              {loading || aiLoading ? (aiLoading ? "AI is analysing your photos..." : "Submitting...") : "Request Quote \u2192"}
+            <Button onClick={handleSubmit} disabled={loading} style={{ width: "100%", justifyContent: "center", padding: "14px 24px", marginTop: 4 }}>
+              {loading ? "Submitting & analysing..." : "Request Quote →"}
             </Button>
           </div>
           <p style={{ fontSize: 11, color: theme.textDim, textAlign: "center", marginTop: 16 }}>
@@ -820,6 +759,7 @@ Respond ONLY with JSON, no markdown: {"estimate_low": NUMBER, "estimate_high": N
     </div>
   );
 };
+
 
 
 const AboutPage = ({ dispatch }) => {
