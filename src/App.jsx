@@ -893,8 +893,8 @@ const PricingPage = ({ dispatch }) => {
     <div style={{ padding:isMobile?"0 20px 60px":"0 48px 100px",background:theme.bg }}>
       <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?20:32,maxWidth:800,margin:"0 auto" }}>
         {[
-          {name:"Starter",price:"29",desc:"Everything you need to win more jobs",features:["Unlimited quotes","1 follow-up sequence","File attachments","Customer response buttons","Email support","Quote dashboard"],highlighted:true,active:true},
-          {name:"Pro",price:"49",desc:"For businesses who want the full toolkit",features:["Everything in Starter","Unlimited sequences","Custom email messages","Advanced analytics","Custom email branding","Team access (up to 3 users)","Priority support"],highlighted:false,active:false},
+          {name:"Starter",price:"29",desc:"Everything you need to win more jobs",features:["Unlimited quotes","1 follow-up sequence","File attachments","Customer response buttons","Email support","Quote dashboard"],highlighted:true,active:true,link:"https://buy.stripe.com/bJecN5cNf6gD70L1A973G00"},
+          {name:"Pro",price:"49",desc:"For tradies who want the full toolkit",features:["Everything in Starter","Unlimited sequences","Custom email messages","Advanced analytics","Custom email branding","Team access (up to 3 users)","Priority support"],highlighted:false,active:true,link:"https://buy.stripe.com/9B6cN500t6gD2Kv92B73G01"},
         ].map((plan,i) => (
           <div key={i} style={{ padding:isMobile?28:40,borderRadius:20,background:theme.surface,border:`${plan.highlighted?"2px":"1px"} solid ${plan.highlighted?theme.accent:theme.border}`,position:"relative",transform:plan.highlighted && !isMobile?"scale(1.03)":"none",boxShadow:plan.highlighted?`0 0 40px ${theme.accentGlow}`:"none",transition:"all 0.3s ease" }}>
             {plan.highlighted && <div style={{ position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",padding:"6px 20px",borderRadius:20,background:theme.accent,color:"#000",fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:1 }}>Most Popular</div>}
@@ -902,7 +902,9 @@ const PricingPage = ({ dispatch }) => {
             <p style={{ fontSize:13,color:theme.textMuted,marginBottom:24 }}>{plan.desc}</p>
             <div style={{ marginBottom:32 }}><span style={{ fontSize:52,fontWeight:800,color:theme.text,fontFamily:theme.fontDisplay }}>${plan.price}</span><span style={{ fontSize:16,color:theme.textMuted }}>/month</span></div>
             {plan.active ? (
-              <Button onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })} variant={plan.highlighted?"primary":"secondary"} style={{ width:"100%",justifyContent:"center",padding:"14px 24px",marginBottom:32 }}>Start Free Trial</Button>
+              <Button onClick={() => window.open(plan.link, "_blank")} variant={plan.highlighted?"primary":"secondary"} style={{ width:"100%",justifyContent:"center",padding:"14px 24px",marginBottom:32 }}>
+                {plan.highlighted ? "Start Free Trial" : "Upgrade to Pro"}
+              </Button>
             ) : (
               <div style={{ width:"100%",textAlign:"center",padding:"14px 24px",marginBottom:32,borderRadius:10,background:theme.surfaceLight,border:`1px solid ${theme.border}`,color:theme.textMuted,fontWeight:600,fontSize:15 }}>Coming Soon</div>
             )}
@@ -2743,14 +2745,14 @@ const Settings = ({ business, dispatch }) => {
         </Card>
         <Card style={{ gridColumn: "1 / -1" }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Subscription</h3>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: business?.subscription_status === "trialing" ? 16 : 0 }}>
             <div>
               <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>
-                {business?.subscription_status === "trialing" ? "Free Trial" : "Wynflow Pro"}
+                {business?.subscription_status === "trialing" ? "Free Trial" : business?.subscription_status === "active" ? "Wynflow Active" : "Wynflow"}
               </div>
               <div style={{ fontSize: 13, color: theme.textMuted }}>
                 {business?.subscription_status === "trialing"
-                  ? "You're on a free trial — upgrade anytime"
+                  ? "You're on a free trial — upgrade anytime to keep your quotes flowing"
                   : "Unlimited quotes • Unlimited follow-ups • Priority support"}
               </div>
             </div>
@@ -2763,6 +2765,12 @@ const Settings = ({ business, dispatch }) => {
               {business?.subscription_status || "trialing"}
             </div>
           </div>
+          {business?.subscription_status === "trialing" && (
+            <div style={{ display: "flex", gap: 12 }}>
+              <Button onClick={() => window.open("https://buy.stripe.com/bJecN5cNf6gD70L1A973G00", "_blank")} style={{ flex: 1, justifyContent: "center" }}>Starter — $29/mo</Button>
+              <Button variant="secondary" onClick={() => window.open("https://buy.stripe.com/9B6cN500t6gD2Kv92B73G01", "_blank")} style={{ flex: 1, justifyContent: "center" }}>Pro — $49/mo</Button>
+            </div>
+          )}
         </Card>
       </div>
     </div>
