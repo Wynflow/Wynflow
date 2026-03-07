@@ -2472,6 +2472,11 @@ const Settings = ({ business, dispatch }) => {
   const [showEstimate, setShowEstimate] = useState(business?.show_estimate_to_customer || false);
   const [commonJobs, setCommonJobs] = useState(business?.common_jobs || []);
   const [newJob, setNewJob] = useState({ name: "", typical_price: "" });
+  const [bankName, setBankName] = useState(business?.bank_name || "");
+  const [bankAccountName, setBankAccountName] = useState(business?.bank_account_name || "");
+  const [bankAccountNumber, setBankAccountNumber] = useState(business?.bank_account_number || "");
+  const [depositPercentage, setDepositPercentage] = useState(business?.deposit_percentage || 25);
+  const [requireDeposit, setRequireDeposit] = useState(business?.require_deposit || false);
   const [saving, setSaving] = useState(false);
   const [declineReasons, setDeclineReasons] = useState(business?.decline_reasons || DEFAULT_DECLINE_REASONS);
   const [newReason, setNewReason] = useState("");
@@ -2490,6 +2495,11 @@ const Settings = ({ business, dispatch }) => {
       show_estimate_to_customer: showEstimate,
       common_jobs: commonJobs,
       decline_reasons: declineReasons,
+      bank_name: bankName,
+      bank_account_name: bankAccountName,
+      bank_account_number: bankAccountNumber,
+      deposit_percentage: parseFloat(depositPercentage) || 25,
+      require_deposit: requireDeposit,
     };
     await db("businesses").eq("id", business.id).update(updates);
     dispatch({ type: "SET_BUSINESS", payload: { ...business, ...updates } });
@@ -2581,6 +2591,32 @@ const Settings = ({ business, dispatch }) => {
                 <div style={{ width: 20, height: 20, borderRadius: 10, background: "#fff", position: "absolute", top: 2, left: showEstimate ? 22 : 2, transition: "left 0.2s" }} />
               </div>
             </div>
+          </div>
+        </Card>
+        <Card>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Deposit & Bank Details</h3>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Show your bank details on the acceptance page so customers can pay a deposit upfront.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>Require deposit after acceptance</div>
+                <div style={{ fontSize: 12, color: theme.textDim }}>Show bank details and deposit amount when a quote is accepted</div>
+              </div>
+              <div onClick={() => setRequireDeposit(!requireDeposit)} style={{ width: 44, height: 24, borderRadius: 12, background: requireDeposit ? theme.accent : theme.border, cursor: "pointer", position: "relative", transition: "background 0.2s" }}>
+                <div style={{ width: 20, height: 20, borderRadius: 10, background: "#fff", position: "absolute", top: 2, left: requireDeposit ? 22 : 2, transition: "left 0.2s" }} />
+              </div>
+            </div>
+            {requireDeposit && (
+              <>
+                <Input label="Bank Name" value={bankName} onChange={setBankName} placeholder="e.g. ANZ, ASB, BNZ, Westpac" />
+                <Input label="Account Name" value={bankAccountName} onChange={setBankAccountName} placeholder="e.g. Smith's Plumbing Ltd" />
+                <Input label="Account Number" value={bankAccountNumber} onChange={setBankAccountNumber} placeholder="e.g. 01-0123-0123456-00" />
+                <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+                  <div style={{ flex: 1 }}><Input label="Deposit %" value={depositPercentage} onChange={setDepositPercentage} type="number" /></div>
+                  <div style={{ fontSize: 13, color: theme.textDim, paddingBottom: 12 }}>of quote total</div>
+                </div>
+              </>
+            )}
           </div>
         </Card>
         <Card>
