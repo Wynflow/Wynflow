@@ -955,6 +955,75 @@ const TRADE_CATEGORIES = [
   "Pest Control", "Arborist", "Interior Designer", "Other",
 ];
 
+// ─── Reset Password Screen ───
+const ResetPasswordScreen = ({ dispatch }) => {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const handleReset = async () => {
+    if (!password || password.length < 6) { setError("Password must be at least 6 characters"); return; }
+    if (password !== confirm) { setError("Passwords don't match"); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${supabase.token}` },
+        body: JSON.stringify({ password }),
+      });
+      if (!res.ok) throw new Error("Failed to update password");
+      setSuccess(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+      background: `radial-gradient(ellipse at 30% 20%, rgba(20,184,166,0.08) 0%, transparent 50%), ${theme.bg}`,
+      fontFamily: theme.font, padding: 20 }}>
+      <div style={{ width: "100%", maxWidth: 440 }}>
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <WynflowLogo size={48} />
+            <span style={{ fontSize: 28, fontWeight: 700, color: theme.text, fontFamily: theme.fontDisplay }}>Wynflow</span>
+          </div>
+        </div>
+        <Card style={{ padding: 32 }}>
+          {success ? (
+            <div style={{ textAlign: "center", padding: "20px 0" }}>
+              <CheckCircle2 size={48} color={theme.green} style={{ marginBottom: 16 }} />
+              <h3 style={{ fontSize: 18, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Password Updated</h3>
+              <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, margin: "0 0 20px" }}>Your password has been reset successfully.</p>
+              <Button onClick={() => { supabase.token = null; dispatch({ type: "SET_SCREEN", payload: "login" }); }}
+                style={{ width: "100%", justifyContent: "center" }}>Sign In →</Button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              <div style={{ textAlign: "center", marginBottom: 8 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Set New Password</h3>
+                <p style={{ fontSize: 14, color: theme.textMuted }}>Enter your new password below</p>
+              </div>
+              <Input label="New Password *" value={password} onChange={setPassword} type="password" />
+              <Input label="Confirm Password *" value={confirm} onChange={setConfirm} type="password" />
+              {error && <div style={{ padding: "10px 14px", borderRadius: 8, background: theme.redSoft, color: theme.red, fontSize: 13 }}>{error}</div>}
+              <Button onClick={handleReset} disabled={loading}
+                style={{ width: "100%", justifyContent: "center", padding: "14px 24px" }}>
+                {loading ? "Updating..." : "Reset Password →"}
+              </Button>
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+};
+
 const AuthScreen = ({ dispatch, isSignup }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -976,7 +1045,7 @@ const AuthScreen = ({ dispatch, isSignup }) => {
       const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, gotrue_meta_security: {}, code_challenge_method: "", redirect_to: "https://www.wynflow.co.nz" }),
       });
       if (!res.ok) throw new Error("Failed to send reset email");
       setResetSent(true);
@@ -2761,6 +2830,19 @@ export default function WynflowApp() {
 
   // Restore session on mount
   useEffect(() => {
+    // Check for password recovery token in URL hash
+    const hash = window.location.hash;
+    if (hash && hash.includes("type=recovery")) {
+      const params = new URLSearchParams(hash.replace("#", ""));
+      const accessToken = params.get("access_token");
+      if (accessToken) {
+        supabase.token = accessToken;
+        dispatch({ type: "SET_SCREEN", payload: "resetPassword" });
+        window.history.replaceState(null, "", "/");
+        return;
+      }
+    }
+
     const path = window.location.pathname.replace(/^\//, "").toLowerCase();
     if (path.startsWith("request/")) {
       const bizId = window.location.pathname.split("/request/")[1];
@@ -2856,6 +2938,15 @@ export default function WynflowApp() {
   }
 
   if (!business) {
+    if (screen === "resetPassword") {
+      return (
+        <>
+          <style>{globalStyles}</style>
+          {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
+          <ResetPasswordScreen dispatch={dispatch} />
+        </>
+      );
+    }
     if (screen === "login" || screen === "signup") {
       return (
         <>
