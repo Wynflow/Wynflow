@@ -1831,6 +1831,216 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
   );
 };
 
+// ─── AI Quote Generator ───
+const QuoteGenerator = ({ quote, business, dispatch, sequences }) => {
+  const isMobile = useIsMobile();
+  const [sitePhotos, setSitePhotos] = useState([]);
+  const [sitePhotoPreviews, setSitePhotoPreviews] = useState([]);
+  const [siteNotes, setSiteNotes] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [generated, setGenerated] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [sending, setSending] = useState(false);
+
+  const handlePhotoAdd = (e) => {
+    const files = Array.from(e.target.files).slice(0, 5 - sitePhotos.length);
+    setSitePhotos(prev => [...prev, ...files]);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => setSitePhotoPreviews(prev => [...prev, ev.target.result]);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removePhoto = (index) => {
+    setSitePhotos(prev => prev.filter((_, i) => i !== index));
+    setSitePhotoPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const compressImage = (file, maxSize = 1200) => new Promise((resolve) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let w = img.width, h = img.height;
+        if (w > maxSize || h > maxSize) {
+          if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+          else { w = Math.round(w * maxSize / h); h = maxSize; }
+        }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  const generateQuote = async () => {
+    setGenerating(true);
+    try {
+      const photoData = [];
+      for (const photo of sitePhotos) {
+        const compressed = await compressImage(photo);
+        photoData.push({ name: photo.name, type: "image/jpeg", data: compressed });
+      }
+      // Also include customer's original photos if they're base64
+      const customerPhotos = (quote.photos || []).filter(p => typeof p === "string" && p.startsWith("data:")).map((p, i) => ({ name: `customer-${i}.jpg`, type: "image/jpeg", data: p }));
+
+      const res = await fetch("https://wynfallautomation.app.n8n.cloud/webhook/generate-quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quote_id: quote.id,
+          business_id: business.id,
+          job_title: quote.job_title,
+          description: quote.description,
+          customer_name: quote.customer_name,
+          site_notes: siteNotes,
+          site_photos: photoData,
+          customer_photos: customerPhotos,
+        }),
+      });
+      const result = await res.json();
+      if (result.quote) {
+        setGenerated(result.quote);
+        setEditForm({
+          scope: result.quote.scope_of_work || "",
+          materials: result.quote.materials_breakdown || "",
+          labourHours: result.quote.estimated_hours || "",
+          amount: result.quote.total || "",
+          notes: result.quote.notes || "",
+        });
+      } else {
+        dispatch({ type: "NOTIFY", payload: { message: "AI generation failed — try again", type: "error" } });
+      }
+    } catch (err) {
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to generate quote", type: "error" } });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const sendQuote = async () => {
+    if (!editForm.amount) {
+      dispatch({ type: "NOTIFY", payload: { message: "Please set a quote amount", type: "error" } });
+      return;
+    }
+    setSending(true);
+    try {
+      const seqId = sequences.find(s => s.is_default)?.id || sequences[0]?.id || null;
+      let nextFollowUp = null;
+      if (seqId) {
+        const { data: seqSteps } = await db("sequence_steps").eq("sequence_id", seqId).order("step_order").limit(1).select();
+        if (seqSteps && seqSteps[0]) {
+          const d = new Date();
+          d.setDate(d.getDate() + seqSteps[0].delay_days);
+          nextFollowUp = d.toISOString();
+        }
+      }
+      await db("quotes").eq("id", quote.id).update({
+        amount: parseFloat(editForm.amount),
+        description: editForm.scope + (editForm.materials ? "\n\nMaterials:\n" + editForm.materials : "") + (editForm.notes ? "\n\nNotes:\n" + editForm.notes : ""),
+        status: "sent",
+        sent_at: new Date().toISOString(),
+        sequence_id: seqId,
+        next_follow_up_at: nextFollowUp,
+        current_step: 0,
+        follow_up_paused: false,
+      });
+      await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quote_id: quote.id }),
+      });
+      dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, amount: parseFloat(editForm.amount), status: "sent", sent_at: new Date().toISOString() } });
+      dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${quote.customer_name}! Follow-ups scheduled.`, type: "success" } });
+      dispatch({ type: "GO_BACK" });
+    } catch (err) {
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to send quote", type: "error" } });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Card style={{ gridColumn: "1 / -1", border: `2px solid #8B5CF6`, background: "rgba(139,92,246,0.04)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(139,92,246,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Cpu size={20} color="#8B5CF6" />
+        </div>
+        <div>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: 0 }}>AI Quote Generator</h3>
+          <p style={{ fontSize: 12, color: theme.textMuted, margin: 0 }}>Generate a professional quote from photos and job details</p>
+        </div>
+      </div>
+
+      {!generated ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 8 }}>Your site photos (optional)</div>
+            <p style={{ fontSize: 12, color: theme.textDim, margin: "0 0 10px" }}>Add your own photos from the job site for a more accurate quote</p>
+            {sitePhotoPreviews.length > 0 && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                {sitePhotoPreviews.map((src, i) => (
+                  <div key={i} style={{ position: "relative", width: 72, height: 72, borderRadius: 8, overflow: "hidden", border: `1px solid ${theme.border}` }}>
+                    <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <button onClick={() => removePhoto(i)} style={{ position: "absolute", top: 2, right: 2, width: 20, height: 20, borderRadius: 10, background: "rgba(0,0,0,0.7)", color: "#fff", border: "none", cursor: "pointer", fontSize: 12, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {sitePhotos.length < 5 && (
+              <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 16px", borderRadius: 10, border: `1px dashed ${theme.border}`, cursor: "pointer", color: theme.textMuted, fontSize: 13 }}>
+                <Upload size={16} /> Add Site Photos
+                <input type="file" accept="image/*" multiple onChange={handlePhotoAdd} style={{ display: "none" }} />
+              </label>
+            )}
+          </div>
+          <Input label="Site notes (optional)" value={siteNotes} onChange={setSiteNotes} textarea placeholder="e.g. Access is tight, need to replace the whole unit, customer wants premium fixtures..." />
+          <Button onClick={generateQuote} disabled={generating} style={{ background: "#8B5CF6", justifyContent: "center", padding: "14px 24px" }}>
+            <Cpu size={16} /> {generating ? "AI is generating your quote..." : "Generate Quote"}
+          </Button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ padding: 16, borderRadius: 10, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <CheckCircle2 size={16} color={theme.green} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: theme.green }}>Quote Generated</span>
+            </div>
+            {generated.confidence && (
+              <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 6,
+                color: generated.confidence === "high" ? theme.green : generated.confidence === "medium" ? "#F59E0B" : theme.red,
+                background: (generated.confidence === "high" ? theme.green : generated.confidence === "medium" ? "#F59E0B" : theme.red) + "18",
+              }}>{generated.confidence.charAt(0).toUpperCase() + generated.confidence.slice(1)} Confidence</span>
+            )}
+          </div>
+
+          <Input label="Scope of Work" value={editForm.scope} onChange={v => setEditForm({ ...editForm, scope: v })} textarea />
+          <Input label="Materials Breakdown" value={editForm.materials} onChange={v => setEditForm({ ...editForm, materials: v })} textarea />
+          <div style={{ display: "flex", gap: 12 }}>
+            <div style={{ flex: 1 }}><Input label="Estimated Hours" value={editForm.labourHours} onChange={v => setEditForm({ ...editForm, labourHours: v })} type="number" /></div>
+            <div style={{ flex: 1 }}>
+              <Input label="Total Amount ($) *" value={editForm.amount} onChange={v => setEditForm({ ...editForm, amount: v })} type="number" />
+            </div>
+          </div>
+          <Input label="Additional Notes" value={editForm.notes} onChange={v => setEditForm({ ...editForm, notes: v })} textarea placeholder="Any terms, conditions, or notes for the customer" />
+
+          <div style={{ display: "flex", gap: 12 }}>
+            <Button variant="secondary" onClick={() => { setGenerated(null); setEditForm(null); }} style={{ flex: 1, justifyContent: "center" }}>
+              Regenerate
+            </Button>
+            <Button onClick={sendQuote} disabled={sending} style={{ flex: 2, justifyContent: "center", padding: "14px 24px" }}>
+              <Send size={16} /> {sending ? "Sending..." : "Send Quote to " + quote.customer_name.split(" ")[0]}
+            </Button>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+};
+
 // ─── Quote Detail ───
 const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
   const isMobile = useIsMobile();
@@ -1904,12 +2114,22 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
               <div style={{ fontSize: 28, color: theme.accent, fontWeight: 700, fontFamily: theme.fontDisplay }}>${parseFloat(quote.amount || 0).toLocaleString()}</div>
             </div>
             {quote.ai_estimate && (
-              <div style={{ padding: 14, borderRadius: 10, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)" }}>
-                <div style={{ fontSize: 12, color: "#8B5CF6", fontWeight: 600, marginBottom: 4 }}>AI Estimate</div>
-                <div style={{ fontSize: 18, color: "#8B5CF6", fontWeight: 700 }}>
-                  ${quote.ai_estimate_range_low} — ${quote.ai_estimate_range_high}
+              <div style={{ padding: 16, borderRadius: 10, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div style={{ fontSize: 13, color: "#8B5CF6", fontWeight: 600 }}>AI Estimate</div>
+                  {quote.ai_estimate_notes && (() => {
+                    const notes = quote.ai_estimate_notes || "";
+                    const isHigh = notes.startsWith("HIGH");
+                    const isMed = notes.startsWith("MEDIUM");
+                    const color = isHigh ? theme.green : isMed ? "#F59E0B" : theme.red;
+                    const label = isHigh ? "High Confidence" : isMed ? "Medium Confidence" : notes.startsWith("LOW") ? "Low Confidence" : null;
+                    return label ? <span style={{ fontSize: 11, fontWeight: 600, color, padding: "3px 8px", borderRadius: 6, background: color + "18" }}>{label}</span> : null;
+                  })()}
                 </div>
-                {quote.ai_estimate_notes && <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 6, lineHeight: 1.5 }}>{quote.ai_estimate_notes}</div>}
+                <div style={{ fontSize: 22, color: "#8B5CF6", fontWeight: 700 }}>
+                  ${quote.ai_estimate_range_low?.toLocaleString()} — ${quote.ai_estimate_range_high?.toLocaleString()}
+                </div>
+                {quote.ai_estimate_notes && <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 8, lineHeight: 1.5 }}>{quote.ai_estimate_notes.replace(/^(HIGH|MEDIUM|LOW) CONFIDENCE: /i, "")}</div>}
               </div>
             )}
             {quote.description && <div><div style={{ fontSize: 12, color: theme.textMuted }}>Description</div><div style={{ fontSize: 14, color: theme.text, lineHeight: 1.5 }}>{quote.description}</div></div>}
@@ -2040,7 +2260,7 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
           )}
         </Card>
         )}
-        {quote.status !== "accepted" && quote.status !== "declined" && quote.status !== "booked" && (
+        {quote.status !== "accepted" && quote.status !== "declined" && quote.status !== "booked" && quote.status !== "requested" && (
         <Card style={{ gridColumn: "1 / -1" }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Actions</h3>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -2063,6 +2283,9 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
             }}><Mail size={16} /> Send Follow-Up Now</Button>
           </div>
         </Card>
+        )}
+        {quote.status === "requested" && (
+        <QuoteGenerator quote={quote} business={business} dispatch={dispatch} sequences={sequences} />
         )}
       </div>
     </div>
