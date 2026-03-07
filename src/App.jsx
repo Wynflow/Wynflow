@@ -3,9 +3,9 @@ import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload,
 
 // ─── SEO Helper ───
 const SEO_CONFIG = {
-  home: { title: "Wynflow — Quote Management & Automated Follow-Ups for NZ Businesses", description: "Send quotes, automate follow-ups, and win more jobs. Built for New Zealand trades and service businesses.", canonical: "https://www.wynflow.co.nz" },
-  about: { title: "About Wynflow — Built by a Kiwi, for Kiwi Businesses", description: "Born from watching a Napier carpet layer lose jobs to forgotten follow-ups. Wynflow automates quote follow-ups so NZ tradies never lose a job to silence again.", canonical: "https://www.wynflow.co.nz/about" },
-  pricing: { title: "Wynflow Pricing — Free Trial, No Credit Card Required", description: "Simple pricing for NZ businesses. Send quotes, automate follow-ups, and track customer responses.", canonical: "https://www.wynflow.co.nz/pricing" },
+  home: { title: "Wynflow — Quote Management & Automated Follow-Ups for NZ Tradies", description: "Send quotes, automate follow-ups, and win more jobs. Built for New Zealand tradies and service businesses.", canonical: "https://www.wynflow.co.nz" },
+  about: { title: "About Wynflow — Built by a Kiwi, for Kiwi Tradies", description: "Born from watching a Napier carpet layer lose jobs to forgotten follow-ups. Wynflow automates quote follow-ups so NZ tradies never lose a job to silence again.", canonical: "https://www.wynflow.co.nz/about" },
+  pricing: { title: "Wynflow Pricing — Free Trial, No Credit Card Required", description: "Simple pricing for NZ tradies. Send quotes, automate follow-ups, and track customer responses.", canonical: "https://www.wynflow.co.nz/pricing" },
 };
 const useSEO = (screen) => {
   useEffect(() => {
@@ -539,9 +539,9 @@ const HomePage = ({ dispatch }) => {
     {showEmailPreview && <EmailPreviewModal onClose={() => setShowEmailPreview(false)} />}
     <div style={{ minHeight:isMobile?"auto":"90vh",display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",background:`radial-gradient(ellipse at 30% 20%,rgba(20,184,166,0.1) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(59,130,246,0.06) 0%,transparent 50%),${theme.bg}`,padding:isMobile?"100px 20px 60px":"120px 48px 80px" }}>
       <div style={{ maxWidth:800 }}>
-        <div style={{ display:"inline-flex",alignItems:"center",gap:8,padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:isMobile?20:32 }}><WynflowLogo size={18} /><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>Built for NZ Businesses</span></div>
+        <div style={{ display:"inline-flex",alignItems:"center",gap:8,padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:isMobile?20:32 }}><WynflowLogo size={18} /><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>Built for NZ Tradies</span></div>
         <h1 style={{ fontSize:isMobile?36:64,fontWeight:800,color:theme.text,lineHeight:1.1,marginBottom:isMobile?16:24,fontFamily:theme.fontDisplay }}>Stop Chasing Quotes.<br /><span style={{ color:theme.accent }}>Start Winning Jobs.</span></h1>
-        <p style={{ fontSize:isMobile?16:20,color:theme.textMuted,lineHeight:1.6,maxWidth:600,margin:"0 auto 40px" }}>Upload your quote, hit send, and let Wynflow handle the follow-ups. Automated emails chase your customers so you can focus on what you do best.</p>
+        <p style={{ fontSize:isMobile?16:20,color:theme.textMuted,lineHeight:1.6,maxWidth:600,margin:"0 auto 40px" }}>You do the work, Wynflow chases the quotes. Send professional quotes, get automatic follow-ups, and never lose a job to a forgotten email again.</p>
         <div style={{ display:"flex",gap:12,justifyContent:"center",flexDirection:isMobile?"column":"row",alignItems:"center" }}><Button size={isMobile?"md":"lg"} onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Free Trial →</Button><Button size={isMobile?"md":"lg"} variant="secondary" onClick={() => dispatch({ type:"SET_SCREEN",payload:"pricing" })}>View Pricing</Button></div>
         <div style={{ marginTop:16 }}><span onClick={() => setShowEmailPreview(true)} style={{ fontSize:14,color:theme.accent,cursor:"pointer",fontWeight:500,textDecoration:"underline",textUnderlineOffset:3 }}>See what your customers receive →</span></div>
         <p style={{ fontSize:13,color:theme.textDim,marginTop:12 }}>No credit card required • 14-day free trial • Cancel anytime</p>
@@ -550,9 +550,9 @@ const HomePage = ({ dispatch }) => {
     <div style={{ padding:isMobile?"60px 20px":"100px 48px",background:theme.surface }}>
       <div style={{ maxWidth:1100,margin:"0 auto",textAlign:"center" }}>
         <h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>How It Works</h2>
-        <p style={{ fontSize:16,color:theme.textMuted,marginBottom:isMobile?40:64,maxWidth:500,margin:"0 auto 64px" }}>Three simple steps to never chase a quote again</p>
+        <p style={{ fontSize:16,color:theme.textMuted,marginBottom:isMobile?40:64,maxWidth:500,margin:"0 auto 64px" }}>Get back on the tools — Wynflow handles the paperwork</p>
         <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?20:32 }}>
-          {[{num:"01",Icon:Upload,title:"Upload Your Quote",desc:"Create your quote however you normally do. Save it as a file and upload it to Wynflow."},{num:"02",Icon:Send,title:"Hit Send",desc:"Add the customer's email, job title and amount. Wynflow sends a branded email with your quote and response buttons."},{num:"03",Icon:Bot,title:"Wynflow Chases",desc:"If they don't respond, automated follow-ups kick in. When they click Book In, Decline, or Feedback — you're notified."}].map((step,i) => {
+          {[{num:"01",Icon:Upload,title:"Upload Your Quote",desc:"Write up your quote however you normally do — on your phone, in a spreadsheet, whatever. Save it and upload it to Wynflow."},{num:"02",Icon:Send,title:"Hit Send",desc:"Add the customer's email, the job, and the amount. They get a professional email with your quote and one-click Accept or Decline buttons."},{num:"03",Icon:Bot,title:"Wynflow Chases For You",desc:"If they don't respond, Wynflow sends follow-up emails automatically — day 2, day 5, day 10. You're on the tools, not on your phone chasing."}].map((step,i) => {
             const StepIcon = step.Icon;
             return (
             <div key={i} style={{ padding:isMobile?24:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"left",transition:"all 0.3s ease" }}
@@ -570,9 +570,9 @@ const HomePage = ({ dispatch }) => {
     </div>
     <div style={{ padding:isMobile?"60px 20px":"100px 48px",background:theme.bg }}>
       <div style={{ maxWidth:1100,margin:"0 auto" }}>
-        <div style={{ textAlign:"center",marginBottom:isMobile?40:64 }}><h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Everything You Need</h2><p style={{ fontSize:16,color:theme.textMuted }}>Built for service businesses who are sick of chasing quotes</p></div>
+        <div style={{ textAlign:"center",marginBottom:isMobile?40:64 }}><h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Built for How Tradies Work</h2><p style={{ fontSize:16,color:theme.textMuted }}>No complicated setup. No fluff. Just the tools you need to win more jobs.</p></div>
         <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?16:24 }}>
-          {[{Icon:ClipboardList,title:"Quote Dashboard",desc:"See every quote at a glance — who's opened it, who's responded, and what needs attention."},{Icon:RefreshCw,title:"Automated Follow-Ups",desc:"Set it and forget it. Configure email sequences that chase at day 2, 5, 10 — whatever works."},{Icon:Paperclip,title:"File Attachments",desc:"Upload your quote file and it gets attached to the email automatically."},{Icon:CheckCircle2,title:"One-Click Responses",desc:"Customers click Book In, Decline, or Give Feedback right in the email."},{Icon:BarChart3,title:"Track Everything",desc:"Know when emails are opened, which quotes are pending, and your win rate."},{Icon:Lock,title:"Secure & Private",desc:"Your data is encrypted and isolated. Bank-grade security."}].map((f,i) => {
+          {[{Icon:ClipboardList,title:"Quote Dashboard",desc:"See every quote at a glance — who's opened it, who's ghosting you, and what needs attention. All from your phone or laptop."},{Icon:RefreshCw,title:"Automatic Follow-Ups",desc:"Set your follow-up schedule and forget about it. Wynflow chases at day 2, 5, 10 — whatever works for your trade."},{Icon:Paperclip,title:"Attach Your Quote",desc:"Upload your quote PDF and it gets attached to the email automatically. No printing, no posting."},{Icon:CheckCircle2,title:"One-Click Accept or Decline",desc:"Your customer clicks Accept Quote or No Thanks right in the email. No phone tag. No wondering."},{Icon:BarChart3,title:"Know Your Numbers",desc:"See your win rate, revenue, which follow-up converts best, and why people say no. Data that helps you quote smarter."},{Icon:Lock,title:"Secure & Private",desc:"Your customer data is encrypted and isolated. Only you can see your quotes."}].map((f,i) => {
             const FIcon = f.Icon;
             return (
             <div key={i} style={{ padding:isMobile?20:32,borderRadius:16,background:theme.surface,border:`1px solid ${theme.border}`,display:"flex",gap:16,transition:"all 0.3s ease" }}
@@ -588,7 +588,7 @@ const HomePage = ({ dispatch }) => {
     </div>
     <div style={{ padding:isMobile?"60px 20px":"100px 48px",textAlign:"center",background:`radial-gradient(ellipse at 50% 50%,rgba(20,184,166,0.12) 0%,transparent 60%),${theme.bg}` }}>
       <h2 style={{ fontSize:isMobile?32:44,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Ready to Win More Jobs?</h2>
-      <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,marginBottom:40 }}>Join hundreds of NZ businesses who've stopped chasing and started winning.</p>
+      <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,marginBottom:40 }}>Join NZ tradies who've stopped chasing quotes and started closing them.</p>
       <Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Your Free Trial →</Button>
     </div>
     <Footer dispatch={dispatch} />
@@ -874,7 +874,7 @@ const AboutPage = ({ dispatch }) => {
     </div>
     <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.bg,textAlign:"center" }}>
       <h2 style={{ fontSize:isMobile?28:36,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Stop Losing Jobs to Silence</h2>
-      <p style={{ fontSize:16,color:theme.textMuted,marginBottom:32,maxWidth:440,margin:"0 auto 32px" }}>Your quotes deserve a follow-up. Your customers expect one. Let Wynflow handle it.</p>
+      <p style={{ fontSize:16,color:theme.textMuted,marginBottom:32,maxWidth:440,margin:"0 auto 32px" }}>Your quotes deserve a follow-up. Your customers expect one. Let Wynflow chase them while you're on the tools.</p>
       <Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Your Free Trial →</Button>
     </div>
     <Footer dispatch={dispatch} />
@@ -888,7 +888,7 @@ const PricingPage = ({ dispatch }) => {
   <div>
     <div style={{ padding:isMobile?"100px 20px 60px":"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(20,184,166,0.08) 0%,transparent 50%),${theme.bg}` }}>
       <h1 style={{ fontSize:isMobile?36:52,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay }}>Simple, Honest Pricing</h1>
-      <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,maxWidth:500,margin:"0 auto",lineHeight:1.6 }}>No hidden fees. No lock-in contracts. 14-day free trial on every plan.</p>
+      <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,maxWidth:500,margin:"0 auto",lineHeight:1.6 }}>No hidden fees. No lock-in contracts. Less than the cost of one lost job.</p>
     </div>
     <div style={{ padding:isMobile?"0 20px 60px":"0 48px 100px",background:theme.bg }}>
       <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?20:32,maxWidth:800,margin:"0 auto" }}>
@@ -914,14 +914,14 @@ const PricingPage = ({ dispatch }) => {
     <div style={{ padding:"80px 48px",background:theme.surface }}>
       <div style={{ maxWidth:700,margin:"0 auto" }}>
         <h2 style={{ fontSize:36,fontWeight:700,color:theme.text,marginBottom:48,textAlign:"center",fontFamily:theme.fontDisplay }}>Frequently Asked Questions</h2>
-        {[{q:"Is there really a free trial?",a:"Yes! 14 days, full access, no credit card needed."},{q:"Can I cancel anytime?",a:"Absolutely. No lock-in contracts, no cancellation fees."},{q:"Do my customers know it's automated?",a:"Emails come from Wynflow on behalf of your business. They look professional and personal."},{q:"What if I already have quoting software?",a:"Keep using it! Just export your quote and upload to Wynflow. We handle delivery and chasing."},{q:"Is my data secure?",a:"100%. Bank-grade encryption, every business's data is completely isolated."}].map((faq,i) => (
+        {[{q:"Is there really a free trial?",a:"Yep. 14 days, full access, no credit card needed. Send real quotes from day one."},{q:"Can I cancel anytime?",a:"Absolutely. No lock-in contracts, no cancellation fees. But most tradies stay."},{q:"Do my customers know it's automated?",a:"Nope. Emails come from Wynflow on behalf of your business name. They look professional and personal — your customers just think you're on the ball."},{q:"What if I already use Xero / Tradify / Fergus?",a:"Keep using them for your invoicing. Wynflow is specifically for sending quotes and chasing follow-ups — it fills the gap most trade software misses."},{q:"How long does it take to set up?",a:"About 30 seconds. Sign up, enter your business details, and send your first quote. The default follow-up sequence is ready to go."}].map((faq,i) => (
           <div key={i} style={{ padding:"24px 0",borderBottom:`1px solid ${theme.border}` }}><h3 style={{ fontSize:16,fontWeight:600,color:theme.text,marginBottom:8 }}>{faq.q}</h3><p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.7 }}>{faq.a}</p></div>
         ))}
       </div>
     </div>
     <div style={{ padding:"80px 48px",background:theme.bg,textAlign:"center" }}>
       <h2 style={{ fontSize:36,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Still Not Sure?</h2>
-      <p style={{ fontSize:16,color:theme.textMuted,marginBottom:32 }}>Start your free trial — no credit card, no commitment.</p>
+      <p style={{ fontSize:16,color:theme.textMuted,marginBottom:32 }}>Start your free trial — send your first quote in under a minute.</p>
       <Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Free Trial →</Button>
     </div>
     <Footer dispatch={dispatch} />
