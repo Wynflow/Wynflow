@@ -1389,6 +1389,7 @@ const Dashboard = ({ quotes, dispatch }) => {
       )}
       <div style={{ display: "flex", gap: 12, marginBottom: 32 }}>
         <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })}><Plus size={16} /> New Quote</Button>
+        <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })} style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6" }}><Cpu size={16} /> AI Quote</Button>
         <Button variant="secondary" onClick={() => dispatch({ type: "SET_SCREEN", payload: "sequences" })}>Manage Follow-Ups</Button>
       </div>
       <Card>
@@ -1458,7 +1459,10 @@ const QuotesList = ({ quotes, dispatch }) => {
           <h1 style={{ fontSize: 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Quotes</h1>
           <p style={{ fontSize: 14, color: theme.textMuted, margin: "8px 0 0" }}>{quotes.length} total quotes</p>
         </div>
-        <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })}><Plus size={16} /> New Quote</Button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })} style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6" }}><Cpu size={16} /> AI Quote</Button>
+          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })}><Plus size={16} /> New Quote</Button>
+        </div>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
         {["all", "requested", "sent", "opened", "accepted", "booked", "declined"].map((f) => (
@@ -1690,6 +1694,272 @@ const Analytics = ({ quotes }) => {
           </Card>
         );
       })()}
+    </div>
+  );
+};
+
+// ─── AI Quote Form ───
+const AIQuoteForm = ({ dispatch, business, sequences }) => {
+  const isMobile = useIsMobile();
+  const [form, setForm] = useState({ customerName: "", customerEmail: "", customerPhone: "", jobTitle: "", description: "" });
+  const [photos, setPhotos] = useState([]);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
+  const [siteNotes, setSiteNotes] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [generated, setGenerated] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [sending, setSending] = useState(false);
+
+  const [showPreview, setShowPreview] = useState(false);
+
+  const QuotePreview = () => (
+    <div onClick={() => setShowPreview(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(4px)" }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 620, maxHeight: "90vh", overflowY: "auto", borderRadius: 12, background: "#fff", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
+        <div style={{ padding: "32px 40px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: "#0A0E17", fontFamily: theme.fontDisplay }}>{business.business_name}</div>
+              {business.phone && <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>{business.phone}</div>}
+              {business.email && <div style={{ fontSize: 13, color: "#6b7280" }}>{business.email}</div>}
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 11, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1 }}>Quote</div>
+              <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>{new Date().toLocaleDateString("en-NZ", { day: "numeric", month: "long", year: "numeric" })}</div>
+            </div>
+          </div>
+          <div style={{ borderBottom: "3px solid #14B8A6", marginBottom: 24 }} />
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Prepared For</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: "#111827" }}>{form.customerName}</div>
+            {form.customerEmail && <div style={{ fontSize: 13, color: "#6b7280" }}>{form.customerEmail}</div>}
+            {form.customerPhone && <div style={{ fontSize: 13, color: "#6b7280" }}>{form.customerPhone}</div>}
+          </div>
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Job</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>{form.jobTitle}</div>
+          </div>
+          {editForm?.scope && <div style={{ marginBottom: 24 }}><div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Scope of Work</div><div style={{ fontSize: 14, color: "#374151", lineHeight: 1.7, whiteSpace: "pre-line" }}>{editForm.scope}</div></div>}
+          {editForm?.materials && <div style={{ marginBottom: 24 }}><div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Materials</div><div style={{ fontSize: 14, color: "#374151", lineHeight: 1.8, whiteSpace: "pre-line" }}>{editForm.materials}</div></div>}
+          <div style={{ background: "#f9fafb", borderRadius: 10, padding: 20, marginBottom: 24 }}>
+            {editForm?.labourHours && business.hourly_rate && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Labour ({editForm.labourHours} hrs @ ${business.hourly_rate}/hr)</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${(parseFloat(editForm.labourHours) * parseFloat(business.hourly_rate)).toLocaleString()}</span></div>}
+            <div style={{ borderTop: "2px solid #111827", paddingTop: 12, marginTop: 12, display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total (incl. GST)</span><span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(editForm?.amount || 0).toLocaleString()}</span></div>
+          </div>
+          {editForm?.notes && <div style={{ marginBottom: 24 }}><div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Terms & Conditions</div><div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-line" }}>{editForm.notes}</div></div>}
+          <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontSize: 11, color: "#9ca3af" }}>Powered by <span style={{ color: "#14B8A6", fontWeight: 600 }}>Wynflow</span></div><div style={{ fontSize: 11, color: "#9ca3af" }}>Valid for 30 days</div></div>
+        </div>
+        <div style={{ padding: "16px 40px 24px", background: "#f9fafb", borderTop: "1px solid #e5e7eb", display: "flex", gap: 12, justifyContent: "flex-end" }}>
+          <Button variant="secondary" onClick={() => setShowPreview(false)}>Close</Button>
+          <Button onClick={() => { setShowPreview(false); sendQuote(); }} disabled={sending}><Send size={16} /> Send Quote</Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const update = (key, val) => setForm({ ...form, [key]: val });
+
+  const handlePhotoAdd = (e) => {
+    const files = Array.from(e.target.files).slice(0, 5 - photos.length);
+    setPhotos(prev => [...prev, ...files]);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => setPhotoPreviews(prev => [...prev, ev.target.result]);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removePhoto = (i) => {
+    setPhotos(prev => prev.filter((_, idx) => idx !== i));
+    setPhotoPreviews(prev => prev.filter((_, idx) => idx !== i));
+  };
+
+  const compressImage = (file, maxSize = 1200) => new Promise((resolve) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let w = img.width, h = img.height;
+        if (w > maxSize || h > maxSize) { if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; } else { w = Math.round(w * maxSize / h); h = maxSize; } }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  const generateQuote = async () => {
+    if (!form.customerName || !form.jobTitle) {
+      dispatch({ type: "NOTIFY", payload: { message: "Please enter customer name and job title", type: "error" } });
+      return;
+    }
+    setGenerating(true);
+    try {
+      const photoData = [];
+      for (const photo of photos) {
+        const compressed = await compressImage(photo);
+        photoData.push({ name: photo.name, type: "image/jpeg", data: compressed });
+      }
+      const res = await fetch("https://wynfallautomation.app.n8n.cloud/webhook/generate-quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          business_id: business.id,
+          job_title: form.jobTitle,
+          description: form.description,
+          customer_name: form.customerName,
+          site_notes: siteNotes,
+          site_photos: photoData,
+          customer_photos: [],
+        }),
+      });
+      const result = await res.json();
+      if (result.quote) {
+        setGenerated(result.quote);
+        setEditForm({
+          scope: result.quote.scope_of_work || "",
+          materials: result.quote.materials_breakdown || "",
+          labourHours: result.quote.estimated_hours || "",
+          amount: result.quote.total || "",
+          notes: result.quote.notes || "",
+        });
+      } else {
+        dispatch({ type: "NOTIFY", payload: { message: "AI generation failed — try again", type: "error" } });
+      }
+    } catch (err) {
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to generate quote", type: "error" } });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const sendQuote = async () => {
+    if (!editForm.amount || !form.customerEmail) {
+      dispatch({ type: "NOTIFY", payload: { message: "Please set an amount and customer email", type: "error" } });
+      return;
+    }
+    setSending(true);
+    try {
+      const seqId = sequences.find(s => s.is_default)?.id || sequences[0]?.id || null;
+      let nextFollowUp = null;
+      if (seqId) {
+        const { data: seqSteps } = await db("sequence_steps").eq("sequence_id", seqId).order("step_order").limit(1).select();
+        if (seqSteps && seqSteps[0]) { const d = new Date(); d.setDate(d.getDate() + seqSteps[0].delay_days); nextFollowUp = d.toISOString(); }
+      }
+      const { data: newQuote, error: quoteErr } = await db("quotes").insert({
+        business_id: business.id, quote_number: "", customer_name: form.customerName,
+        customer_email: form.customerEmail, customer_phone: form.customerPhone || null,
+        job_title: form.jobTitle, description: editForm.scope + (editForm.materials ? "\n\nMaterials:\n" + editForm.materials : "") + (editForm.notes ? "\n\nNotes:\n" + editForm.notes : ""),
+        amount: parseFloat(editForm.amount), status: "sent", sent_at: new Date().toISOString(),
+        sequence_id: seqId, next_follow_up_at: nextFollowUp, current_step: 0, follow_up_paused: false,
+      });
+      if (quoteErr) throw new Error("Failed to create quote");
+      await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quote_id: newQuote[0].id }),
+      });
+      dispatch({ type: "ADD_QUOTE", payload: newQuote[0] });
+      dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${form.customerName}! Follow-ups scheduled.`, type: "success" } });
+    } catch (err) {
+      dispatch({ type: "NOTIFY", payload: { message: err.message, type: "error" } });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: isMobile ? 16 : 24 }}>
+        <span onClick={() => dispatch({ type: "GO_BACK" })} style={{ fontSize: 14, color: theme.textMuted, cursor: "pointer" }}>← Back</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(139,92,246,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}><Cpu size={18} color="#8B5CF6" /></div>
+          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>AI Quote Generator</h1>
+        </div>
+      </div>
+
+      {!generated ? (
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 24 }}>
+          <Card style={isMobile ? { padding: 16 } : {}}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 12px" }}>Customer Details</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <Input label="Customer Name *" value={form.customerName} onChange={v => update("customerName", v)} />
+              <Input label="Email *" value={form.customerEmail} onChange={v => update("customerEmail", v)} type="email" />
+              <Input label="Phone (optional)" value={form.customerPhone} onChange={v => update("customerPhone", v)} />
+            </div>
+          </Card>
+          <Card style={isMobile ? { padding: 16 } : {}}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 12px" }}>Job Details</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <Input label="Job Title *" value={form.jobTitle} onChange={v => update("jobTitle", v)} placeholder="e.g. Fix leaking tap, bathroom reno" />
+              <Input label="Description" value={form.description} onChange={v => update("description", v)} textarea placeholder="What needs doing?" />
+              <Input label="Your Site Notes" value={siteNotes} onChange={setSiteNotes} textarea placeholder="e.g. Access is tight, old pipework, customer wants premium..." />
+            </div>
+          </Card>
+          <Card style={{ ...(isMobile ? { padding: 16 } : {}), gridColumn: "1 / -1" }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Site Photos</h3>
+            <p style={{ fontSize: 12, color: theme.textDim, margin: "0 0 12px" }}>Photos help AI generate more accurate quotes with specific materials and quantities</p>
+            {photoPreviews.length > 0 && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                {photoPreviews.map((src, i) => (
+                  <div key={i} style={{ position: "relative", width: 80, height: 80, borderRadius: 8, overflow: "hidden", border: `1px solid ${theme.border}` }}>
+                    <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <button onClick={() => removePhoto(i)} style={{ position: "absolute", top: 2, right: 2, width: 20, height: 20, borderRadius: 10, background: "rgba(0,0,0,0.7)", color: "#fff", border: "none", cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {photos.length < 5 && (
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 10, border: `1px dashed ${theme.border}`, cursor: "pointer", color: theme.textMuted, fontSize: 13 }}>
+                <Upload size={16} /> Add Photos
+                <input type="file" accept="image/*" multiple onChange={handlePhotoAdd} style={{ display: "none" }} />
+              </label>
+            )}
+          </Card>
+          <div style={{ gridColumn: "1 / -1", display: "flex", gap: 12, justifyContent: "flex-end" }}>
+            <Button variant="secondary" onClick={() => dispatch({ type: "GO_BACK" })}>Cancel</Button>
+            <Button onClick={generateQuote} disabled={generating} style={{ background: "#8B5CF6", padding: "14px 32px" }}>
+              <Cpu size={16} /> {generating ? "AI is generating..." : "Generate Quote"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 24 }}>
+          <Card style={{ gridColumn: "1 / -1", background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.2)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <CheckCircle2 size={16} color={theme.green} />
+              <span style={{ fontSize: 14, fontWeight: 600, color: theme.green }}>Quote Generated for {form.customerName}</span>
+              {generated.confidence && (
+                <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 6, marginLeft: 8,
+                  color: generated.confidence === "high" ? theme.green : generated.confidence === "medium" ? "#F59E0B" : theme.red,
+                  background: (generated.confidence === "high" ? theme.green : generated.confidence === "medium" ? "#F59E0B" : theme.red) + "18",
+                }}>{generated.confidence.charAt(0).toUpperCase() + generated.confidence.slice(1)} Confidence</span>
+              )}
+            </div>
+            <p style={{ fontSize: 12, color: theme.textMuted }}>Review and edit below, then send to your customer</p>
+          </Card>
+          <Card style={isMobile ? { padding: 16 } : {}}>
+            <Input label="Scope of Work" value={editForm.scope} onChange={v => setEditForm({ ...editForm, scope: v })} textarea />
+            <div style={{ marginTop: 12 }}><Input label="Materials Breakdown" value={editForm.materials} onChange={v => setEditForm({ ...editForm, materials: v })} textarea /></div>
+          </Card>
+          <Card style={isMobile ? { padding: 16 } : {}}>
+            <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+              <div style={{ flex: 1 }}><Input label="Labour Hours" value={editForm.labourHours} onChange={v => setEditForm({ ...editForm, labourHours: v })} type="number" /></div>
+              <div style={{ flex: 1 }}><Input label="Total Amount ($) *" value={editForm.amount} onChange={v => setEditForm({ ...editForm, amount: v })} type="number" /></div>
+            </div>
+            <Input label="Notes / Terms" value={editForm.notes} onChange={v => setEditForm({ ...editForm, notes: v })} textarea placeholder="e.g. Valid for 30 days, 25% deposit required..." />
+            <div style={{ marginTop: 12 }}><Input label="Customer Email *" value={form.customerEmail} onChange={v => update("customerEmail", v)} type="email" /></div>
+          </Card>
+          <div style={{ gridColumn: "1 / -1", display: "flex", gap: 12, justifyContent: "flex-end" }}>
+            <Button variant="secondary" onClick={() => { setGenerated(null); setEditForm(null); }}>Regenerate</Button>
+            <Button variant="secondary" onClick={() => setShowPreview(true)}><FileText size={16} /> Preview</Button>
+            <Button onClick={sendQuote} disabled={sending} style={{ padding: "14px 32px" }}>
+              <Send size={16} /> {sending ? "Sending..." : "Send Quote to " + form.customerName.split(" ")[0]}
+            </Button>
+          </div>
+        </div>
+      )}
+      {showPreview && <QuotePreview />}
     </div>
   );
 };
@@ -3206,6 +3476,7 @@ export default function WynflowApp() {
       case "quotes": return <QuotesList quotes={quotes} dispatch={dispatch} />;
       case "analytics": return <Analytics quotes={quotes} />;
       case "newQuote": return <NewQuoteForm dispatch={dispatch} business={business} sequences={sequences} />;
+      case "aiQuote": return <AIQuoteForm dispatch={dispatch} business={business} sequences={sequences} />;
       case "sequences": return <SequencesManager sequences={sequences} business={business} dispatch={dispatch} />;
       case "quoteDetail": return <QuoteDetail quoteId={detailId} quotes={quotes} sequences={sequences} dispatch={dispatch} business={business} />;
       case "help": return <HelpCentre />;
