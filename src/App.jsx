@@ -1,5 +1,5 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
-import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle } from "lucide-react";
+import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck } from "lucide-react";
 
 // ─── SEO Helper ───
 const SEO_CONFIG = {
@@ -533,65 +533,126 @@ const EmailPreviewModal = ({ onClose }) => {
   );
 };
 
+const useInView = (threshold = 0.15) => {
+  const [ref, setRef] = useState(null);
+  const [isVisible, setIsVisible] = useState(false);
+  useEffect(() => {
+    if (!ref) return;
+    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setIsVisible(true); observer.disconnect(); } }, { threshold });
+    observer.observe(ref);
+    return () => observer.disconnect();
+  }, [ref, threshold]);
+  return [setRef, isVisible];
+};
+
+const FadeIn = ({ children, delay = 0, style = {} }) => {
+  const [ref, isVisible] = useInView(0.1);
+  return (
+    <div ref={ref} style={{ opacity: isVisible ? 1 : 0, transform: isVisible ? "translateY(0)" : "translateY(24px)", transition: `opacity 0.7s ease ${delay}s, transform 0.7s ease ${delay}s`, ...style }}>
+      {children}
+    </div>
+  );
+};
+
 const HomePage = ({ dispatch }) => {
   const isMobile = useIsMobile();
-  const [showEmailPreview, setShowEmailPreview] = useState(false);
+
+  const features = [
+    { Icon: Globe, title: "Live Quote Request Link", desc: "Share your personal link on social media, Google Business, or your website — customers request quotes directly." },
+    { Icon: Cpu, title: "AI Quote Generation", desc: "Generate a professional quote in seconds using AI, right from your dashboard." },
+    { Icon: RefreshCw, title: "Automated Follow-ups", desc: "Automatically follow up with customers who haven't responded." },
+    { Icon: BarChart3, title: "Analytics Dashboard", desc: "Track your quotes, conversion rates, and revenue in one place." },
+    { Icon: Mail, title: "Professional Emails", desc: "Customers receive branded emails with one-click Accept or Decline buttons built in." },
+    { Icon: MessageSquare, title: "Feedback Capture", desc: "When customers decline, they tell you why — so you can adjust your pricing and win more next time." },
+  ];
+
   return (
   <div>
-    {showEmailPreview && <EmailPreviewModal onClose={() => setShowEmailPreview(false)} />}
+    {/* ── Hero (dark) ── */}
     <div style={{ minHeight:isMobile?"auto":"90vh",display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",background:`radial-gradient(ellipse at 30% 20%,rgba(20,184,166,0.1) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(59,130,246,0.06) 0%,transparent 50%),${theme.bg}`,padding:isMobile?"100px 20px 60px":"120px 48px 80px" }}>
       <div style={{ maxWidth:800 }}>
-        <div style={{ display:"inline-flex",alignItems:"center",gap:8,padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:isMobile?20:32 }}><Cpu size={16} color={theme.accent} /><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>AI-Powered Quoting for NZ Tradies</span></div>
-        <h1 style={{ fontSize:isMobile?36:64,fontWeight:800,color:theme.text,lineHeight:1.1,marginBottom:isMobile?16:24,fontFamily:theme.fontDisplay }}>Snap a Photo.<br />Get a Quote.<br /><span style={{ color:theme.accent }}>Win the Job.</span></h1>
-        <p style={{ fontSize:isMobile?16:20,color:theme.textMuted,lineHeight:1.6,maxWidth:600,margin:"0 auto 40px" }}>Wynflow uses AI to generate accurate quotes from job site photos — then chases your customers with automated follow-ups until they say yes. You stay on the tools, we handle the rest.</p>
-        <div style={{ display:"flex",gap:12,justifyContent:"center",flexDirection:isMobile?"column":"row",alignItems:"center" }}><Button size={isMobile?"md":"lg"} onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Free Trial →</Button><Button size={isMobile?"md":"lg"} variant="secondary" onClick={() => dispatch({ type:"SET_SCREEN",payload:"pricing" })}>View Pricing</Button></div>
-        <div style={{ marginTop:16 }}><span onClick={() => setShowEmailPreview(true)} style={{ fontSize:14,color:theme.accent,cursor:"pointer",fontWeight:500,textDecoration:"underline",textUnderlineOffset:3 }}>See what your customers receive →</span></div>
-        <p style={{ fontSize:13,color:theme.textDim,marginTop:12 }}>No credit card required • 14-day free trial • Cancel anytime</p>
+        <FadeIn>
+          <div style={{ display:"inline-flex",alignItems:"center",gap:8,padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:isMobile?20:32 }}><Cpu size={16} color={theme.accent} /><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>AI-Powered Quoting for NZ Tradies</span></div>
+        </FadeIn>
+        <FadeIn delay={0.1}>
+          <h1 style={{ fontSize:isMobile?36:64,fontWeight:800,color:theme.text,lineHeight:1.1,marginBottom:isMobile?16:24,fontFamily:theme.fontDisplay }}>Snap a Photo.<br />Get a Quote.<br /><span style={{ color:theme.accent }}>Win the Job.</span></h1>
+        </FadeIn>
+        <FadeIn delay={0.2}>
+          <p style={{ fontSize:isMobile?16:20,color:theme.textMuted,lineHeight:1.6,maxWidth:600,margin:"0 auto 40px" }}>Wynflow's AI generates accurate quotes from your job site photos and notes — scope, materials, labour, the lot. Then automated follow-ups chase your customers until they say yes. You stay on the tools, we handle the paperwork.</p>
+        </FadeIn>
+        <FadeIn delay={0.3}>
+          <div style={{ display:"flex",gap:12,justifyContent:"center",flexDirection:isMobile?"column":"row",alignItems:"center" }}><Button size={isMobile?"md":"lg"} onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Free Trial →</Button><Button size={isMobile?"md":"lg"} variant="secondary" onClick={() => dispatch({ type:"SET_SCREEN",payload:"pricing" })}>View Pricing</Button></div>
+          <p style={{ fontSize:13,color:theme.textDim,marginTop:16 }}>No credit card required  --  14-day free trial  --  Cancel anytime</p>
+        </FadeIn>
       </div>
     </div>
-    <div style={{ padding:isMobile?"60px 20px":"100px 48px",background:theme.surface }}>
-      <div style={{ maxWidth:1100,margin:"0 auto",textAlign:"center" }}>
-        <h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>How It Works</h2>
-        <p style={{ fontSize:16,color:theme.textMuted,marginBottom:isMobile?40:64,maxWidth:500,margin:"0 auto 64px" }}>From site visit to signed quote in minutes — not hours</p>
-        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?20:32 }}>
-          {[{num:"01",Icon:Cpu,title:"Snap Photos, Get a Quote",desc:"Take photos on site and let AI do the maths. Wynflow analyses your photos, your rates, and your trade to generate an accurate, itemised quote — materials, labour, and all."},{num:"02",Icon:Send,title:"Review & Send",desc:"Check the AI-generated quote, tweak anything you want, and hit send. Your customer gets a professional email with one-click Accept or Decline buttons."},{num:"03",Icon:Bot,title:"Automated Follow-Ups",desc:"If they don't respond, Wynflow chases automatically — day 2, day 5, day 10. Personalised emails that sound like you, not a robot. You're on the tools, not on your phone."}].map((step,i) => {
-            const StepIcon = step.Icon;
-            return (
-            <div key={i} style={{ padding:isMobile?24:40,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"left",transition:"all 0.3s ease" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + "44"; e.currentTarget.style.transform = "translateY(-4px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; e.currentTarget.style.transform = "translateY(0)"; }}>
-              <div style={{ fontSize:48,fontWeight:800,color:theme.accent,fontFamily:theme.fontDisplay,opacity:0.3,marginBottom:8 }}>{step.num}</div>
-              <div style={{ width:48,height:48,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16 }}><StepIcon size={24} color={theme.accent} /></div>
-              <h3 style={{ fontSize:20,fontWeight:700,color:theme.text,marginBottom:12 }}>{step.title}</h3>
-              <p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.7 }}>{step.desc}</p>
-            </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-    <div style={{ padding:isMobile?"60px 20px":"100px 48px",background:theme.bg }}>
+
+    {/* ── Features Grid (light) ── */}
+    <div style={{ padding:isMobile?"60px 20px":"100px 48px",background:"#FFFFFF" }}>
       <div style={{ maxWidth:1100,margin:"0 auto" }}>
-        <div style={{ textAlign:"center",marginBottom:isMobile?40:64 }}><h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Everything You Need to Quote Faster & Win More</h2><p style={{ fontSize:16,color:theme.textMuted }}>AI smarts meets tradie simplicity. No complicated setup, no fluff.</p></div>
-        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?16:24 }}>
-          {[{Icon:Cpu,title:"AI Photo Quoting",desc:"Upload job site photos and let AI generate a detailed quote — scope, materials, labour, the lot. Accurate to your trade and your rates. No other NZ tool does this."},{Icon:RefreshCw,title:"Automated Follow-Up Sequences",desc:"Set your chase schedule and forget about it. Wynflow sends personalised follow-ups at the right intervals — day 2, 5, 10, whatever suits your trade."},{Icon:ClipboardList,title:"Live Quote Dashboard",desc:"See every quote at a glance — who's opened it, who's ghosting you, and what needs chasing. Track from sent to booked, all from your phone."},{Icon:CheckCircle2,title:"One-Click Accept or Decline",desc:"Your customer taps Accept or Decline right in the email. No phone tag, no chasing, no wondering. You get notified instantly."},{Icon:BarChart3,title:"Analytics That Actually Help",desc:"See your win rate, average quote value, which follow-up converts best, and why people say no. Real data to help you quote smarter."},{Icon:Mail,title:"Customer Quote Requests",desc:"Share your personal quote request link. Customers submit their job details and photos — AI pre-summarises the scope before it hits your dashboard."}].map((f,i) => {
+        <FadeIn>
+          <div style={{ textAlign:"center",marginBottom:isMobile?40:64 }}>
+            <h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:"#0A0E17",marginBottom:12,fontFamily:theme.fontDisplay }}>Everything you need to win more jobs</h2>
+            <p style={{ fontSize:isMobile?15:18,color:"#6B7280",maxWidth:540,margin:"0 auto" }}>AI smarts meets tradie simplicity. No complicated setup, no fluff.</p>
+          </div>
+        </FadeIn>
+        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?16:24 }}>
+          {features.map((f, i) => {
             const FIcon = f.Icon;
             return (
-            <div key={i} style={{ padding:isMobile?20:32,borderRadius:16,background:theme.surface,border:`1px solid ${theme.border}`,display:"flex",gap:16,transition:"all 0.3s ease" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + "33"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = theme.border; }}>
-              <div style={{ width:44,height:44,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><FIcon size={20} color={theme.accent} /></div>
-              <div><h3 style={{ fontSize:16,fontWeight:600,color:theme.text,marginBottom:8 }}>{f.title}</h3><p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.6 }}>{f.desc}</p></div>
-            </div>
+              <FadeIn key={i} delay={0.05 * i}>
+                <div style={{ padding:isMobile?24:32,borderRadius:16,background:"#FFFFFF",border:"1px solid #E5E7EB",textAlign:"center",transition:"all 0.3s ease",height:"100%" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(20,184,166,0.1)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#E5E7EB"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+                  <div style={{ width:52,height:52,borderRadius:14,background:"rgba(20,184,166,0.08)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px" }}><FIcon size={24} color={theme.accent} strokeWidth={1.8} /></div>
+                  <h3 style={{ fontSize:17,fontWeight:700,color:"#0A0E17",marginBottom:8,fontFamily:theme.font }}>{f.title}</h3>
+                  <p style={{ fontSize:14,color:"#6B7280",lineHeight:1.6,margin:0 }}>{f.desc}</p>
+                </div>
+              </FadeIn>
             );
           })}
         </div>
       </div>
     </div>
+
+    {/* ── How It Works (light grey) ── */}
+    <div style={{ padding:isMobile?"60px 20px":"100px 48px",background:"#F9FAFB" }}>
+      <div style={{ maxWidth:1100,margin:"0 auto",textAlign:"center" }}>
+        <FadeIn>
+          <h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:"#0A0E17",marginBottom:12,fontFamily:theme.fontDisplay }}>How It Works</h2>
+          <p style={{ fontSize:isMobile?15:18,color:"#6B7280",marginBottom:isMobile?40:64,maxWidth:500,margin:"0 auto",paddingBottom:isMobile?40:64 }}>From site visit to signed quote in minutes — not hours</p>
+        </FadeIn>
+        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?20:32 }}>
+          {[
+            {num:"01",Icon:Cpu,title:"Snap Photos, Add Notes, Get a Quote",desc:"Take photos on site and add your notes — access issues, customer preferences, anything relevant. Wynflow's AI analyses your photos, notes, rates, and trade to generate an accurate, itemised quote with materials, labour, and pricing."},
+            {num:"02",Icon:Send,title:"Review & Send",desc:"Check the AI-generated quote, tweak anything you want, and hit send. Your customer gets a professional email with one-click Accept or Decline buttons."},
+            {num:"03",Icon:Bot,title:"Automated Follow-Ups",desc:"If they don't respond, Wynflow chases automatically — day 2, day 5, day 10. Personalised emails that sound like you, not a robot. You're on the tools, not on your phone."},
+          ].map((step,i) => {
+            const StepIcon = step.Icon;
+            return (
+              <FadeIn key={i} delay={0.1 * i}>
+                <div style={{ padding:isMobile?24:40,borderRadius:20,background:"#FFFFFF",border:"1px solid #E5E7EB",textAlign:"left",transition:"all 0.3s ease",height:"100%",boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + "66"; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.08)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#E5E7EB"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; }}>
+                  <div style={{ fontSize:48,fontWeight:800,color:theme.accent,fontFamily:theme.fontDisplay,opacity:0.2,marginBottom:8 }}>{step.num}</div>
+                  <div style={{ width:48,height:48,borderRadius:12,background:"rgba(20,184,166,0.08)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16 }}><StepIcon size={24} color={theme.accent} /></div>
+                  <h3 style={{ fontSize:20,fontWeight:700,color:"#0A0E17",marginBottom:12 }}>{step.title}</h3>
+                  <p style={{ fontSize:14,color:"#6B7280",lineHeight:1.7 }}>{step.desc}</p>
+                </div>
+              </FadeIn>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+
+    {/* ── CTA (dark) ── */}
     <div style={{ padding:isMobile?"60px 20px":"100px 48px",textAlign:"center",background:`radial-gradient(ellipse at 50% 50%,rgba(20,184,166,0.12) 0%,transparent 60%),${theme.bg}` }}>
-      <h2 style={{ fontSize:isMobile?32:44,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Quote Faster. Follow Up Smarter. Win More.</h2>
-      <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,marginBottom:40 }}>Join NZ tradies using AI to quote in minutes and close more jobs on autopilot.</p>
-      <Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Your Free Trial →</Button>
+      <FadeIn>
+        <h2 style={{ fontSize:isMobile?32:44,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Quote Faster. Chase Smarter. Win More Jobs.</h2>
+        <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,marginBottom:40 }}>Join NZ tradies using AI to turn job site photos and notes into accurate quotes in minutes — then close more jobs on autopilot.</p>
+        <Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Your Free Trial →</Button>
+      </FadeIn>
     </div>
     <Footer dispatch={dispatch} />
   </div>
