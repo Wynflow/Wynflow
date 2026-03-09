@@ -1890,8 +1890,15 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
             <div>
               <div style={{ fontSize: 28, fontWeight: 800, color: "#0A0E17", fontFamily: theme.fontDisplay }}>{business.business_name}</div>
-              {business.phone && <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>{business.phone}</div>}
+              {editForm?.showBusinessDetails && business.address && <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>{business.address}</div>}
+              {business.phone && <div style={{ fontSize: 13, color: "#6b7280", marginTop: editForm?.showBusinessDetails && business.address ? 0 : 4 }}>{business.phone}</div>}
               {business.email && <div style={{ fontSize: 13, color: "#6b7280" }}>{business.email}</div>}
+              {editForm?.showBusinessDetails && (business.gst_number || business.license_number) && (
+                <div style={{ display: "flex", gap: 12, marginTop: 4 }}>
+                  {business.gst_number && <div style={{ fontSize: 11, color: "#9ca3af" }}>GST: {business.gst_number}</div>}
+                  {business.license_number && <div style={{ fontSize: 11, color: "#9ca3af" }}>{business.license_number}</div>}
+                </div>
+              )}
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 11, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1 }}>Quote</div>
@@ -1912,10 +1919,15 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
           {editForm?.scope && <div style={{ marginBottom: 24 }}><div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Scope of Work</div><div style={{ fontSize: 14, color: "#374151", lineHeight: 1.7, whiteSpace: "pre-line" }}>{editForm.scope}</div></div>}
           {editForm?.materials && <div style={{ marginBottom: 24 }}><div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Materials</div><div style={{ fontSize: 14, color: "#374151", lineHeight: 1.8, whiteSpace: "pre-line" }}>{editForm.materials}</div></div>}
           <div style={{ background: "#f9fafb", borderRadius: 10, padding: 20, marginBottom: 24 }}>
-            {editForm?.labourHours && business.hourly_rate && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Labour ({editForm.labourHours} hrs @ ${business.hourly_rate}/hr)</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${(parseFloat(editForm.labourHours) * parseFloat(business.hourly_rate)).toLocaleString()}</span></div>}
-            <div style={{ borderTop: "2px solid #111827", paddingTop: 12, marginTop: 12, display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total (incl. GST)</span><span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(editForm?.amount || 0).toLocaleString()}</span></div>
+            {editForm?.showBreakdown && (<>
+              {parseFloat(editForm?.materialsCost) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Materials</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${parseFloat(editForm.materialsCost).toLocaleString()}</span></div>}
+              {editForm?.labourHours && business.hourly_rate && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Labour ({editForm.labourHours} hrs @ ${business.hourly_rate}/hr)</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${(parseFloat(editForm.labourHours) * parseFloat(business.hourly_rate)).toLocaleString()}</span></div>}
+              {editForm?.includeCallout && parseFloat(business.callout_fee) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Callout Fee</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${parseFloat(business.callout_fee).toLocaleString()}</span></div>}
+            </>)}
+            <div style={{ borderTop: editForm?.showBreakdown ? "2px solid #111827" : "none", paddingTop: editForm?.showBreakdown ? 12 : 0, marginTop: editForm?.showBreakdown ? 12 : 0, display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total (incl. GST)</span><span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(editForm?.amount || 0).toLocaleString()}</span></div>
           </div>
           {editForm?.notes && <div style={{ marginBottom: 24 }}><div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Terms & Conditions</div><div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-line" }}>{editForm.notes}</div></div>}
+          {editForm?.showBusinessDetails && business.quote_footer && <div style={{ marginBottom: 24, padding: "14px 16px", borderRadius: 8, background: "#f9fafb", border: "1px solid #e5e7eb" }}><div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-line" }}>{business.quote_footer}</div></div>}
           <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontSize: 11, color: "#9ca3af" }}>Powered by <span style={{ color: "#14B8A6", fontWeight: 600 }}>Wynflow</span></div><div style={{ fontSize: 11, color: "#9ca3af" }}>Valid for 30 days</div></div>
         </div>
         <div style={{ padding: "16px 40px 24px", background: "#f9fafb", borderTop: "1px solid #e5e7eb", display: "flex", gap: 12, justifyContent: "flex-end" }}>
@@ -1999,12 +2011,22 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
       const result = await res.json();
       if (result.quote) {
         setGenerated(result.quote);
+        const hours = parseFloat(result.quote.estimated_hours) || 0;
+        const rate = parseFloat(business.hourly_rate) || 0;
+        const total = parseFloat(result.quote.total) || 0;
+        const labourCost = hours * rate;
+        const callout = parseFloat(business.callout_fee) || 0;
+        const matCost = Math.max(0, total - labourCost - callout);
         setEditForm({
           scope: result.quote.scope_of_work || "",
           materials: result.quote.materials_breakdown || "",
           labourHours: result.quote.estimated_hours || "",
+          materialsCost: matCost ? String(Math.round(matCost * 100) / 100) : "",
           amount: result.quote.total || "",
           notes: result.quote.notes || "",
+          showBreakdown: true,
+          includeCallout: parseFloat(business.callout_fee) > 0,
+          showBusinessDetails: !!(business.address || business.gst_number || business.license_number),
         });
       } else {
         dispatch({ type: "NOTIFY", payload: { message: "AI generation failed — try again", type: "error" } });
@@ -2014,6 +2036,20 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const recalcTotal = (fields) => {
+    const hours = parseFloat(fields.labourHours) || 0;
+    const rate = parseFloat(business.hourly_rate) || 0;
+    const matCost = parseFloat(fields.materialsCost) || 0;
+    const callout = fields.includeCallout ? (parseFloat(business.callout_fee) || 0) : 0;
+    return String(Math.round((matCost + (hours * rate) + callout) * 100) / 100);
+  };
+
+  const updatePricing = (key, val) => {
+    const updated = { ...editForm, [key]: val };
+    updated.amount = recalcTotal(updated);
+    setEditForm(updated);
   };
 
   const sendQuote = async () => {
@@ -2122,15 +2158,47 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
           </Card>
           <Card style={isMobile ? { padding: 16 } : {}}>
             <Input label="Scope of Work" value={editForm.scope} onChange={v => setEditForm({ ...editForm, scope: v })} textarea />
-            <div style={{ marginTop: 12 }}><Input label="Materials Breakdown" value={editForm.materials} onChange={v => setEditForm({ ...editForm, materials: v })} textarea /></div>
+            <div style={{ marginTop: 12 }}><Input label="Materials Description" value={editForm.materials} onChange={v => setEditForm({ ...editForm, materials: v })} textarea /></div>
           </Card>
           <Card style={isMobile ? { padding: 16 } : {}}>
-            <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
-              <div style={{ flex: 1 }}><Input label="Labour Hours" value={editForm.labourHours} onChange={v => setEditForm({ ...editForm, labourHours: v })} type="number" /></div>
-              <div style={{ flex: 1 }}><Input label="Total Amount ($) *" value={editForm.amount} onChange={v => setEditForm({ ...editForm, amount: v })} type="number" /></div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, color: theme.text, margin: 0 }}>Pricing Breakdown</h3>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
+                <input type="checkbox" checked={editForm.showBreakdown} onChange={e => setEditForm({ ...editForm, showBreakdown: e.target.checked })} style={{ accentColor: theme.accent }} />
+                Show on invoice
+              </label>
             </div>
-            <Input label="Notes / Terms" value={editForm.notes} onChange={v => setEditForm({ ...editForm, notes: v })} textarea placeholder="e.g. Valid for 30 days, 25% deposit required..." />
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1 }}><Input label="Materials Cost ($)" value={editForm.materialsCost} onChange={v => updatePricing("materialsCost", v)} type="number" /></div>
+                <div style={{ flex: 1 }}><Input label="Labour Hours" value={editForm.labourHours} onChange={v => updatePricing("labourHours", v)} type="number" /></div>
+              </div>
+              {business.hourly_rate && <div style={{ fontSize: 12, color: theme.textMuted, marginTop: -4 }}>Labour: {editForm.labourHours || 0} hrs × ${business.hourly_rate}/hr = ${((parseFloat(editForm.labourHours) || 0) * parseFloat(business.hourly_rate)).toLocaleString()}</div>}
+              {parseFloat(business.callout_fee) > 0 && (
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
+                  <input type="checkbox" checked={editForm.includeCallout} onChange={e => updatePricing("includeCallout", e.target.checked)} style={{ accentColor: theme.accent }} />
+                  Include callout fee (${parseFloat(business.callout_fee).toLocaleString()})
+                </label>
+              )}
+              <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total (incl. GST)</span>
+                <span style={{ fontSize: 22, fontWeight: 700, color: theme.accent }}>${parseFloat(editForm.amount || 0).toLocaleString()}</span>
+              </div>
+              <div style={{ marginTop: -4 }}><Input label="Override Total ($)" value={editForm.amount} onChange={v => setEditForm({ ...editForm, amount: v })} type="number" /></div>
+            </div>
+            <div style={{ marginTop: 12 }}><Input label="Notes / Terms" value={editForm.notes} onChange={v => setEditForm({ ...editForm, notes: v })} textarea placeholder="e.g. Valid for 30 days, 25% deposit required..." /></div>
             <div style={{ marginTop: 12 }}><Input label="Customer Email *" value={form.customerEmail} onChange={v => update("customerEmail", v)} type="email" /></div>
+            {(business.address || business.gst_number || business.license_number || business.quote_footer) && (
+              <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 10, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input type="checkbox" checked={editForm.showBusinessDetails} onChange={e => setEditForm({ ...editForm, showBusinessDetails: e.target.checked })} style={{ accentColor: theme.accent }} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: theme.text }}>Show business details on quote</div>
+                    <div style={{ fontSize: 11, color: theme.textDim }}>Address, GST, license number, custom footer</div>
+                  </div>
+                </label>
+              </div>
+            )}
           </Card>
           <div style={{ gridColumn: "1 / -1", display: "flex", gap: 12, justifyContent: "flex-end" }}>
             <Button variant="secondary" onClick={() => { setGenerated(null); setEditForm(null); }}>Regenerate</Button>
@@ -2364,12 +2432,22 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
       const result = await res.json();
       if (result.quote) {
         setGenerated(result.quote);
+        const hours = parseFloat(result.quote.estimated_hours) || 0;
+        const rate = parseFloat(business.hourly_rate) || 0;
+        const total = parseFloat(result.quote.total) || 0;
+        const labourCost = hours * rate;
+        const callout = parseFloat(business.callout_fee) || 0;
+        const matCost = Math.max(0, total - labourCost - callout);
         setEditForm({
           scope: result.quote.scope_of_work || "",
           materials: result.quote.materials_breakdown || "",
           labourHours: result.quote.estimated_hours || "",
+          materialsCost: matCost ? String(Math.round(matCost * 100) / 100) : "",
           amount: result.quote.total || "",
           notes: result.quote.notes || "",
+          showBreakdown: true,
+          includeCallout: parseFloat(business.callout_fee) > 0,
+          showBusinessDetails: !!(business.address || business.gst_number || business.license_number),
         });
       } else {
         dispatch({ type: "NOTIFY", payload: { message: "AI generation failed — try again", type: "error" } });
@@ -2379,6 +2457,20 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const recalcTotal = (fields) => {
+    const hours = parseFloat(fields.labourHours) || 0;
+    const rate = parseFloat(business.hourly_rate) || 0;
+    const matCost = parseFloat(fields.materialsCost) || 0;
+    const callout = fields.includeCallout ? (parseFloat(business.callout_fee) || 0) : 0;
+    return String(Math.round((matCost + (hours * rate) + callout) * 100) / 100);
+  };
+
+  const updatePricing = (key, val) => {
+    const updated = { ...editForm, [key]: val };
+    updated.amount = recalcTotal(updated);
+    setEditForm(updated);
   };
 
   const sendQuote = async () => {
@@ -2477,14 +2569,45 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
           </div>
 
           <Input label="Scope of Work" value={editForm.scope} onChange={v => setEditForm({ ...editForm, scope: v })} textarea />
-          <Input label="Materials Breakdown" value={editForm.materials} onChange={v => setEditForm({ ...editForm, materials: v })} textarea />
-          <div style={{ display: "flex", gap: 12 }}>
-            <div style={{ flex: 1 }}><Input label="Estimated Hours" value={editForm.labourHours} onChange={v => setEditForm({ ...editForm, labourHours: v })} type="number" /></div>
-            <div style={{ flex: 1 }}>
-              <Input label="Total Amount ($) *" value={editForm.amount} onChange={v => setEditForm({ ...editForm, amount: v })} type="number" />
+          <Input label="Materials Description" value={editForm.materials} onChange={v => setEditForm({ ...editForm, materials: v })} textarea />
+          <div style={{ padding: 14, borderRadius: 10, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>Pricing Breakdown</div>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
+                <input type="checkbox" checked={editForm.showBreakdown} onChange={e => setEditForm({ ...editForm, showBreakdown: e.target.checked })} style={{ accentColor: theme.accent }} />
+                Show on invoice
+              </label>
             </div>
+            <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
+              <div style={{ flex: 1 }}><Input label="Materials Cost ($)" value={editForm.materialsCost} onChange={v => updatePricing("materialsCost", v)} type="number" /></div>
+              <div style={{ flex: 1 }}><Input label="Labour Hours" value={editForm.labourHours} onChange={v => updatePricing("labourHours", v)} type="number" /></div>
+            </div>
+            {business.hourly_rate && <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>Labour: {editForm.labourHours || 0} hrs × ${business.hourly_rate}/hr = ${((parseFloat(editForm.labourHours) || 0) * parseFloat(business.hourly_rate)).toLocaleString()}</div>}
+            {parseFloat(business.callout_fee) > 0 && (
+              <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>
+                <input type="checkbox" checked={editForm.includeCallout} onChange={e => updatePricing("includeCallout", e.target.checked)} style={{ accentColor: theme.accent }} />
+                Include callout fee (${parseFloat(business.callout_fee).toLocaleString()})
+              </label>
+            )}
+            <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 10, marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total (incl. GST)</span>
+              <span style={{ fontSize: 20, fontWeight: 700, color: theme.accent }}>${parseFloat(editForm.amount || 0).toLocaleString()}</span>
+            </div>
+            <div style={{ marginTop: 8 }}><Input label="Override Total ($)" value={editForm.amount} onChange={v => setEditForm({ ...editForm, amount: v })} type="number" /></div>
           </div>
           <Input label="Additional Notes" value={editForm.notes} onChange={v => setEditForm({ ...editForm, notes: v })} textarea placeholder="Any terms, conditions, or notes for the customer" />
+
+          {(business.address || business.gst_number || business.license_number || business.quote_footer) && (
+            <div style={{ padding: "12px 14px", borderRadius: 10, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input type="checkbox" checked={editForm.showBusinessDetails} onChange={e => setEditForm({ ...editForm, showBusinessDetails: e.target.checked })} style={{ accentColor: theme.accent }} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: theme.text }}>Show business details on quote</div>
+                  <div style={{ fontSize: 11, color: theme.textDim }}>Address, GST, license number, custom footer</div>
+                </div>
+              </label>
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: 12 }}>
             <Button variant="secondary" onClick={() => { setGenerated(null); setEditForm(null); }} style={{ flex: 1, justifyContent: "center" }}>
@@ -3259,6 +3382,10 @@ const Settings = ({ business, dispatch }) => {
   const [bankAccountNumber, setBankAccountNumber] = useState(business?.bank_account_number || "");
   const [depositPercentage, setDepositPercentage] = useState(business?.deposit_percentage || 25);
   const [requireDeposit, setRequireDeposit] = useState(business?.require_deposit || false);
+  const [address, setAddress] = useState(business?.address || "");
+  const [gstNumber, setGstNumber] = useState(business?.gst_number || "");
+  const [licenseNumber, setLicenseNumber] = useState(business?.license_number || "");
+  const [quoteFooter, setQuoteFooter] = useState(business?.quote_footer || "");
   const [saving, setSaving] = useState(false);
   const [declineReasons, setDeclineReasons] = useState(business?.decline_reasons || DEFAULT_DECLINE_REASONS);
   const [newReason, setNewReason] = useState("");
@@ -3281,6 +3408,10 @@ const Settings = ({ business, dispatch }) => {
       bank_account_number: bankAccountNumber,
       deposit_percentage: parseFloat(depositPercentage) || 25,
       require_deposit: requireDeposit,
+      address: address,
+      gst_number: gstNumber,
+      license_number: licenseNumber,
+      quote_footer: quoteFooter,
     };
     try {
       const { error } = await db("businesses").eq("id", business.id).update(updates);
@@ -3342,6 +3473,18 @@ const Settings = ({ business, dispatch }) => {
               </select>
             </div>
             <Button onClick={saveSettings} disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
+          </div>
+        </Card>
+        <Card>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Quote Details</h3>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Add your business details to display on quotes. Toggle them on/off per quote when sending.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <Input label="Business Address" value={address} onChange={setAddress} placeholder="e.g. 12 Queen St, Auckland 1010" />
+            <div style={{ display: "flex", gap: 12 }}>
+              <div style={{ flex: 1 }}><Input label="GST Number" value={gstNumber} onChange={setGstNumber} placeholder="e.g. 123-456-789" /></div>
+              <div style={{ flex: 1 }}><Input label="License / Rego Number" value={licenseNumber} onChange={setLicenseNumber} placeholder="e.g. LBP 12345" /></div>
+            </div>
+            <Input label="Custom Quote Footer" value={quoteFooter} onChange={setQuoteFooter} textarea placeholder="e.g. All work guaranteed for 12 months. Pricing valid for 30 days. Full terms at yourwebsite.co.nz/terms" />
           </div>
         </Card>
         <Card>
