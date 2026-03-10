@@ -307,7 +307,7 @@ const theme = {
 const statusConfig = {
   draft: { label: "Draft", color: theme.textMuted, bg: "rgba(139,149,168,0.12)" },
   pending: { label: "Pending", color: theme.blue, bg: theme.blueSoft },
-  requested: { label: "Requested", color: "#8B5CF6", bg: "rgba(139,92,246,0.12)" },
+  requested: { label: "Requested", color: "#14B8A6", bg: "rgba(20,184,166,0.12)" },
   sent: { label: "Sent", color: theme.accent, bg: theme.accentSoft },
   opened: { label: "Opened", color: theme.accentBlue, bg: theme.accentBlueSoft },
   accepted: { label: "Accepted", color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
@@ -1282,9 +1282,9 @@ const AuthScreen = ({ dispatch, isSignup }) => {
           if (existingBiz) {
             dispatch({ type: "SET_USER", payload: authData.user });
             dispatch({ type: "SET_BUSINESS", payload: existingBiz });
-            setCookie("wynflow_token", supabase.token, 30);
-            setCookie("wynflow_user", authData.user, 30);
-            setCookie("wynflow_business", existingBiz, 30);
+            setCookie("wynflow_token", supabase.token, 43200);
+            setCookie("wynflow_user", authData.user, 43200);
+            setCookie("wynflow_business", existingBiz, 43200);
             dispatch({ type: "NOTIFY", payload: { message: "Welcome to Wynflow!", type: "success" } });
           } else {
             throw new Error("Account created but business profile failed. Please try logging in.");
@@ -1310,9 +1310,9 @@ const AuthScreen = ({ dispatch, isSignup }) => {
         }
         dispatch({ type: "SET_USER", payload: authData.user });
         dispatch({ type: "SET_BUSINESS", payload: bizRecord });
-        setCookie("wynflow_token", supabase.token, 30);
-        setCookie("wynflow_user", authData.user, 30);
-        setCookie("wynflow_business", bizRecord, 30);
+        setCookie("wynflow_token", supabase.token, 43200);
+        setCookie("wynflow_user", authData.user, 43200);
+        setCookie("wynflow_business", bizRecord, 43200);
         dispatch({ type: "NOTIFY", payload: { message: "Account created! Welcome to Wynflow!", type: "success" } });
         fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
           method: "POST", headers: { "Content-Type": "application/json" },
@@ -1332,9 +1332,9 @@ const AuthScreen = ({ dispatch, isSignup }) => {
         }
         if (!biz) throw new Error("No business profile found for this account. Please sign up instead.");
         dispatch({ type: "SET_BUSINESS", payload: biz });
-        setCookie("wynflow_token", supabase.token, 30);
-        setCookie("wynflow_user", authData.user, 30);
-        setCookie("wynflow_business", biz, 30);
+        setCookie("wynflow_token", supabase.token, 43200);
+        setCookie("wynflow_user", authData.user, 43200);
+        setCookie("wynflow_business", biz, 43200);
         dispatch({ type: "NOTIFY", payload: { message: "Welcome back!", type: "success" } });
       }
     } catch (err) {
@@ -1594,11 +1594,11 @@ const Dashboard = ({ quotes, dispatch }) => {
         <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}
           style={{
             padding: "14px 20px", borderRadius: 10, marginBottom: 12, cursor: "pointer",
-            background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)",
+            background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.25)",
             display: "flex", alignItems: "center", gap: 12,
           }}>
-          <MessageSquare size={18} color="#8B5CF6" />
-          <span style={{ fontSize: 14, color: "#8B5CF6", fontWeight: 500 }}>
+          <MessageSquare size={18} color="#14B8A6" />
+          <span style={{ fontSize: 14, color: "#14B8A6", fontWeight: 500 }}>
             {requested} new quote request{requested > 1 ? "s" : ""} — review and send a quote!
           </span>
         </div>
@@ -1619,7 +1619,7 @@ const Dashboard = ({ quotes, dispatch }) => {
         </div>
       )}
       <div style={{ display: "flex", gap: 8, marginBottom: isMobile ? 16 : 24, overflowX: isMobile ? "auto" : "visible", WebkitOverflowScrolling: "touch", paddingBottom: isMobile ? 4 : 0 }}>
-        <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })} size={isMobile ? "sm" : "md"} style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6", whiteSpace: "nowrap", flexShrink: 0 }}><Cpu size={14} /> AI Quote</Button>
+        <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })} size={isMobile ? "sm" : "md"} style={{ background: "rgba(20,184,166,0.12)", color: "#14B8A6", whiteSpace: "nowrap", flexShrink: 0 }}><Cpu size={14} /> AI Quote</Button>
         <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })} variant="secondary" size={isMobile ? "sm" : "md"} style={{ whiteSpace: "nowrap", flexShrink: 0 }}><Plus size={14} /> Manual Quote</Button>
         <Button variant="secondary" size={isMobile ? "sm" : "md"} onClick={() => dispatch({ type: "SET_SCREEN", payload: "sequences" })} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>Manage Follow-Ups</Button>
       </div>
@@ -1829,7 +1829,7 @@ const QuotesList = ({ quotes, dispatch }) => {
           <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>{quotes.length} total quotes</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })} size={isMobile ? "sm" : "md"} style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6" }}><Cpu size={14} /> AI Quote</Button>
+          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })} size={isMobile ? "sm" : "md"} style={{ background: "rgba(20,184,166,0.12)", color: "#14B8A6" }}><Cpu size={14} /> AI Quote</Button>
           <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })} variant="secondary" size={isMobile ? "sm" : "md"}><Plus size={14} /> Manual</Button>
         </div>
       </div>
@@ -2255,9 +2255,11 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
   };
 
   const updatePricing = (key, val) => {
-    const updated = { ...editForm, [key]: val };
-    updated.amount = recalcTotal(updated);
-    setEditForm(updated);
+    setEditForm(prev => {
+      const updated = { ...prev, [key]: val };
+      updated.amount = recalcTotal(updated);
+      return updated;
+    });
   };
 
   const sendQuote = async () => {
@@ -2273,17 +2275,30 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         const { data: seqSteps } = await db("sequence_steps").eq("sequence_id", seqId).order("step_order").limit(1).select();
         if (seqSteps && seqSteps[0]) { const d = new Date(); d.setDate(d.getDate() + seqSteps[0].delay_days); nextFollowUp = d.toISOString(); }
       }
+      const breakdown = {
+        scope: editForm.scope,
+        materials: editForm.materials,
+        materialsCost: editForm.materialsCost,
+        labourHours: editForm.labourHours,
+        labourRate: business.hourly_rate,
+        includeCallout: editForm.includeCallout,
+        calloutFee: business.callout_fee,
+        showBreakdown: editForm.showBreakdown,
+        showBusinessDetails: editForm.showBusinessDetails,
+        notes: editForm.notes,
+      };
       const { data: newQuote, error: quoteErr } = await db("quotes").insert({
         business_id: business.id, quote_number: "", customer_name: form.customerName,
         customer_email: form.customerEmail, customer_phone: form.customerPhone,
         job_title: form.jobTitle, description: editForm.scope + (editForm.materials ? "\n\nMaterials:\n" + editForm.materials : "") + (editForm.notes ? "\n\nNotes:\n" + editForm.notes : ""),
         amount: parseFloat(editForm.amount), status: "sent", sent_at: new Date().toISOString(),
         sequence_id: seqId, next_follow_up_at: nextFollowUp, current_step: 0, follow_up_paused: false,
+        ai_estimate: parseFloat(editForm.amount), ai_estimate_notes: JSON.stringify(breakdown),
       });
       if (quoteErr) throw new Error("Failed to create quote");
       await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quote_id: newQuote[0].id }),
+        body: JSON.stringify({ quote_id: newQuote[0].id, breakdown }),
       });
       dispatch({ type: "ADD_QUOTE", payload: newQuote[0] });
       dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${form.customerName}! Follow-ups scheduled.`, type: "success" } });
@@ -2299,7 +2314,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
       <div style={{ marginBottom: isMobile ? 16 : 24 }}>
         <span onClick={() => dispatch({ type: "GO_BACK" })} style={{ fontSize: 14, color: theme.textMuted, cursor: "pointer" }}>← Back</span>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(139,92,246,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}><Cpu size={18} color="#8B5CF6" /></div>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(20,184,166,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}><Cpu size={18} color="#14B8A6" /></div>
           <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>AI Quote Generator</h1>
         </div>
       </div>
@@ -2344,14 +2359,14 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
           </Card>
           <div style={{ gridColumn: "1 / -1", display: "flex", gap: 12, justifyContent: "flex-end" }}>
             <Button variant="secondary" onClick={() => dispatch({ type: "GO_BACK" })}>Cancel</Button>
-            <Button onClick={generateQuote} disabled={generating} style={{ background: "#8B5CF6", padding: "14px 32px" }}>
+            <Button onClick={generateQuote} disabled={generating} style={{ background: "#14B8A6", padding: "14px 32px" }}>
               <Cpu size={16} /> {generating ? "AI is generating..." : "Generate Quote"}
             </Button>
           </div>
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 24 }}>
-          <Card style={{ gridColumn: "1 / -1", background: "rgba(139,92,246,0.04)", border: "1px solid rgba(139,92,246,0.2)" }}>
+          <Card style={{ gridColumn: "1 / -1", background: "rgba(20,184,166,0.04)", border: "1px solid rgba(20,184,166,0.2)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
               <CheckCircle2 size={16} color={theme.green} />
               <span style={{ fontSize: 14, fontWeight: 600, color: theme.green }}>Quote Generated for {form.customerName}</span>
@@ -2365,18 +2380,19 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
             <p style={{ fontSize: 12, color: theme.textMuted }}>Review and edit below, then send to your customer</p>
           </Card>
           <Card style={isMobile ? { padding: 16 } : {}}>
-            <Input label="Scope of Work" value={editForm.scope} onChange={v => setEditForm({ ...editForm, scope: v })} textarea />
-            <div style={{ marginTop: 12 }}><Input label="Materials Description" value={editForm.materials} onChange={v => setEditForm({ ...editForm, materials: v })} textarea /></div>
+            <Input label="Scope of Work" value={editForm.scope} onChange={v => setEditForm(prev => ({ ...prev, scope: v }))} textarea />
+            <div style={{ marginTop: 12 }}><Input label="Materials Description" value={editForm.materials} onChange={v => setEditForm(prev => ({ ...prev, materials: v }))} textarea /></div>
           </Card>
           <Card style={isMobile ? { padding: 16 } : {}}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <h3 style={{ fontSize: 14, fontWeight: 600, color: theme.text, margin: 0 }}>Pricing Breakdown</h3>
               <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
-                <input type="checkbox" checked={editForm.showBreakdown} onChange={e => setEditForm({ ...editForm, showBreakdown: e.target.checked })} style={{ accentColor: theme.accent }} />
+                <input type="checkbox" checked={editForm.showBreakdown} onChange={e => { const c = e.target.checked; setEditForm(prev => ({ ...prev, showBreakdown: c })); }} style={{ accentColor: theme.accent }} />
                 Show on invoice
               </label>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {editForm.showBreakdown && (<>
               <div style={{ display: "flex", gap: 12 }}>
                 <div style={{ flex: 1 }}><Input label="Materials Cost ($)" value={editForm.materialsCost} onChange={v => updatePricing("materialsCost", v)} type="number" /></div>
                 <div style={{ flex: 1 }}><Input label="Labour Hours" value={editForm.labourHours} onChange={v => updatePricing("labourHours", v)} type="number" /></div>
@@ -2388,18 +2404,19 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
                   Include callout fee (${parseFloat(business.callout_fee).toLocaleString()})
                 </label>
               )}
-              <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              </>)}
+              <div style={{ borderTop: editForm.showBreakdown ? `1px solid ${theme.border}` : "none", paddingTop: editForm.showBreakdown ? 10 : 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total (incl. GST)</span>
                 <span style={{ fontSize: 22, fontWeight: 700, color: theme.accent }}>${parseFloat(editForm.amount || 0).toLocaleString()}</span>
               </div>
-              <div style={{ marginTop: -4 }}><Input label="Override Total ($)" value={editForm.amount} onChange={v => setEditForm({ ...editForm, amount: v })} type="number" /></div>
+              <div style={{ marginTop: -4 }}><Input label="Override Total ($)" value={editForm.amount} onChange={v => setEditForm(prev => ({ ...prev, amount: v }))} type="number" /></div>
             </div>
-            <div style={{ marginTop: 12 }}><Input label="Notes / Terms" value={editForm.notes} onChange={v => setEditForm({ ...editForm, notes: v })} textarea placeholder="e.g. Valid for 30 days, 25% deposit required..." /></div>
+            <div style={{ marginTop: 12 }}><Input label="Notes / Terms" value={editForm.notes} onChange={v => setEditForm(prev => ({ ...prev, notes: v }))} textarea placeholder="e.g. Valid for 30 days, 25% deposit required..." /></div>
             <div style={{ marginTop: 12 }}><Input label="Customer Email *" value={form.customerEmail} onChange={v => update("customerEmail", v)} type="email" /></div>
             {(business.address || business.gst_number || business.license_number || business.quote_footer) && (
               <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 10, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                  <input type="checkbox" checked={editForm.showBusinessDetails} onChange={e => setEditForm({ ...editForm, showBusinessDetails: e.target.checked })} style={{ accentColor: theme.accent }} />
+                  <input type="checkbox" checked={editForm.showBusinessDetails} onChange={e => { const c = e.target.checked; setEditForm(prev => ({ ...prev, showBusinessDetails: c })); }} style={{ accentColor: theme.accent }} />
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 500, color: theme.text }}>Show business details on quote</div>
                     <div style={{ fontSize: 11, color: theme.textDim }}>Address, GST, license number, custom footer</div>
@@ -2676,9 +2693,11 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
   };
 
   const updatePricing = (key, val) => {
-    const updated = { ...editForm, [key]: val };
-    updated.amount = recalcTotal(updated);
-    setEditForm(updated);
+    setEditForm(prev => {
+      const updated = { ...prev, [key]: val };
+      updated.amount = recalcTotal(updated);
+      return updated;
+    });
   };
 
   const sendQuote = async () => {
@@ -2698,6 +2717,18 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
           nextFollowUp = d.toISOString();
         }
       }
+      const breakdown = {
+        scope: editForm.scope,
+        materials: editForm.materials,
+        materialsCost: editForm.materialsCost,
+        labourHours: editForm.labourHours,
+        labourRate: business.hourly_rate,
+        includeCallout: editForm.includeCallout,
+        calloutFee: business.callout_fee,
+        showBreakdown: editForm.showBreakdown,
+        showBusinessDetails: editForm.showBusinessDetails,
+        notes: editForm.notes,
+      };
       await db("quotes").eq("id", quote.id).update({
         amount: parseFloat(editForm.amount),
         description: editForm.scope + (editForm.materials ? "\n\nMaterials:\n" + editForm.materials : "") + (editForm.notes ? "\n\nNotes:\n" + editForm.notes : ""),
@@ -2707,10 +2738,11 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
         next_follow_up_at: nextFollowUp,
         current_step: 0,
         follow_up_paused: false,
+        ai_estimate: parseFloat(editForm.amount), ai_estimate_notes: JSON.stringify(breakdown),
       });
       await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quote_id: quote.id }),
+        body: JSON.stringify({ quote_id: quote.id, breakdown }),
       });
       dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, amount: parseFloat(editForm.amount), status: "sent", sent_at: new Date().toISOString() } });
       dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${quote.customer_name}! Follow-ups scheduled.`, type: "success" } });
@@ -2723,10 +2755,10 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
   };
 
   return (
-    <Card style={{ gridColumn: "1 / -1", border: `2px solid #8B5CF6`, background: "rgba(139,92,246,0.04)" }}>
+    <Card style={{ gridColumn: "1 / -1", border: `2px solid #14B8A6`, background: "rgba(20,184,166,0.04)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-        <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(139,92,246,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Cpu size={20} color="#8B5CF6" />
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(20,184,166,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Cpu size={20} color="#14B8A6" />
         </div>
         <div>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: 0 }}>AI Quote Generator</h3>
@@ -2757,7 +2789,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
             )}
           </div>
           <Input label="Site notes (optional)" value={siteNotes} onChange={setSiteNotes} textarea placeholder="e.g. Access is tight, need to replace the whole unit, customer wants premium fixtures..." />
-          <Button onClick={generateQuote} disabled={generating} style={{ background: "#8B5CF6", justifyContent: "center", padding: "14px 24px" }}>
+          <Button onClick={generateQuote} disabled={generating} style={{ background: "#14B8A6", justifyContent: "center", padding: "14px 24px" }}>
             <Cpu size={16} /> {generating ? "AI is generating your quote..." : "Generate Quote"}
           </Button>
         </div>
@@ -2776,16 +2808,17 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
             )}
           </div>
 
-          <Input label="Scope of Work" value={editForm.scope} onChange={v => setEditForm({ ...editForm, scope: v })} textarea />
-          <Input label="Materials Description" value={editForm.materials} onChange={v => setEditForm({ ...editForm, materials: v })} textarea />
+          <Input label="Scope of Work" value={editForm.scope} onChange={v => setEditForm(prev => ({ ...prev, scope: v }))} textarea />
+          <Input label="Materials Description" value={editForm.materials} onChange={v => setEditForm(prev => ({ ...prev, materials: v }))} textarea />
           <div style={{ padding: 14, borderRadius: 10, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>Pricing Breakdown</div>
               <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
-                <input type="checkbox" checked={editForm.showBreakdown} onChange={e => setEditForm({ ...editForm, showBreakdown: e.target.checked })} style={{ accentColor: theme.accent }} />
+                <input type="checkbox" checked={editForm.showBreakdown} onChange={e => { const c = e.target.checked; setEditForm(prev => ({ ...prev, showBreakdown: c })); }} style={{ accentColor: theme.accent }} />
                 Show on invoice
               </label>
             </div>
+            {editForm.showBreakdown && (<>
             <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
               <div style={{ flex: 1 }}><Input label="Materials Cost ($)" value={editForm.materialsCost} onChange={v => updatePricing("materialsCost", v)} type="number" /></div>
               <div style={{ flex: 1 }}><Input label="Labour Hours" value={editForm.labourHours} onChange={v => updatePricing("labourHours", v)} type="number" /></div>
@@ -2797,18 +2830,19 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
                 Include callout fee (${parseFloat(business.callout_fee).toLocaleString()})
               </label>
             )}
-            <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 10, marginTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            </>)}
+            <div style={{ borderTop: editForm.showBreakdown ? `1px solid ${theme.border}` : "none", paddingTop: editForm.showBreakdown ? 10 : 0, marginTop: editForm.showBreakdown ? 8 : 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total (incl. GST)</span>
               <span style={{ fontSize: 20, fontWeight: 700, color: theme.accent }}>${parseFloat(editForm.amount || 0).toLocaleString()}</span>
             </div>
-            <div style={{ marginTop: 8 }}><Input label="Override Total ($)" value={editForm.amount} onChange={v => setEditForm({ ...editForm, amount: v })} type="number" /></div>
+            <div style={{ marginTop: 8 }}><Input label="Override Total ($)" value={editForm.amount} onChange={v => setEditForm(prev => ({ ...prev, amount: v }))} type="number" /></div>
           </div>
-          <Input label="Additional Notes" value={editForm.notes} onChange={v => setEditForm({ ...editForm, notes: v })} textarea placeholder="Any terms, conditions, or notes for the customer" />
+          <Input label="Additional Notes" value={editForm.notes} onChange={v => setEditForm(prev => ({ ...prev, notes: v }))} textarea placeholder="Any terms, conditions, or notes for the customer" />
 
           {(business.address || business.gst_number || business.license_number || business.quote_footer) && (
             <div style={{ padding: "12px 14px", borderRadius: 10, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
               <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                <input type="checkbox" checked={editForm.showBusinessDetails} onChange={e => setEditForm({ ...editForm, showBusinessDetails: e.target.checked })} style={{ accentColor: theme.accent }} />
+                <input type="checkbox" checked={editForm.showBusinessDetails} onChange={e => { const c = e.target.checked; setEditForm(prev => ({ ...prev, showBusinessDetails: c })); }} style={{ accentColor: theme.accent }} />
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 500, color: theme.text }}>Show business details on quote</div>
                   <div style={{ fontSize: 11, color: theme.textDim }}>Address, GST, license number, custom footer</div>
@@ -2904,9 +2938,9 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
               <div style={{ fontSize: 28, color: theme.accent, fontWeight: 700, fontFamily: theme.fontDisplay }}>${parseFloat(quote.amount || 0).toLocaleString()}</div>
             </div>
             {quote.ai_estimate && (
-              <div style={{ padding: 16, borderRadius: 10, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)" }}>
+              <div style={{ padding: 16, borderRadius: 10, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.2)" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, color: "#8B5CF6", fontWeight: 600 }}>AI Estimate</div>
+                  <div style={{ fontSize: 13, color: "#14B8A6", fontWeight: 600 }}>AI Estimate</div>
                   {quote.ai_estimate_notes && (() => {
                     const notes = quote.ai_estimate_notes || "";
                     const isHigh = notes.startsWith("HIGH");
@@ -2916,7 +2950,7 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
                     return label ? <span style={{ fontSize: 11, fontWeight: 600, color, padding: "3px 8px", borderRadius: 6, background: color + "18" }}>{label}</span> : null;
                   })()}
                 </div>
-                <div style={{ fontSize: 22, color: "#8B5CF6", fontWeight: 700 }}>
+                <div style={{ fontSize: 22, color: "#14B8A6", fontWeight: 700 }}>
                   ${quote.ai_estimate_range_low?.toLocaleString()} — ${quote.ai_estimate_range_high?.toLocaleString()}
                 </div>
                 {quote.ai_estimate_notes && <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 8, lineHeight: 1.5 }}>{quote.ai_estimate_notes.replace(/^(HIGH|MEDIUM|LOW) CONFIDENCE: /i, "")}</div>}
@@ -3966,13 +4000,18 @@ export default function WynflowApp() {
       supabase.user = savedUser;
       dispatch({ type: "SET_USER", payload: savedUser });
       dispatch({ type: "SET_BUSINESS", payload: savedBusiness });
-      // Validate token is still valid
+      // Validate token is still valid, refresh cookie expiry on success
       supabase.auth_getUser().then(res => {
         if (res.error || !res.data) {
           supabase.token = null;
           supabase.user = null;
           clearCookies();
           dispatch({ type: "LOGOUT" });
+        } else {
+          // Refresh cookies so they don't expire while user is active
+          setCookie("wynflow_token", savedToken, 43200);
+          setCookie("wynflow_user", savedUser, 43200);
+          setCookie("wynflow_business", savedBusiness, 43200);
         }
       }).catch(() => {});
     } else {
