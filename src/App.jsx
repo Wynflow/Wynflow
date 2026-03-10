@@ -1055,7 +1055,7 @@ const PricingPage = ({ dispatch }) => {
   const isMobile = useIsMobile();
   const plans = [
     {name:"Starter",price:"29",desc:"AI quoting & automated follow-ups to win more jobs",features:["AI photo quote generator","Unlimited quotes","1 automated follow-up sequence","Customer quote request page","One-click Accept / Decline","File attachments","Quote dashboard & analytics","Email support"],highlighted:true,active:true,link:"https://buy.stripe.com/bJecN5cNf6gD70L1A973G00"},
-    {name:"Pro",price:"49",desc:"The full AI-powered toolkit for serious tradies",features:["Everything in Starter","Unlimited follow-up sequences","Custom follow-up messages","Advanced analytics & insights","Custom email branding","Team access (up to 3 users)","Priority support"],highlighted:false,active:true,link:"https://buy.stripe.com/9B6cN500t6gD2Kv92B73G01"},
+    {name:"Pro",price:"49",desc:"The full AI-powered toolkit for serious tradies",features:[],highlighted:false,active:false,comingSoon:true,link:"https://buy.stripe.com/9B6cN500t6gD2Kv92B73G01"},
   ];
   const faqs = [{q:"How does the AI quote generator work?",a:"Take photos on the job site, add a few details about the work, and Wynflow's AI analyses everything — your trade, your rates, the scope of work — to generate an itemised quote with materials, labour, and pricing. Review it, tweak if needed, and send."},{q:"Is there really a free trial?",a:"Yep. 14 days, full access including AI quoting, no credit card needed. Send real quotes from day one."},{q:"Can I cancel anytime?",a:"Absolutely. No lock-in contracts, no cancellation fees. But most tradies stay."},{q:"Do my customers know it's automated?",a:"Nope. Emails come from Wynflow on behalf of your business name. They look professional and personal — your customers just think you're on the ball."},{q:"What if I already use Xero / Tradify / Fergus?",a:"Keep using them for your invoicing. Wynflow is specifically for AI-powered quoting and automated follow-ups — it fills the gap most trade software misses."},{q:"How long does it take to set up?",a:"About 30 seconds. Sign up, enter your business details, and generate your first AI quote. The default follow-up sequence is ready to go."}];
   return (
@@ -1077,19 +1077,28 @@ const PricingPage = ({ dispatch }) => {
               <h3 style={{ fontSize:22,fontWeight:700,color:"#FFFFFF",marginBottom:8,fontFamily:theme.font,letterSpacing:"-0.02em" }}>{plan.name}</h3>
               <p style={{ fontSize:13,color:"rgba(255,255,255,0.4)",marginBottom:24,lineHeight:1.6 }}>{plan.desc}</p>
               <div style={{ marginBottom:32 }}><span style={{ fontSize:52,fontWeight:800,color:"#FFFFFF",fontFamily:theme.font,letterSpacing:"-0.03em" }}>${plan.price}</span><span style={{ fontSize:16,color:"rgba(255,255,255,0.35)" }}>/month</span></div>
-              {plan.active && (
-                <button onClick={() => window.open(plan.link, "_blank")}
-                  style={{ width:"100%",padding:"14px 24px",marginBottom:32,borderRadius:10,fontSize:15,fontWeight:600,fontFamily:theme.font,cursor:"pointer",border:"none",transition:"all 0.2s",
-                    background:plan.highlighted?theme.accent:"rgba(255,255,255,0.06)",
-                    color:plan.highlighted?"#000":"#FFFFFF",
-                    boxShadow:plan.highlighted?"0 0 24px rgba(20,184,166,0.3)":"none",
-                  }}
-                  onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";if(plan.highlighted)e.currentTarget.style.background="#5EEAD4";else e.currentTarget.style.background="rgba(255,255,255,0.1)";}}
-                  onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";if(plan.highlighted)e.currentTarget.style.background=theme.accent;else e.currentTarget.style.background="rgba(255,255,255,0.06)";}}>
-                  {plan.highlighted ? "Start Free Trial" : "Upgrade to Pro"}
-                </button>
+              {plan.comingSoon ? (
+                <div style={{ textAlign:"center",padding:"20px 0" }}>
+                  <div style={{ display:"inline-block",padding:"6px 16px",borderRadius:20,background:"rgba(20,184,166,0.1)",color:theme.accent,fontSize:13,fontWeight:600,marginBottom:16,letterSpacing:"0.02em" }}>Coming Soon</div>
+                  <p style={{ fontSize:14,color:"rgba(255,255,255,0.35)",lineHeight:1.6 }}>We're building something special for tradies who want the full toolkit. Stay tuned.</p>
+                </div>
+              ) : (
+                <>
+                  {plan.active && (
+                    <button onClick={() => dispatch({ type:"SET_SCREEN", payload: plan.highlighted ? "signup:starter" : "signup:pro" })}
+                      style={{ width:"100%",padding:"14px 24px",marginBottom:32,borderRadius:10,fontSize:15,fontWeight:600,fontFamily:theme.font,cursor:"pointer",border:"none",transition:"all 0.2s",
+                        background:plan.highlighted?theme.accent:"rgba(255,255,255,0.06)",
+                        color:plan.highlighted?"#000":"#FFFFFF",
+                        boxShadow:plan.highlighted?"0 0 24px rgba(20,184,166,0.3)":"none",
+                      }}
+                      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";if(plan.highlighted)e.currentTarget.style.background="#5EEAD4";else e.currentTarget.style.background="rgba(255,255,255,0.1)";}}
+                      onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";if(plan.highlighted)e.currentTarget.style.background=theme.accent;else e.currentTarget.style.background="rgba(255,255,255,0.06)";}}>
+                      {plan.highlighted ? "Start Free Trial" : "Get Pro"}
+                    </button>
+                  )}
+                  <div style={{ display:"flex",flexDirection:"column",gap:12 }}>{plan.features.map((f,j) => <div key={j} style={{ display:"flex",alignItems:"center",gap:10,fontSize:14,color:"rgba(255,255,255,0.5)" }}><Check size={14} color={theme.accent} strokeWidth={2.5} /> {f}</div>)}</div>
+                </>
               )}
-              <div style={{ display:"flex",flexDirection:"column",gap:12 }}>{plan.features.map((f,j) => <div key={j} style={{ display:"flex",alignItems:"center",gap:10,fontSize:14,color:"rgba(255,255,255,0.5)" }}><Check size={14} color={theme.accent} strokeWidth={2.5} /> {f}</div>)}</div>
             </div>
           </FadeIn>
         ))}
@@ -1224,7 +1233,12 @@ const ResetPasswordScreen = ({ dispatch }) => {
   );
 };
 
-const AuthScreen = ({ dispatch, isSignup }) => {
+const STRIPE_LINKS = {
+  starter: "https://buy.stripe.com/bJecN5cNf6gD70L1A973G00",
+  pro: "https://buy.stripe.com/9B6cN500t6gD2Kv52B73G01",
+};
+
+const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [businessName, setBusinessName] = useState("");
@@ -1258,7 +1272,7 @@ const AuthScreen = ({ dispatch, isSignup }) => {
 
   const handleSubmit = async () => {
     if (!email || !password) { setError("Please enter email and password"); return; }
-    if (isSignup && (!businessName || !contactName)) { setError("Please fill in all required fields"); return; }
+    if (isSignup && (!businessName || !contactName || !trade)) { setError("Please fill in all required fields"); return; }
     setLoading(true);
     setError("");
     try {
@@ -1313,7 +1327,10 @@ const AuthScreen = ({ dispatch, isSignup }) => {
         setCookie("wynflow_token", supabase.token, 43200);
         setCookie("wynflow_user", authData.user, 43200);
         setCookie("wynflow_business", bizRecord, 43200);
-        dispatch({ type: "NOTIFY", payload: { message: "Account created! Welcome to Wynflow!", type: "success" } });
+        dispatch({ type: "NOTIFY", payload: { message: "Account created! Redirecting to payment...", type: "success" } });
+        // Redirect to Stripe after account creation
+        const stripeUrl = STRIPE_LINKS.starter;
+        window.open(stripeUrl + "?prefilled_email=" + encodeURIComponent(email), "_blank");
         fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, trade, hourly_rate: hourlyRate, callout_fee: calloutFee }),
@@ -1359,7 +1376,7 @@ const AuthScreen = ({ dispatch, isSignup }) => {
             <span style={{ fontSize: 28, fontWeight: 700, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.02em" }}>Wynflow</span>
           </div>
           <div style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", lineHeight: 1.5 }}>
-            {isSignup ? "Set up your account in 30 seconds" : "Welcome back — your quotes are waiting"}
+            {isSignup ? "Set up your account — Starter $29/mo" : "Welcome back — your quotes are waiting"}
           </div>
         </div>
         <Card style={{ padding: 32 }}>
@@ -1410,6 +1427,9 @@ const AuthScreen = ({ dispatch, isSignup }) => {
                   <div style={{ flex: 1 }}><Input label="Hourly Rate ($)" value={hourlyRate} onChange={setHourlyRate} type="number" placeholder="e.g. 85" /></div>
                   <div style={{ flex: 1 }}><Input label="Callout Fee ($)" value={calloutFee} onChange={setCalloutFee} type="number" placeholder="e.g. 50" /></div>
                 </div>
+                <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", display: "flex", alignItems: "center" }}>
+                  <span style={{ fontSize: 13, color: theme.textMuted }}>Plan: <strong style={{ color: theme.text }}>Starter — $29/mo</strong></span>
+                </div>
               </>
             )}
             <Input label="Email *" value={email} onChange={setEmail} type="email" />
@@ -1427,7 +1447,7 @@ const AuthScreen = ({ dispatch, isSignup }) => {
             )}
             <Button onClick={handleSubmit} disabled={loading}
               style={{ width: "100%", justifyContent: "center", marginTop: 8, padding: "14px 24px" }}>
-              {loading ? "Please wait..." : isSignup ? "Create Account →" : "Sign In →"}
+              {loading ? "Please wait..." : isSignup ? `Create Account & Subscribe →` : "Sign In →"}
             </Button>
           </div>
           )}
@@ -4048,10 +4068,7 @@ const Settings = ({ business, dispatch }) => {
             </div>
           </div>
           {business?.subscription_status === "trialing" && (
-            <div style={{ display: "flex", gap: 10 }}>
-              <Button onClick={() => window.open("https://buy.stripe.com/bJecN5cNf6gD70L1A973G00", "_blank")} size={isMobile ? "sm" : "md"} style={{ flex: 1, justifyContent: "center" }}>Starter — $29/mo</Button>
-              <Button variant="secondary" onClick={() => window.open("https://buy.stripe.com/9B6cN500t6gD2Kv92B73G01", "_blank")} size={isMobile ? "sm" : "md"} style={{ flex: 1, justifyContent: "center" }}>Pro — $49/mo</Button>
-            </div>
+            <Button onClick={() => window.open(STRIPE_LINKS.starter + "?prefilled_email=" + encodeURIComponent(business?.email || ""), "_blank")} size={isMobile ? "sm" : "md"} style={{ width: "100%", justifyContent: "center" }}>Subscribe — $29/mo</Button>
           )}
         </Card>
       </div>
@@ -4171,6 +4188,11 @@ export default function WynflowApp() {
         dispatch({ type: "SET_SCREEN", payload: routes[path] });
       }
     }
+    // Also handle public page routes for logged-in users
+    const publicRoutes = { "about": "about", "pricing": "pricing" };
+    if (publicRoutes[path]) {
+      dispatch({ type: "SET_SCREEN", payload: publicRoutes[path] });
+    }
   }, []);
 
   useEffect(() => {
@@ -4257,12 +4279,12 @@ export default function WynflowApp() {
         </>
       );
     }
-    if (screen === "login" || screen === "signup") {
+    if (screen === "login" || activeScreen === "signup") {
       return (
         <>
           <style>{globalStyles}</style>
           {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
-          <AuthScreen dispatch={dispatch} isSignup={screen === "signup"} />
+          <AuthScreen dispatch={dispatch} isSignup={activeScreen === "signup"} plan={detailId || "starter"} />
         </>
       );
     }
