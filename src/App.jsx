@@ -1810,16 +1810,123 @@ const Dashboard = ({ quotes, dispatch }) => {
 };
 
 // ─── Quotes List ───
-const QuotesList = ({ quotes, dispatch }) => {
+const QuotesList = ({ quotes, dispatch, sequences }) => {
   const isMobile = useIsMobile();
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [stepCounts, setStepCounts] = useState({});
 
+  // Load step counts for all sequences to detect "no response" quotes
+  useEffect(() => {
+    if (!sequences || sequences.length === 0) return;
+    const loadCounts = async () => {
+      const counts = {};
+      for (const seq of sequences) {
+        try {
+          const { data } = await db("sequence_steps").eq("sequence_id", seq.id).select();
+          counts[seq.id] = data ? data.length : 0;
+        } catch (e) { counts[seq.id] = 0; }
+      }
+      setStepCounts(counts);
+    };
+    loadCounts();
+  }, [sequences]);
+
+  // Determine if a quote has exhausted all follow-ups with no response
+  const isNoResponse = (q) => {
+    if (q.status !== "sent" && q.status !== "opened") return false;
+    if (!q.sequence_id) return false;
+    const totalSteps = stepCounts[q.sequence_id] || 0;
+    return totalSteps > 0 && (q.current_step || 0) >= totalSteps;
+  };
+
+  // Build activity feed from quote events
+  const buildActivity = () => {
+    const events = [];
+    quotes.forEach(q => {
+      if (q.status === "requested" && q.created_at) {
+        events.push({ type: "requested", quote: q, date: q.created_at, text: `${q.customer_name} requested a quote for "${q.job_title}"` });
+      }
+      if (q.sent_at) {
+        events.push({ type: "sent", quote: q, date: q.sent_at, text: `Quote sent to ${q.customer_name} — $${parseFloat(q.amount || 0).toLocaleString()}` });
+      }
+      if ((q.status === "accepted" || q.status === "booked") && q.responded_at) {
+        events.push({ type: "accepted", quote: q, date: q.responded_at, text: `${q.customer_name} accepted your quote — $${parseFloat(q.amount || 0).toLocaleString()}` });
+      }
+      if (q.status === "declined" && q.responded_at) {
+        events.push({ type: "declined", quote: q, date: q.responded_at, text: `${q.customer_name} declined — ${q.decline_reason || "no reason given"}` });
+      }
+      if (q.status === "booked" && q.booked_at) {
+        events.push({ type: "booked", quote: q, date: q.booked_at, text: `${q.customer_name} booked in — $${parseFloat(q.amount || 0).toLocaleString()}` });
+      }
+    });
+    return events.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 30);
+  };
+
+  const activityIcons = {
+    requested: { icon: MessageSquare, color: theme.accent },
+    sent: { icon: Send, color: theme.blue },
+    accepted: { icon: CheckCircle2, color: "#F59E0B" },
+    declined: { icon: XCircle, color: theme.red },
+    booked: { icon: Check, color: theme.green },
+  };
+
+  // Filter logic
   const filtered = quotes.filter((q) => {
-    if (filter !== "all" && q.status !== filter) return false;
+    if (filter === "activity") return false; // Activity tab renders separately
+    if (filter === "noResponse") return isNoResponse(q);
+    if (filter !== "all" && filter !== "noResponse") {
+      // For "sent" filter, exclude no-response quotes (they have their own tab)
+      if (filter === "sent") return (q.status === "sent" || q.status === "opened") && !isNoResponse(q);
+      if (q.status !== filter) return false;
+    }
     if (search && !q.customer_name?.toLowerCase().includes(search.toLowerCase()) && !q.job_title?.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
+
+  // Tab counts
+  const counts = {
+    all: quotes.length,
+    requested: quotes.filter(q => q.status === "requested").length,
+    accepted: quotes.filter(q => q.status === "accepted").length,
+    sent: quotes.filter(q => (q.status === "sent" || q.status === "opened") && !isNoResponse(q)).length,
+    booked: quotes.filter(q => q.status === "booked").length,
+    declined: quotes.filter(q => q.status === "declined").length,
+    noResponse: quotes.filter(q => isNoResponse(q)).length,
+  };
+
+  // Tabs in priority hierarchy
+  const tabs = [
+    { key: "all", label: "All" },
+    { key: "requested", label: "Requested", count: counts.requested, dot: counts.requested > 0 },
+    { key: "accepted", label: "Accepted", count: counts.accepted },
+    { key: "sent", label: "Sent", count: counts.sent },
+    { key: "booked", label: "Booked", count: counts.booked },
+    { key: "declined", label: "Declined", count: counts.declined },
+    { key: "noResponse", label: "No Response", count: counts.noResponse },
+    { key: "activity", label: "Activity" },
+  ];
+
+  // Follow-up step label for a quote
+  const getFollowUpLabel = (q) => {
+    if (q.status !== "sent" && q.status !== "opened") return null;
+    const step = q.current_step || 0;
+    const total = q.sequence_id ? (stepCounts[q.sequence_id] || 0) : 0;
+    if (total === 0) return null;
+    if (step >= total) return "All sent";
+    return `Follow-up ${step}/${total}`;
+  };
+
+  const timeAgo = (dateStr) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(dateStr).toLocaleDateString("en-NZ", { day: "numeric", month: "short" });
+  };
 
   return (
     <div>
@@ -1833,93 +1940,131 @@ const QuotesList = ({ quotes, dispatch }) => {
           <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })} variant="secondary" size={isMobile ? "sm" : "md"}><Plus size={14} /> Manual</Button>
         </div>
       </div>
-      <div style={{ display: "flex", gap: 6, marginBottom: isMobile ? 12 : 20, overflowX: isMobile ? "auto" : "visible", WebkitOverflowScrolling: "touch", paddingBottom: isMobile ? 4 : 0, flexWrap: isMobile ? "nowrap" : "wrap", alignItems: "center" }}>
-        {["all", "requested", "sent", "opened", "accepted", "booked", "declined"].map((f) => (
-          <span key={f} onClick={() => setFilter(f)}
+
+      {/* Filter tabs */}
+      <div style={{ display: "flex", gap: 6, marginBottom: isMobile ? 12 : 20, overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 4, flexWrap: "nowrap", alignItems: "center" }}>
+        {tabs.map((tab) => (
+          <span key={tab.key} onClick={() => setFilter(tab.key)}
             style={{
-              padding: isMobile ? "6px 12px" : "8px 16px", borderRadius: 8, fontSize: isMobile ? 12 : 13, fontWeight: 500, cursor: "pointer",
-              background: filter === f ? theme.accentSoft : theme.surfaceLight,
-              color: filter === f ? theme.accent : theme.textMuted,
-              border: `1px solid ${filter === f ? theme.accent + "33" : theme.border}`,
-              textTransform: "capitalize", whiteSpace: "nowrap", flexShrink: 0,
+              padding: isMobile ? "6px 10px" : "8px 14px", borderRadius: 8, fontSize: isMobile ? 11 : 13, fontWeight: 500, cursor: "pointer",
+              background: filter === tab.key ? theme.accentSoft : theme.surfaceLight,
+              color: filter === tab.key ? theme.accent : theme.textMuted,
+              border: `1px solid ${filter === tab.key ? theme.accent + "33" : theme.border}`,
+              whiteSpace: "nowrap", flexShrink: 0, display: "flex", alignItems: "center", gap: 6,
             }}>
-            {f}
+            {tab.label}
+            {tab.dot && <span style={{ width: 6, height: 6, borderRadius: 3, background: theme.accent, flexShrink: 0 }} />}
+            {tab.count > 0 && !tab.dot && <span style={{ fontSize: isMobile ? 10 : 11, fontWeight: 600, color: filter === tab.key ? theme.accent : theme.textDim }}>{tab.count}</span>}
           </span>
         ))}
-        {!isMobile && <div style={{ flex: 1 }} />}
       </div>
-      {isMobile && (
+
+      {/* Search (hidden on Activity tab) */}
+      {filter !== "activity" && (
         <input value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder="Search quotes..."
           style={{
-            fontFamily: theme.font, fontSize: 13, padding: "10px 14px", borderRadius: 10, width: "100%",
-            background: theme.surfaceLight, border: `1px solid ${theme.border}`, color: theme.text, outline: "none", marginBottom: 12,
+            fontFamily: theme.font, fontSize: 13, padding: isMobile ? "10px 14px" : "8px 16px", borderRadius: isMobile ? 10 : 8, width: isMobile ? "100%" : 200,
+            background: theme.surfaceLight, border: `1px solid ${theme.border}`, color: theme.text, outline: "none", marginBottom: isMobile ? 12 : 16,
           }} />
       )}
-      {!isMobile && (
-        <input value={search} onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search..."
-          style={{
-            fontFamily: theme.font, fontSize: 13, padding: "8px 16px", borderRadius: 8,
-            background: theme.surfaceLight, border: `1px solid ${theme.border}`, color: theme.text, outline: "none", width: 200, marginBottom: 16,
-          }} />
+
+      {/* Activity tab */}
+      {filter === "activity" ? (
+        <Card style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ padding: isMobile ? "12px 14px" : "14px 20px", borderBottom: `1px solid ${theme.border}` }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>Recent Activity</span>
+          </div>
+          {buildActivity().length === 0 ? (
+            <div style={{ padding: 48, textAlign: "center", color: theme.textMuted, fontSize: 14 }}>No activity yet</div>
+          ) : buildActivity().map((event, i) => {
+            const cfg = activityIcons[event.type] || { icon: FileText, color: theme.textMuted };
+            const IconComp = cfg.icon;
+            return (
+              <div key={i}
+                onClick={() => dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + event.quote.id })}
+                style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: isMobile ? "10px 14px" : "12px 20px", borderBottom: `1px solid ${theme.border}08`, cursor: "pointer" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = theme.surfaceLight)}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: cfg.color + "18", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                  <IconComp size={16} color={cfg.color} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, color: theme.text, lineHeight: 1.5 }}>{event.text}</div>
+                  <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>{timeAgo(event.date)}</div>
+                </div>
+              </div>
+            );
+          })}
+        </Card>
+      ) : (
+        /* Quote list */
+        <Card style={{ padding: 0, overflow: "hidden" }}>
+          {!isMobile && (
+          <div style={{
+            display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 80px",
+            padding: "14px 20px", borderBottom: `1px solid ${theme.border}`, fontSize: 12,
+            fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", letterSpacing: 0.5,
+          }}>
+            <span>Customer</span><span>Job</span><span>Amount</span><span>Status</span><span></span>
+          </div>
+          )}
+          {filtered.map((q) => {
+            const followUpLabel = getFollowUpLabel(q);
+            return (
+            <div key={q.id}
+              onClick={() => dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + q.id })}
+              style={isMobile ? {
+                padding: "12px 14px", borderBottom: `1px solid ${theme.border}08`, cursor: "pointer",
+              } : {
+                display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 80px",
+                padding: "16px 20px", borderBottom: `1px solid ${theme.border}08`, cursor: "pointer",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = theme.surfaceLight)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              {isMobile ? (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer_name}</div>
+                    <div style={{ fontSize: 11, color: theme.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.job_title}</div>
+                    {followUpLabel && <div style={{ fontSize: 10, color: theme.accent, fontWeight: 500, marginTop: 2 }}>{followUpLabel}</div>}
+                    {isNoResponse(q) && <div style={{ fontSize: 10, color: theme.red, fontWeight: 500, marginTop: 2 }}>No response — all follow-ups sent</div>}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>${parseFloat(q.amount || 0).toLocaleString()}</span>
+                    <Badge status={q.status} />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>{q.customer_name}</div>
+                    <div style={{ fontSize: 12, color: theme.textMuted }}>{q.customer_email}</div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                    <div style={{ fontSize: 14, color: theme.text }}>{q.job_title}</div>
+                    {followUpLabel && <div style={{ fontSize: 11, color: theme.accent, fontWeight: 500, marginTop: 2 }}>{followUpLabel}</div>}
+                    {isNoResponse(q) && <div style={{ fontSize: 11, color: theme.red, fontWeight: 500, marginTop: 2 }}>No response — all follow-ups sent</div>}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, display: "flex", alignItems: "center" }}>${parseFloat(q.amount || 0).toLocaleString()}</div>
+                  <div style={{ display: "flex", alignItems: "center" }}><Badge status={q.status} /></div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+                    <span style={{ fontSize: 18, color: theme.textDim }}>→</span>
+                  </div>
+                </>
+              )}
+            </div>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div style={{ padding: 48, textAlign: "center", color: theme.textMuted, fontSize: 14 }}>
+              {quotes.length === 0 ? "No quotes yet — create your first one!" : filter === "noResponse" ? "No unresponsive quotes — nice!" : "No quotes match this filter"}
+            </div>
+          )}
+        </Card>
       )}
-      <Card style={{ padding: 0, overflow: "hidden" }}>
-        {!isMobile && (
-        <div style={{
-          display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 80px",
-          padding: "14px 20px", borderBottom: `1px solid ${theme.border}`, fontSize: 12,
-          fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", letterSpacing: 0.5,
-        }}>
-          <span>Customer</span><span>Job</span><span>Amount</span><span>Status</span><span></span>
-        </div>
-        )}
-        {filtered.map((q) => (
-          <div key={q.id}
-            onClick={() => dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + q.id })}
-            style={isMobile ? {
-              padding: "12px 14px", borderBottom: `1px solid ${theme.border}08`, cursor: "pointer",
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-            } : {
-              display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 80px",
-              padding: "16px 20px", borderBottom: `1px solid ${theme.border}08`, cursor: "pointer",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = theme.surfaceLight)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-          >
-            {isMobile ? (
-              <>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer_name}</div>
-                  <div style={{ fontSize: 11, color: theme.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.job_title}</div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>${parseFloat(q.amount || 0).toLocaleString()}</span>
-                  <Badge status={q.status} />
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>{q.customer_name}</div>
-                  <div style={{ fontSize: 12, color: theme.textMuted }}>{q.customer_email}</div>
-                </div>
-                <div style={{ fontSize: 14, color: theme.text, display: "flex", alignItems: "center" }}>{q.job_title}</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, display: "flex", alignItems: "center" }}>${parseFloat(q.amount || 0).toLocaleString()}</div>
-                <div style={{ display: "flex", alignItems: "center" }}><Badge status={q.status} /></div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-                  <span style={{ fontSize: 18, color: theme.textDim }}>→</span>
-                </div>
-              </>
-            )}
-          </div>
-        ))}
-        {filtered.length === 0 && (
-          <div style={{ padding: 48, textAlign: "center", color: theme.textMuted, fontSize: 14 }}>
-            {quotes.length === 0 ? "No quotes yet — create your first one!" : "No quotes match your filter"}
-          </div>
-        )}
-      </Card>
     </div>
   );
 };
@@ -3698,10 +3843,10 @@ const Settings = ({ business, dispatch }) => {
         <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Settings</h1>
         <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>Manage your business profile</p>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 24 }}>
-        <Card>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Business Profile</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 10 : 24 }}>
+        <Card style={isMobile ? { padding: 16 } : {}}>
+          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 14px" }}>Business Profile</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 10 : 16 }}>
             <Input label="Business Name" value={businessName} onChange={setBusinessName} />
             <Input label="Contact Name" value={contactName} onChange={setContactName} />
             <Input label="Email" value={email} onChange={setEmail} type="email" />
@@ -3717,77 +3862,83 @@ const Settings = ({ business, dispatch }) => {
             <Button onClick={saveSettings} disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
           </div>
         </Card>
-        <Card>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Quote Details</h3>
-          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Add your business details to display on quotes. Toggle them on/off per quote when sending.</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <Card style={isMobile ? { padding: 16 } : {}}>
+          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Quote Details</h3>
+          <p style={{ fontSize: 12, color: theme.textMuted, margin: "0 0 12px" }}>Add your business details to display on quotes. Toggle them on/off per quote when sending.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 10 : 14 }}>
             <Input label="Business Address" value={address} onChange={setAddress} placeholder="e.g. 12 Queen St, Auckland 1010" />
-            <div style={{ display: "flex", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 10 : 12 }}>
               <div style={{ flex: 1 }}><Input label="GST Number" value={gstNumber} onChange={setGstNumber} placeholder="e.g. 123-456-789" /></div>
               <div style={{ flex: 1 }}><Input label="License / Rego Number" value={licenseNumber} onChange={setLicenseNumber} placeholder="e.g. LBP 12345" /></div>
             </div>
-            <Input label="Custom Quote Footer" value={quoteFooter} onChange={setQuoteFooter} textarea placeholder="e.g. All work guaranteed for 12 months. Pricing valid for 30 days. Full terms at yourwebsite.co.nz/terms" />
+            <Input label="Custom Quote Footer" value={quoteFooter} onChange={setQuoteFooter} textarea placeholder="e.g. All work guaranteed for 12 months. Pricing valid for 30 days." />
           </div>
         </Card>
-        <Card>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Pricing & AI Estimates</h3>
-          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Set your rates so our AI can estimate quotes from customer photos and descriptions.</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <Card style={isMobile ? { padding: 16 } : {}}>
+          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Pricing & AI Estimates</h3>
+          <p style={{ fontSize: 12, color: theme.textMuted, margin: "0 0 12px" }}>Set your rates so AI can estimate quotes from photos.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 10 : 14 }}>
             <div style={{ display: "flex", gap: 12 }}>
               <div style={{ flex: 1 }}><Input label="Hourly Rate ($)" value={hourlyRate} onChange={setHourlyRate} type="number" /></div>
               <div style={{ flex: 1 }}><Input label="Callout Fee ($)" value={calloutFee} onChange={setCalloutFee} type="number" /></div>
             </div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 4 }}>Your Price List</div>
-              <p style={{ fontSize: 12, color: theme.textDim, margin: "0 0 12px" }}>Add your materials, services, and typical costs. The AI uses this list (plus your previous quotes) to generate more accurate pricing.</p>
+              <p style={{ fontSize: 11, color: theme.textDim, margin: "0 0 10px" }}>Add materials, services, and costs. AI uses this to price quotes.</p>
               {priceList.length > 0 && (
-                <div style={{ maxHeight: 240, overflowY: "auto", marginBottom: 10 }}>
+                <div style={{ maxHeight: 200, overflowY: "auto", marginBottom: 10 }}>
                   {priceList.map((item, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}`, marginBottom: 6 }}>
-                      <span style={{ flex: 1, fontSize: 13, color: theme.text }}>{item.name}</span>
-                      <span style={{ fontSize: 11, color: theme.textDim, padding: "2px 8px", borderRadius: 4, background: theme.bg }}>{item.unit}</span>
-                      <span style={{ fontSize: 13, color: theme.accent, fontWeight: 600, minWidth: 50, textAlign: "right" }}>${item.cost}</span>
-                      <button onClick={() => removePriceItem(i)} style={{ background: "none", border: "none", cursor: "pointer", color: theme.red, fontSize: 16, lineHeight: 1 }}>×</button>
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: isMobile ? "6px 10px" : "8px 12px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}`, marginBottom: 6 }}>
+                      <span style={{ flex: 1, fontSize: 13, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
+                      {!isMobile && <span style={{ fontSize: 11, color: theme.textDim, padding: "2px 8px", borderRadius: 4, background: theme.bg }}>{item.unit}</span>}
+                      <span style={{ fontSize: 13, color: theme.accent, fontWeight: 600, flexShrink: 0 }}>${item.cost}{isMobile ? `/${item.unit}` : ""}</span>
+                      <button onClick={() => removePriceItem(i)} style={{ background: "none", border: "none", cursor: "pointer", color: theme.red, fontSize: 16, lineHeight: 1, flexShrink: 0 }}>×</button>
                     </div>
                   ))}
                 </div>
               )}
               {priceList.length === 0 && (
-                <div style={{ padding: "16px", borderRadius: 8, background: theme.surfaceLight, border: `1px dashed ${theme.border}`, textAlign: "center", marginBottom: 10 }}>
-                  <p style={{ fontSize: 12, color: theme.textDim, margin: 0 }}>No items yet. Add materials, labour rates, or common services to improve AI accuracy.</p>
+                <div style={{ padding: 12, borderRadius: 8, background: theme.surfaceLight, border: `1px dashed ${theme.border}`, textAlign: "center", marginBottom: 10 }}>
+                  <p style={{ fontSize: 12, color: theme.textDim, margin: 0 }}>No items yet. Add materials or services to improve AI accuracy.</p>
                 </div>
               )}
-              <div style={{ display: "flex", gap: 8 }}>
-                <div style={{ flex: 2 }}><Input label="" value={newItem.name} onChange={v => setNewItem({ ...newItem, name: v })} placeholder="e.g. 15mm copper pipe" /></div>
-                <div style={{ flex: 1 }}>
-                  <select value={newItem.unit} onChange={e => setNewItem({ ...newItem, unit: e.target.value })} style={{ width: "100%", padding: "10px 8px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}`, color: theme.text, fontSize: 13, fontFamily: theme.font }}>
-                    <option value="each">each</option>
-                    <option value="per metre">per metre</option>
-                    <option value="per sqm">per sqm</option>
-                    <option value="per hour">per hour</option>
-                    <option value="per day">per day</option>
-                    <option value="per roll">per roll</option>
-                    <option value="per sheet">per sheet</option>
-                    <option value="per bag">per bag</option>
-                    <option value="per litre">per litre</option>
-                    <option value="fixed">fixed</option>
-                  </select>
+              {isMobile ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <Input label="" value={newItem.name} onChange={v => setNewItem({ ...newItem, name: v })} placeholder="e.g. 15mm copper pipe" />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <select value={newItem.unit} onChange={e => setNewItem({ ...newItem, unit: e.target.value })} style={{ width: "100%", padding: "10px 8px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}`, color: theme.text, fontSize: 13, fontFamily: theme.font }}>
+                        <option value="each">each</option><option value="per metre">per metre</option><option value="per sqm">per sqm</option><option value="per hour">per hour</option><option value="per day">per day</option><option value="per roll">per roll</option><option value="per sheet">per sheet</option><option value="per bag">per bag</option><option value="per litre">per litre</option><option value="fixed">fixed</option>
+                      </select>
+                    </div>
+                    <div style={{ flex: 1 }}><Input label="" value={newItem.cost} onChange={v => setNewItem({ ...newItem, cost: v })} type="number" placeholder="$" /></div>
+                    <Button size="sm" onClick={addPriceItem} style={{ alignSelf: "flex-end" }}><Plus size={14} /></Button>
+                  </div>
                 </div>
-                <div style={{ flex: 1 }}><Input label="" value={newItem.cost} onChange={v => setNewItem({ ...newItem, cost: v })} type="number" placeholder="$" /></div>
-                <Button size="sm" onClick={addPriceItem} style={{ alignSelf: "flex-end" }}><Plus size={14} /></Button>
-              </div>
-              <p style={{ fontSize: 11, color: theme.textDim, margin: "8px 0 0" }}>{priceList.length} item{priceList.length !== 1 ? "s" : ""} in your price list</p>
+              ) : (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <div style={{ flex: 2 }}><Input label="" value={newItem.name} onChange={v => setNewItem({ ...newItem, name: v })} placeholder="e.g. 15mm copper pipe" /></div>
+                  <div style={{ flex: 1 }}>
+                    <select value={newItem.unit} onChange={e => setNewItem({ ...newItem, unit: e.target.value })} style={{ width: "100%", padding: "10px 8px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}`, color: theme.text, fontSize: 13, fontFamily: theme.font }}>
+                      <option value="each">each</option><option value="per metre">per metre</option><option value="per sqm">per sqm</option><option value="per hour">per hour</option><option value="per day">per day</option><option value="per roll">per roll</option><option value="per sheet">per sheet</option><option value="per bag">per bag</option><option value="per litre">per litre</option><option value="fixed">fixed</option>
+                    </select>
+                  </div>
+                  <div style={{ flex: 1 }}><Input label="" value={newItem.cost} onChange={v => setNewItem({ ...newItem, cost: v })} type="number" placeholder="$" /></div>
+                  <Button size="sm" onClick={addPriceItem} style={{ alignSelf: "flex-end" }}><Plus size={14} /></Button>
+                </div>
+              )}
+              <p style={{ fontSize: 11, color: theme.textDim, margin: "6px 0 0" }}>{priceList.length} item{priceList.length !== 1 ? "s" : ""} in your price list</p>
             </div>
           </div>
         </Card>
-        <Card>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Deposit & Bank Details</h3>
-          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Show your bank details on the acceptance page so customers can pay a deposit upfront.</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: 10, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>Require deposit after acceptance</div>
-                <div style={{ fontSize: 12, color: theme.textDim }}>Show bank details and deposit amount when a quote is accepted</div>
+        <Card style={isMobile ? { padding: 16 } : {}}>
+          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Deposit & Bank Details</h3>
+          <p style={{ fontSize: 12, color: theme.textMuted, margin: "0 0 12px" }}>Show bank details on acceptance page so customers can pay a deposit.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 10 : 14 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: isMobile ? "10px 12px" : "12px 16px", borderRadius: 10, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 500, color: theme.text }}>Require deposit</div>
+                <div style={{ fontSize: 11, color: theme.textDim }}>Show bank details when quote is accepted</div>
               </div>
               <div onClick={() => setRequireDeposit(!requireDeposit)} style={{ width: 44, height: 24, borderRadius: 12, background: requireDeposit ? theme.accent : theme.border, cursor: "pointer", position: "relative", transition: "background 0.2s" }}>
                 <div style={{ width: 20, height: 20, borderRadius: 10, background: "#fff", position: "absolute", top: 2, left: requireDeposit ? 22 : 2, transition: "left 0.2s" }} />
@@ -3806,8 +3957,8 @@ const Settings = ({ business, dispatch }) => {
             )}
           </div>
         </Card>
-        <Card>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Email Configuration</h3>
+        <Card style={isMobile ? { padding: 16 } : {}}>
+          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 14px" }}>Email Configuration</h3>
           <div style={{ padding: "14px 18px", borderRadius: 10, background: theme.accentSoft, border: `1px solid ${theme.accent}22` }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: theme.accent, marginBottom: 8 }}>How emails work</div>
             <div style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.6 }}>
@@ -3824,44 +3975,44 @@ const Settings = ({ business, dispatch }) => {
             <div style={{ fontSize: 14, color: theme.text, fontWeight: 500, marginTop: 4 }}>{email}</div>
           </div>
         </Card>
-        <Card style={{ gridColumn: "1 / -1" }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Your Quote Request Link</h3>
-          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Customers use this link to request a quote from you. Their request (with photos) lands straight in your dashboard.</p>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16 }}>
-            <div style={{ flex: 1, padding: "12px 16px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}`, fontSize: 13, color: theme.accent, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {`https://www.wynflow.co.nz/request/${business.id}`}
+        <Card style={{ gridColumn: "1 / -1", ...(isMobile ? { padding: 16 } : {}) }}>
+          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Your Quote Request Link</h3>
+          <p style={{ fontSize: 12, color: theme.textMuted, margin: "0 0 12px" }}>Customers use this link to request a quote. Their request lands in your dashboard.</p>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+            <div style={{ flex: 1, padding: isMobile ? "10px 12px" : "12px 16px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}`, fontSize: isMobile ? 11 : 13, color: theme.accent, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {`wynflow.co.nz/request/${business.id.slice(0, 8)}...`}
             </div>
             <Button size="sm" onClick={() => { navigator.clipboard.writeText(`https://www.wynflow.co.nz/request/${business.id}`); dispatch({ type: "NOTIFY", payload: { message: "Link copied!", type: "success" } }); }}>Copy</Button>
           </div>
-          <div style={{ padding: 16, borderRadius: 12, background: theme.bg, border: `1px solid ${theme.border}` }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 12 }}>How to use this link</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ padding: isMobile ? 12 : 16, borderRadius: 12, background: theme.bg, border: `1px solid ${theme.border}` }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 10 }}>How to use this link</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {[
-                { label: "Facebook & Instagram", tip: "Add it to your bio link, or paste it in posts when customers ask for a quote. Try: \"Need a quote? Tap the link and we'll get back to you \"" },
-                { label: "Google Business Profile", tip: "Add it as your website or booking link so customers can request a quote straight from Google search results" },
-                { label: "Your website", tip: "Add a \"Request a Quote\" button that links here — works on any website builder (Squarespace, Wix, WordPress, etc.)" },
-                { label: "TikTok & YouTube", tip: "Drop the link in your bio or video description. Great for tradies who post job videos — viewers can request a quote on the spot" },
-                { label: "Email signature", tip: "Add it to your email footer so every email you send has a quick way for people to request a quote" },
+                { label: "Facebook & Instagram", tip: "Add to your bio or paste in posts when customers ask for a quote" },
+                { label: "Google Business", tip: "Add as your booking link so customers can request a quote from search" },
+                { label: "Your website", tip: "Add a \"Request a Quote\" button — works on any website builder" },
+                { label: "TikTok & YouTube", tip: "Drop in your bio or video description for viewers to request quotes" },
+                { label: "Email signature", tip: "Add to your email footer for easy quote requests" },
               ].map((item, i) => (
-                <div key={i} style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.6 }}>
+                <div key={i} style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, lineHeight: 1.5 }}>
                   <span style={{ fontWeight: 600, color: theme.text }}>{item.label}:</span> {item.tip}
                 </div>
               ))}
             </div>
           </div>
         </Card>
-        <Card style={{ gridColumn: "1 / -1" }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Feedback Questionnaire</h3>
-          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 20px" }}>When a customer clicks 'No thanks', they'll see these options. Customise them to get the feedback that matters to your business.</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+        <Card style={{ gridColumn: "1 / -1", ...(isMobile ? { padding: 16 } : {}) }}>
+          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Feedback Questionnaire</h3>
+          <p style={{ fontSize: 12, color: theme.textMuted, margin: "0 0 14px" }}>When a customer declines, they'll see these options.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
             {declineReasons.map((reason, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: isMobile ? "8px 10px" : "10px 14px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   {i > 0 && <button onClick={() => moveReason(i, -1)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 12, color: theme.textMuted, lineHeight: 1 }}>↑</button>}
                   {i < declineReasons.length - 1 && <button onClick={() => moveReason(i, 1)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 12, color: theme.textMuted, lineHeight: 1 }}>↓</button>}
                 </div>
-                <span style={{ flex: 1, fontSize: 14, color: theme.text }}>{reason}</span>
-                <button onClick={() => removeReason(i)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: theme.red, fontSize: 16, lineHeight: 1 }}>×</button>
+                <span style={{ flex: 1, fontSize: 13, color: theme.text }}>{reason}</span>
+                <button onClick={() => removeReason(i)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: theme.red, fontSize: 16, lineHeight: 1, flexShrink: 0 }}>×</button>
               </div>
             ))}
           </div>
@@ -3872,34 +4023,34 @@ const Settings = ({ business, dispatch }) => {
             </div>
           )}
           {declineReasons.length >= 8 && <div style={{ fontSize: 12, color: theme.textDim }}>Maximum 8 reasons</div>}
-          <p style={{ fontSize: 12, color: theme.textDim, margin: "12px 0 0" }}>Customers can also leave a comment. Hit "Save Changes" above to update.</p>
+          <p style={{ fontSize: 11, color: theme.textDim, margin: "10px 0 0" }}>Customers can also leave a comment. Hit "Save Changes" above to update.</p>
         </Card>
-        <Card style={{ gridColumn: "1 / -1" }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Subscription</h3>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: business?.subscription_status === "trialing" ? 16 : 0 }}>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>
+        <Card style={{ gridColumn: "1 / -1", ...(isMobile ? { padding: 16 } : {}) }}>
+          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 12px" }}>Subscription</h3>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: business?.subscription_status === "trialing" ? 12 : 0 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600, color: theme.text }}>
                 {business?.subscription_status === "trialing" ? "Free Trial" : business?.subscription_status === "active" ? "Wynflow Active" : "Wynflow"}
               </div>
-              <div style={{ fontSize: 13, color: theme.textMuted }}>
+              <div style={{ fontSize: isMobile ? 12 : 13, color: theme.textMuted }}>
                 {business?.subscription_status === "trialing"
-                  ? "You're on a free trial — upgrade anytime to keep your quotes flowing"
-                  : "Unlimited quotes • Unlimited follow-ups • Priority support"}
+                  ? "Upgrade anytime to keep your quotes flowing"
+                  : "Unlimited quotes • follow-ups • support"}
               </div>
             </div>
             <div style={{
-              padding: "8px 16px", borderRadius: 8,
+              padding: isMobile ? "6px 12px" : "8px 16px", borderRadius: 8, flexShrink: 0,
               background: business?.subscription_status === "active" ? theme.greenSoft : theme.accentSoft,
               color: business?.subscription_status === "active" ? theme.green : theme.accent,
-              fontSize: 13, fontWeight: 600, textTransform: "capitalize",
+              fontSize: 12, fontWeight: 600, textTransform: "capitalize",
             }}>
               {business?.subscription_status || "trialing"}
             </div>
           </div>
           {business?.subscription_status === "trialing" && (
-            <div style={{ display: "flex", gap: 12 }}>
-              <Button onClick={() => window.open("https://buy.stripe.com/bJecN5cNf6gD70L1A973G00", "_blank")} style={{ flex: 1, justifyContent: "center" }}>Starter — $29/mo</Button>
-              <Button variant="secondary" onClick={() => window.open("https://buy.stripe.com/9B6cN500t6gD2Kv92B73G01", "_blank")} style={{ flex: 1, justifyContent: "center" }}>Pro — $49/mo</Button>
+            <div style={{ display: "flex", gap: 10 }}>
+              <Button onClick={() => window.open("https://buy.stripe.com/bJecN5cNf6gD70L1A973G00", "_blank")} size={isMobile ? "sm" : "md"} style={{ flex: 1, justifyContent: "center" }}>Starter — $29/mo</Button>
+              <Button variant="secondary" onClick={() => window.open("https://buy.stripe.com/9B6cN500t6gD2Kv92B73G01", "_blank")} size={isMobile ? "sm" : "md"} style={{ flex: 1, justifyContent: "center" }}>Pro — $49/mo</Button>
             </div>
           )}
         </Card>
@@ -4131,7 +4282,7 @@ export default function WynflowApp() {
     if (loading) return <Spinner />;
     switch (activeScreen) {
       case "dashboard": return <Dashboard quotes={quotes} dispatch={dispatch} />;
-      case "quotes": return <QuotesList quotes={quotes} dispatch={dispatch} />;
+      case "quotes": return <QuotesList quotes={quotes} dispatch={dispatch} sequences={sequences} />;
       case "analytics": return <Analytics quotes={quotes} />;
       case "newQuote": return <NewQuoteForm dispatch={dispatch} business={business} sequences={sequences} />;
       case "aiQuote": return <AIQuoteForm dispatch={dispatch} business={business} sequences={sequences} quotes={quotes} />;
