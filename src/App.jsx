@@ -274,7 +274,7 @@ function appReducer(state, action) {
 const WYNFLOW_LOGO = "/logo.png";
 
 const WynflowLogo = ({ size = 36 }) => (
-  <img src={WYNFLOW_LOGO} alt="Wynflow" style={{ width: size, height: size, borderRadius: size * 0.28, objectFit: "cover" }} />
+  <img src={WYNFLOW_LOGO} alt="Wynflow" style={{ width: size, height: size, borderRadius: size * 0.28, objectFit: "cover", display: "block" }} />
 );
 
 // ─── Theme ───
@@ -448,7 +448,7 @@ const Navbar = ({ dispatch, transparent }) => {
   return (
     <nav style={{ position:transparent?"fixed":"relative",top:0,left:0,right:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:isMobile?"14px 20px":"16px 48px",background:navBg,borderBottom:navBorder,fontFamily:theme.font,backdropFilter:transparent&&scrolled?"blur(16px) saturate(180%)":"none",WebkitBackdropFilter:transparent&&scrolled?"blur(16px) saturate(180%)":"none",transition:"all 0.3s ease" }}>
       <div style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer" }} onClick={() => dispatch({ type:"SET_SCREEN",payload:"home" })}>
-        <div style={{ width:32,height:32,borderRadius:8,overflow:"hidden" }}><WynflowLogo size={32} /></div>
+        <div style={{ width:32,height:32,borderRadius:8,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><WynflowLogo size={32} /></div>
         <span style={{ fontSize:20,fontWeight:700,color:theme.text,fontFamily:theme.font,letterSpacing:"-0.02em" }}>Wynflow</span>
       </div>
       {isMobile ? (
@@ -488,7 +488,7 @@ const Footer = ({ dispatch }) => {
     <div style={{ display:"flex",justifyContent:"space-between",maxWidth:1100,margin:"0 auto",flexWrap:"wrap",gap:isMobile?32:48,flexDirection:isMobile?"column":"row" }}>
       <div style={{ maxWidth:300 }}>
         <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
-          <div style={{ width:28,height:28,borderRadius:7,overflow:"hidden" }}><WynflowLogo size={28} /></div>
+          <div style={{ width:28,height:28,borderRadius:7,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><WynflowLogo size={28} /></div>
           <span style={{ fontSize:17,fontWeight:700,color:theme.text,fontFamily:theme.font,letterSpacing:"-0.02em" }}>Wynflow</span>
         </div>
         <p style={{ fontSize:13,color:"rgba(255,255,255,0.4)",lineHeight:1.7 }}>AI-powered quoting and automated follow-ups for NZ tradies. Send quotes, chase customers, win more jobs — on autopilot.</p>
@@ -936,7 +936,7 @@ const AboutPage = ({ dispatch }) => {
       <div style={{ maxWidth:720,margin:"0 auto" }}>
         <FadeIn>
           <div style={{ padding:isMobile?24:48,borderRadius:16,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",marginBottom:isMobile?32:64 }}>
-            <div style={{ width:48,height:48,borderRadius:12,overflow:"hidden",marginBottom:24 }}><WynflowLogo size={48} /></div>
+            <div style={{ width:48,height:48,borderRadius:12,overflow:"hidden",marginBottom:24,display:"flex",alignItems:"center",justifyContent:"center" }}><WynflowLogo size={48} /></div>
             <h2 style={{ fontSize:isMobile?22:28,fontWeight:700,color:"#FFFFFF",marginBottom:20,fontFamily:theme.font,letterSpacing:"-0.02em",lineHeight:1.3 }}>It started with my dad's carpet shop.</h2>
             <div style={{ display:"flex",flexDirection:"column",gap:20 }}>
               <p style={{ fontSize:15,color:"rgba(255,255,255,0.45)",lineHeight:1.8,margin:0 }}>My dad ran a flooring business in Napier for years. Great at his trade, terrible at admin. I'd watch him spend his evenings at the kitchen table — measuring jobs, working out pricing, sending off quotes.</p>
@@ -1355,7 +1355,7 @@ const AuthScreen = ({ dispatch, isSignup }) => {
       <div style={{ width: "100%", maxWidth: 440 }}>
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, overflow: "hidden" }}><WynflowLogo size={48} /></div>
+            <div style={{ width: 48, height: 48, borderRadius: 14, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><WynflowLogo size={48} /></div>
             <span style={{ fontSize: 28, fontWeight: 700, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.02em" }}>Wynflow</span>
           </div>
           <div style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", lineHeight: 1.5 }}>
@@ -1497,7 +1497,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
       display: "flex", flexDirection: "column", padding: "24px 16px", flexShrink: 0,
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 8px", marginBottom: 36 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, overflow: "hidden" }}><WynflowLogo size={36} /></div>
+        <div style={{ width: 36, height: 36, borderRadius: 10, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><WynflowLogo size={36} /></div>
         <span style={{ fontSize: 20, fontWeight: 700, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.02em" }}>Wynflow</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
