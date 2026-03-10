@@ -605,7 +605,7 @@ const HomePage = ({ dispatch }) => {
         </FadeIn>
         <FadeIn delay={0.08}>
           <h1 style={{ fontSize: isMobile ? 40 : 72, fontWeight: 700, color: "#FFFFFF", lineHeight: 1.05, marginBottom: isMobile ? 20 : 28, fontFamily: theme.font, letterSpacing: "-0.03em" }}>
-            Snap a Photo.<br />Get a Quote.<br /><span style={{ background: `linear-gradient(135deg, ${theme.accent}, #5EEAD4)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Win the Job.</span>
+            Quote Faster. Chase Smarter.<br /><span style={{ background: `linear-gradient(135deg, ${theme.accent}, #5EEAD4)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Win More Jobs.</span>
           </h1>
         </FadeIn>
         <FadeIn delay={0.16}>
@@ -721,7 +721,7 @@ const HomePage = ({ dispatch }) => {
       <div style={{ position: "relative", zIndex: 1, maxWidth: 700, margin: "0 auto" }}>
         <FadeIn>
           <div style={{ padding: isMobile ? "48px 24px" : "72px 64px", borderRadius: 20, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <h2 style={{ fontSize: isMobile ? 28 : 40, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Quote Faster. Chase Smarter.<br />Win More Jobs.</h2>
+            <h2 style={{ fontSize: isMobile ? 28 : 40, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Snap a Photo. Get a Quote.<br />Win the Job.</h2>
             <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", marginBottom: 36, lineHeight: 1.6 }}>Join NZ tradies using AI to turn job site photos and notes into accurate quotes in minutes — then close more jobs on autopilot.</p>
             <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })} style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, background: theme.accent, color: "#000", border: "none", cursor: "pointer", transition: "all 0.2s", boxShadow: `0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)`, letterSpacing: "0.01em" }}
               onMouseEnter={e => { e.currentTarget.style.background = "#5EEAD4"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 32px rgba(20,184,166,0.4), 0 0 80px rgba(20,184,166,0.15)"; }}
