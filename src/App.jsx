@@ -343,7 +343,7 @@ const Button = ({ children, variant = "primary", size = "md", onClick, style = {
   };
   const variants = {
     primary: { background: theme.accent, color: "#000", boxShadow: `0 0 20px ${theme.accentGlow}` },
-    secondary: { background: theme.surfaceLight, color: theme.text, border: `1px solid ${theme.border}` },
+    secondary: { background: "rgba(255,255,255,0.06)", color: "#F1F3F7", border: "1px solid rgba(255,255,255,0.08)" },
     ghost: { background: "transparent", color: theme.textMuted },
     danger: { background: theme.redSoft, color: theme.red },
   };
@@ -355,25 +355,25 @@ const Button = ({ children, variant = "primary", size = "md", onClick, style = {
 
 const Input = ({ label, value, onChange, type = "text", placeholder, textarea, style = {}, accept, onFileChange }) => (
   <div style={{ display: "flex", flexDirection: "column", gap: 6, ...style }}>
-    {label && <label style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, letterSpacing: 0.3 }}>{label}</label>}
+    {label && <label style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.4)", letterSpacing: 0.3 }}>{label}</label>}
     {textarea ? (
       <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
         style={{
           fontFamily: theme.font, fontSize: 14, padding: "12px 16px", borderRadius: 10,
-          background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text,
+          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#F1F3F7",
           outline: "none", resize: "vertical", minHeight: 100, transition: "border-color 0.2s ease",
         }} />
     ) : type === "file" ? (
       <input type="file" accept={accept} onChange={onFileChange}
         style={{
           fontFamily: theme.font, fontSize: 14, padding: "12px 16px", borderRadius: 10,
-          background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text, outline: "none",
+          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#F1F3F7", outline: "none",
         }} />
     ) : (
       <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
         style={{
           fontFamily: theme.font, fontSize: 14, padding: "12px 16px", borderRadius: 10,
-          background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text, outline: "none",
+          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#F1F3F7", outline: "none",
         }} />
     )}
   </div>
@@ -381,11 +381,11 @@ const Input = ({ label, value, onChange, type = "text", placeholder, textarea, s
 
 const Card = ({ children, style = {}, onClick }) => (
   <div onClick={onClick} style={{
-    background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 16,
+    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16,
     padding: 24, transition: "all 0.25s ease", cursor: onClick ? "pointer" : "default", ...style,
   }}
-  onMouseEnter={onClick ? (e) => { e.currentTarget.style.borderColor = theme.accent + "33"; } : undefined}
-  onMouseLeave={onClick ? (e) => { e.currentTarget.style.borderColor = theme.border; } : undefined}>
+  onMouseEnter={onClick ? (e) => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.2)"; } : undefined}
+  onMouseLeave={onClick ? (e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; } : undefined}>
     {children}
   </div>
 );
@@ -397,7 +397,7 @@ const Stat = ({ label, value, accent, icon: Icon }) => (
         <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 4, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</div>
         <div style={{ fontSize: typeof window !== "undefined" && window.innerWidth < 768 ? 20 : 28, fontWeight: 700, color: accent || theme.text, fontFamily: theme.fontDisplay }}>{value}</div>
       </div>
-      {Icon && <div style={{ width: 32, height: 32, borderRadius: 8, background: theme.surfaceLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={16} color={theme.textMuted} /></div>}
+      {Icon && <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={16} color={theme.textMuted} /></div>}
     </div>
   </Card>
 );
@@ -435,20 +435,29 @@ const Toast = ({ message, type, onClose }) => {
 
 const Navbar = ({ dispatch, transparent }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const isMobile = useIsMobile();
+  useEffect(() => {
+    if (!transparent) return;
+    const handler = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handler, { passive: true });
+    return () => window.removeEventListener("scroll", handler);
+  }, [transparent]);
+  const navBg = transparent ? (scrolled ? "rgba(10,14,23,0.85)" : "transparent") : theme.surface;
+  const navBorder = transparent ? (scrolled ? `1px solid ${theme.border}` : "none") : `1px solid ${theme.border}`;
   return (
-    <nav style={{ position:transparent?"absolute":"relative",top:0,left:0,right:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:isMobile?"16px 20px":"20px 48px",background:transparent?"transparent":theme.surface,borderBottom:transparent?"none":`1px solid ${theme.border}`,fontFamily:theme.font }}>
+    <nav style={{ position:transparent?"fixed":"relative",top:0,left:0,right:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:isMobile?"14px 20px":"16px 48px",background:navBg,borderBottom:navBorder,fontFamily:theme.font,backdropFilter:transparent&&scrolled?"blur(16px) saturate(180%)":"none",WebkitBackdropFilter:transparent&&scrolled?"blur(16px) saturate(180%)":"none",transition:"all 0.3s ease" }}>
       <div style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer" }} onClick={() => dispatch({ type:"SET_SCREEN",payload:"home" })}>
-        <div style={{ width:36,height:36,borderRadius:10,overflow:"hidden" }}><WynflowLogo size={36} /></div>
-        <span style={{ fontSize:22,fontWeight:700,color:theme.text,fontFamily:theme.fontDisplay }}>Wynflow</span>
+        <div style={{ width:32,height:32,borderRadius:8,overflow:"hidden" }}><WynflowLogo size={32} /></div>
+        <span style={{ fontSize:20,fontWeight:700,color:theme.text,fontFamily:theme.font,letterSpacing:"-0.02em" }}>Wynflow</span>
       </div>
       {isMobile ? (
         <>
-          <div onClick={() => setMenuOpen(!menuOpen)} style={{ color:theme.text,cursor:"pointer",padding:8 }}>{menuOpen ? <X size={24} /> : <Menu size={24} />}</div>
+          <div onClick={() => setMenuOpen(!menuOpen)} style={{ color:theme.text,cursor:"pointer",padding:8 }}>{menuOpen ? <X size={22} /> : <Menu size={22} />}</div>
           {menuOpen && (
-            <div style={{ position:"absolute",top:"100%",left:0,right:0,background:theme.surface,borderBottom:`1px solid ${theme.border}`,padding:"16px 20px",display:"flex",flexDirection:"column",gap:16,zIndex:200 }}>
+            <div style={{ position:"absolute",top:"100%",left:0,right:0,background:"rgba(10,14,23,0.98)",borderBottom:`1px solid ${theme.border}`,padding:"20px 20px",display:"flex",flexDirection:"column",gap:16,zIndex:200,backdropFilter:"blur(16px)" }}>
               {[["home","Home"],["about","About"],["pricing","Pricing"]].map(([id,label]) => (
-                <span key={id} onClick={() => { dispatch({ type:"SET_SCREEN",payload:id }); setMenuOpen(false); }} style={{ fontSize:16,fontWeight:500,color:theme.textMuted,cursor:"pointer" }}>{label}</span>
+                <span key={id} onClick={() => { dispatch({ type:"SET_SCREEN",payload:id }); setMenuOpen(false); }} style={{ fontSize:15,fontWeight:500,color:theme.textMuted,cursor:"pointer" }}>{label}</span>
               ))}
               <Button size="sm" variant="secondary" onClick={() => { dispatch({ type:"SET_SCREEN",payload:"login" }); setMenuOpen(false); }}>Log In</Button>
               <Button size="sm" onClick={() => { dispatch({ type:"SET_SCREEN",payload:"signup" }); setMenuOpen(false); }}>Get Started Free</Button>
@@ -456,12 +465,16 @@ const Navbar = ({ dispatch, transparent }) => {
           )}
         </>
       ) : (
-        <div style={{ display:"flex",alignItems:"center",gap:32 }}>
+        <div style={{ display:"flex",alignItems:"center",gap:28 }}>
           {[["home","Home"],["about","About"],["pricing","Pricing"]].map(([id,label]) => (
-            <span key={id} onClick={() => dispatch({ type:"SET_SCREEN",payload:id })} style={{ fontSize:14,fontWeight:500,color:theme.textMuted,cursor:"pointer",transition:"color 0.2s" }} onMouseEnter={e=>e.target.style.color=theme.text} onMouseLeave={e=>e.target.style.color=theme.textMuted}>{label}</span>
+            <span key={id} onClick={() => dispatch({ type:"SET_SCREEN",payload:id })} style={{ fontSize:13,fontWeight:500,color:theme.textMuted,cursor:"pointer",transition:"color 0.2s",letterSpacing:"0.01em" }} onMouseEnter={e=>e.target.style.color=theme.text} onMouseLeave={e=>e.target.style.color=theme.textMuted}>{label}</span>
           ))}
-          <Button size="sm" variant="secondary" onClick={() => dispatch({ type:"SET_SCREEN",payload:"login" })}>Log In</Button>
-          <Button size="sm" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Get Started Free</Button>
+          <span onClick={() => dispatch({ type:"SET_SCREEN",payload:"login" })} style={{ fontSize:13,fontWeight:500,color:theme.textMuted,cursor:"pointer",transition:"color 0.2s" }} onMouseEnter={e=>e.target.style.color=theme.text} onMouseLeave={e=>e.target.style.color=theme.textMuted}>Log In</span>
+          <button onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })} style={{ fontFamily:theme.font,fontSize:13,fontWeight:600,padding:"8px 20px",borderRadius:8,background:theme.accent,color:"#000",border:"none",cursor:"pointer",transition:"all 0.2s",letterSpacing:"0.01em" }}
+            onMouseEnter={e=>{e.currentTarget.style.background=theme.accentHover;e.currentTarget.style.transform="translateY(-1px)";}}
+            onMouseLeave={e=>{e.currentTarget.style.background=theme.accent;e.currentTarget.style.transform="translateY(0)";}}>
+            Get Started Free
+          </button>
         </div>
       )}
     </nav>
@@ -471,26 +484,26 @@ const Navbar = ({ dispatch, transparent }) => {
 const Footer = ({ dispatch }) => {
   const isMobile = useIsMobile();
   return (
-  <footer style={{ padding:isMobile?"40px 20px 24px":"64px 48px 32px",background:theme.surface,borderTop:`1px solid ${theme.border}`,fontFamily:theme.font }}>
+  <footer style={{ padding:isMobile?"40px 20px 24px":"64px 48px 32px",background:theme.bg,borderTop:`1px solid rgba(255,255,255,0.06)`,fontFamily:theme.font }}>
     <div style={{ display:"flex",justifyContent:"space-between",maxWidth:1100,margin:"0 auto",flexWrap:"wrap",gap:isMobile?32:48,flexDirection:isMobile?"column":"row" }}>
       <div style={{ maxWidth:300 }}>
         <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
-          <div style={{ width:32,height:32,borderRadius:8,overflow:"hidden" }}><WynflowLogo size={32} /></div>
-          <span style={{ fontSize:18,fontWeight:700,color:theme.text,fontFamily:theme.fontDisplay }}>Wynflow</span>
+          <div style={{ width:28,height:28,borderRadius:7,overflow:"hidden" }}><WynflowLogo size={28} /></div>
+          <span style={{ fontSize:17,fontWeight:700,color:theme.text,fontFamily:theme.font,letterSpacing:"-0.02em" }}>Wynflow</span>
         </div>
-        <p style={{ fontSize:13,color:theme.textMuted,lineHeight:1.6 }}>Automated quote delivery and follow-up for businesses. Send quotes, chase customers, win more jobs — on autopilot.</p>
+        <p style={{ fontSize:13,color:"rgba(255,255,255,0.4)",lineHeight:1.7 }}>AI-powered quoting and automated follow-ups for NZ tradies. Send quotes, chase customers, win more jobs — on autopilot.</p>
       </div>
       <div>
-        <h4 style={{ fontSize:13,fontWeight:600,color:theme.text,marginBottom:16,textTransform:"uppercase",letterSpacing:1 }}>Product</h4>
-        {["home","pricing","about"].map(p => <div key={p} onClick={() => dispatch({ type:"SET_SCREEN",payload:p })} style={{ fontSize:14,color:theme.textMuted,cursor:"pointer",marginBottom:10,textTransform:"capitalize" }}>{p}</div>)}
+        <h4 style={{ fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.3)",marginBottom:16,textTransform:"uppercase",letterSpacing:"0.1em" }}>Product</h4>
+        {["home","pricing","about"].map(p => <div key={p} onClick={() => dispatch({ type:"SET_SCREEN",payload:p })} style={{ fontSize:14,color:"rgba(255,255,255,0.5)",cursor:"pointer",marginBottom:10,textTransform:"capitalize",transition:"color 0.2s" }} onMouseEnter={e=>e.target.style.color="#fff"} onMouseLeave={e=>e.target.style.color="rgba(255,255,255,0.5)"}>{p}</div>)}
       </div>
       <div>
-        <h4 style={{ fontSize:13,fontWeight:600,color:theme.text,marginBottom:16,textTransform:"uppercase",letterSpacing:1 }}>Company</h4>
-        <div style={{ fontSize:14,color:theme.textMuted,marginBottom:10 }}>Auckland, New Zealand</div>
-        <div style={{ fontSize:14,color:theme.accent }}>jesse@wynflow.co.nz</div>
+        <h4 style={{ fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.3)",marginBottom:16,textTransform:"uppercase",letterSpacing:"0.1em" }}>Company</h4>
+        <div style={{ fontSize:14,color:"rgba(255,255,255,0.5)",marginBottom:10 }}>Auckland, New Zealand</div>
+        <div style={{ fontSize:14,color:theme.accent,transition:"opacity 0.2s",cursor:"pointer" }} onMouseEnter={e=>e.target.style.opacity="0.8"} onMouseLeave={e=>e.target.style.opacity="1"}>jesse@wynflow.co.nz</div>
       </div>
     </div>
-    <div style={{ maxWidth:1100,margin:"48px auto 0",paddingTop:24,borderTop:`1px solid ${theme.border}`,textAlign:"center",fontSize:13,color:theme.textDim }}>© 2026 Wynflow. All rights reserved.</div>
+    <div style={{ maxWidth:1100,margin:"48px auto 0",paddingTop:24,borderTop:"1px solid rgba(255,255,255,0.06)",textAlign:"center",fontSize:12,color:"rgba(255,255,255,0.25)",letterSpacing:"0.02em" }}>2026 Wynflow. All rights reserved.</div>
   </footer>
   );
 };
@@ -546,9 +559,9 @@ const useInView = (threshold = 0.15) => {
 };
 
 const FadeIn = ({ children, delay = 0, style = {} }) => {
-  const [ref, isVisible] = useInView(0.1);
+  const [ref, isVisible] = useInView(0.08);
   return (
-    <div ref={ref} style={{ opacity: isVisible ? 1 : 0, transform: isVisible ? "translateY(0)" : "translateY(24px)", transition: `opacity 0.7s ease ${delay}s, transform 0.7s ease ${delay}s`, ...style }}>
+    <div ref={ref} style={{ opacity: isVisible ? 1 : 0, transform: isVisible ? "translateY(0)" : "translateY(20px)", transition: `opacity 0.8s cubic-bezier(0.16,1,0.3,1) ${delay}s, transform 0.8s cubic-bezier(0.16,1,0.3,1) ${delay}s`, ...style }}>
       {children}
     </div>
   );
@@ -566,47 +579,88 @@ const HomePage = ({ dispatch }) => {
     { Icon: MessageSquare, title: "Feedback Capture", desc: "When customers decline, they tell you why — so you can adjust your pricing and win more next time." },
   ];
 
-  return (
-  <div>
-    {/* ── Hero (dark) ── */}
-    <div style={{ minHeight:isMobile?"auto":"90vh",display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",background:`radial-gradient(ellipse at 30% 20%,rgba(20,184,166,0.1) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(59,130,246,0.06) 0%,transparent 50%),${theme.bg}`,padding:isMobile?"100px 20px 60px":"120px 48px 80px" }}>
-      <div style={{ maxWidth:800 }}>
-        <FadeIn>
-          <div style={{ display:"inline-flex",alignItems:"center",gap:8,padding:"8px 20px",borderRadius:30,background:theme.accentSoft,border:`1px solid ${theme.accent}22`,marginBottom:isMobile?20:32 }}><Cpu size={16} color={theme.accent} /><span style={{ fontSize:13,fontWeight:600,color:theme.accent }}>AI-Powered Quoting for NZ Tradies</span></div>
-        </FadeIn>
-        <FadeIn delay={0.1}>
-          <h1 style={{ fontSize:isMobile?36:64,fontWeight:800,color:theme.text,lineHeight:1.1,marginBottom:isMobile?16:24,fontFamily:theme.fontDisplay }}>Snap a Photo.<br />Get a Quote.<br /><span style={{ color:theme.accent }}>Win the Job.</span></h1>
-        </FadeIn>
-        <FadeIn delay={0.2}>
-          <p style={{ fontSize:isMobile?16:20,color:theme.textMuted,lineHeight:1.6,maxWidth:600,margin:"0 auto 40px" }}>Wynflow's AI generates accurate quotes from your job site photos and notes — scope, materials, labour, the lot. Then automated follow-ups chase your customers until they say yes. You stay on the tools, we handle the paperwork.</p>
-        </FadeIn>
-        <FadeIn delay={0.3}>
-          <div style={{ display:"flex",gap:12,justifyContent:"center",flexDirection:isMobile?"column":"row",alignItems:"center" }}><Button size={isMobile?"md":"lg"} onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Free Trial →</Button><Button size={isMobile?"md":"lg"} variant="secondary" onClick={() => dispatch({ type:"SET_SCREEN",payload:"pricing" })}>View Pricing</Button></div>
-          <p style={{ fontSize:13,color:theme.textDim,marginTop:16 }}>No credit card required  --  14-day free trial  --  Cancel anytime</p>
-        </FadeIn>
-      </div>
-    </div>
+  const steps = [
+    { num: "01", Icon: Cpu, title: "Snap Photos, Add Notes, Get a Quote", desc: "Take photos on site and add your notes — access issues, customer preferences, anything relevant. Wynflow's AI analyses your photos, notes, rates, and trade to generate an accurate, itemised quote with materials, labour, and pricing." },
+    { num: "02", Icon: Send, title: "Review & Send", desc: "Check the AI-generated quote, tweak anything you want, and hit send. Your customer gets a professional email with one-click Accept or Decline buttons." },
+    { num: "03", Icon: Bot, title: "Automated Follow-Ups", desc: "If they don't respond, Wynflow chases automatically — day 2, day 5, day 10. Personalised emails that sound like you, not a robot. You're on the tools, not on your phone." },
+  ];
 
-    {/* ── Features Grid (light) ── */}
-    <div style={{ padding:isMobile?"60px 20px":"100px 48px",background:"#FFFFFF" }}>
-      <div style={{ maxWidth:1100,margin:"0 auto" }}>
+  return (
+  <div style={{ background: theme.bg, overflowX: "hidden" }}>
+
+    {/* ── Hero ── */}
+    <div style={{ position: "relative", minHeight: isMobile ? "auto" : "100vh", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: isMobile ? "120px 20px 80px" : "160px 48px 120px" }}>
+      {/* Gradient orbs */}
+      <div style={{ position: "absolute", top: "-20%", left: "-10%", width: "60%", height: "60%", background: "radial-gradient(circle, rgba(20,184,166,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: "-10%", right: "-10%", width: "50%", height: "50%", background: "radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
+      {/* Grid pattern overlay */}
+      <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)", backgroundSize: "64px 64px", pointerEvents: "none", maskImage: "radial-gradient(ellipse at center, black 30%, transparent 70%)", WebkitMaskImage: "radial-gradient(ellipse at center, black 30%, transparent 70%)" }} />
+
+      <div style={{ maxWidth: 720, position: "relative", zIndex: 1 }}>
         <FadeIn>
-          <div style={{ textAlign:"center",marginBottom:isMobile?40:64 }}>
-            <h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:"#0A0E17",marginBottom:12,fontFamily:theme.fontDisplay }}>Everything you need to win more jobs</h2>
-            <p style={{ fontSize:isMobile?15:18,color:"#6B7280",maxWidth:540,margin:"0 auto" }}>AI smarts meets tradie simplicity. No complicated setup, no fluff.</p>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 100, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", marginBottom: isMobile ? 24 : 32 }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: theme.accent, boxShadow: `0 0 8px ${theme.accent}` }} />
+            <span style={{ fontSize: 13, fontWeight: 500, color: theme.accent, letterSpacing: "0.02em" }}>AI-Powered Quoting for NZ Tradies</span>
           </div>
         </FadeIn>
-        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?16:24 }}>
+        <FadeIn delay={0.08}>
+          <h1 style={{ fontSize: isMobile ? 40 : 72, fontWeight: 700, color: "#FFFFFF", lineHeight: 1.05, marginBottom: isMobile ? 20 : 28, fontFamily: theme.font, letterSpacing: "-0.03em" }}>
+            Snap a Photo.<br />Get a Quote.<br /><span style={{ background: `linear-gradient(135deg, ${theme.accent}, #5EEAD4)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Win the Job.</span>
+          </h1>
+        </FadeIn>
+        <FadeIn delay={0.16}>
+          <p style={{ fontSize: isMobile ? 16 : 19, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, maxWidth: 560, margin: "0 auto 44px", fontWeight: 400, letterSpacing: "0.01em" }}>Wynflow's AI generates accurate quotes from your job site photos and notes — scope, materials, labour, the lot. Then automated follow-ups chase your customers until they say yes. You stay on the tools, we handle the paperwork.</p>
+        </FadeIn>
+        <FadeIn delay={0.24}>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexDirection: isMobile ? "column" : "row", alignItems: "center" }}>
+            <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })} style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 600, padding: isMobile ? "14px 32px" : "14px 36px", borderRadius: 10, background: theme.accent, color: "#000", border: "none", cursor: "pointer", transition: "all 0.2s", boxShadow: `0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)`, letterSpacing: "0.01em", width: isMobile ? "100%" : "auto" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#5EEAD4"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 32px rgba(20,184,166,0.4), 0 0 80px rgba(20,184,166,0.15)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)"; }}>
+              Start Free Trial
+              <ArrowRight size={16} style={{ display: "inline", verticalAlign: "middle", marginLeft: 8 }} />
+            </button>
+            <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "pricing" })} style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 500, padding: isMobile ? "14px 32px" : "14px 36px", borderRadius: 10, background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", transition: "all 0.2s", letterSpacing: "0.01em", width: isMobile ? "100%" : "auto" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "rgba(255,255,255,0.7)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}>
+              View Pricing
+            </button>
+          </div>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", marginTop: 20, letterSpacing: "0.04em" }}>No credit card required  ·  14-day free trial  ·  Cancel anytime</p>
+        </FadeIn>
+      </div>
+
+      {/* Bottom gradient fade to features */}
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 120, background: "linear-gradient(to bottom, transparent, #0A0E17)", pointerEvents: "none" }} />
+    </div>
+
+    {/* ── Divider line ── */}
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(20,184,166,0.3), transparent)" }} />
+    </div>
+
+    {/* ── Features Grid ── */}
+    <div style={{ padding: isMobile ? "80px 20px" : "120px 48px", position: "relative" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <FadeIn>
+          <div style={{ textAlign: "center", marginBottom: isMobile ? 48 : 72 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: theme.accent, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 16 }}>Features</p>
+            <h2 style={{ fontSize: isMobile ? 30 : 44, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Everything you need to<br />win more jobs</h2>
+            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", maxWidth: 480, margin: "0 auto", lineHeight: 1.6 }}>AI smarts meets tradie simplicity. No complicated setup, no fluff.</p>
+          </div>
+        </FadeIn>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: isMobile ? 12 : 16 }}>
           {features.map((f, i) => {
             const FIcon = f.Icon;
             return (
-              <FadeIn key={i} delay={0.05 * i}>
-                <div style={{ padding:isMobile?24:32,borderRadius:16,background:"#FFFFFF",border:"1px solid #E5E7EB",textAlign:"center",transition:"all 0.3s ease",height:"100%" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(20,184,166,0.1)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#E5E7EB"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
-                  <div style={{ width:52,height:52,borderRadius:14,background:"rgba(20,184,166,0.08)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px" }}><FIcon size={24} color={theme.accent} strokeWidth={1.8} /></div>
-                  <h3 style={{ fontSize:17,fontWeight:700,color:"#0A0E17",marginBottom:8,fontFamily:theme.font }}>{f.title}</h3>
-                  <p style={{ fontSize:14,color:"#6B7280",lineHeight:1.6,margin:0 }}>{f.desc}</p>
+              <FadeIn key={i} delay={0.06 * i}>
+                <div style={{ padding: isMobile ? 24 : 28, borderRadius: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", transition: "all 0.35s cubic-bezier(0.16,1,0.3,1)", height: "100%", cursor: "default" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(20,184,166,0.25)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                    <FIcon size={20} color={theme.accent} strokeWidth={1.5} />
+                  </div>
+                  <h3 style={{ fontSize: 15, fontWeight: 600, color: "#FFFFFF", marginBottom: 6, fontFamily: theme.font, letterSpacing: "-0.01em" }}>{f.title}</h3>
+                  <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.6, margin: 0 }}>{f.desc}</p>
                 </div>
               </FadeIn>
             );
@@ -615,29 +669,42 @@ const HomePage = ({ dispatch }) => {
       </div>
     </div>
 
-    {/* ── How It Works (light grey) ── */}
-    <div style={{ padding:isMobile?"60px 20px":"100px 48px",background:"#F9FAFB" }}>
-      <div style={{ maxWidth:1100,margin:"0 auto",textAlign:"center" }}>
+    {/* ── Divider ── */}
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
+    </div>
+
+    {/* ── How It Works ── */}
+    <div style={{ padding: isMobile ? "80px 20px" : "120px 48px", position: "relative" }}>
+      {/* Subtle gradient orb */}
+      <div style={{ position: "absolute", top: "20%", right: "-5%", width: "40%", height: "60%", background: "radial-gradient(circle, rgba(20,184,166,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+      <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative", zIndex: 1 }}>
         <FadeIn>
-          <h2 style={{ fontSize:isMobile?28:40,fontWeight:700,color:"#0A0E17",marginBottom:12,fontFamily:theme.fontDisplay }}>How It Works</h2>
-          <p style={{ fontSize:isMobile?15:18,color:"#6B7280",marginBottom:isMobile?40:64,maxWidth:500,margin:"0 auto",paddingBottom:isMobile?40:64 }}>From site visit to signed quote in minutes — not hours</p>
+          <div style={{ textAlign: "center", marginBottom: isMobile ? 48 : 72 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: theme.accent, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 16 }}>How it works</p>
+            <h2 style={{ fontSize: isMobile ? 30 : 44, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>From site visit to signed quote<br />in minutes — not hours</h2>
+          </div>
         </FadeIn>
-        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?20:32 }}>
-          {[
-            {num:"01",Icon:Cpu,title:"Snap Photos, Add Notes, Get a Quote",desc:"Take photos on site and add your notes — access issues, customer preferences, anything relevant. Wynflow's AI analyses your photos, notes, rates, and trade to generate an accurate, itemised quote with materials, labour, and pricing."},
-            {num:"02",Icon:Send,title:"Review & Send",desc:"Check the AI-generated quote, tweak anything you want, and hit send. Your customer gets a professional email with one-click Accept or Decline buttons."},
-            {num:"03",Icon:Bot,title:"Automated Follow-Ups",desc:"If they don't respond, Wynflow chases automatically — day 2, day 5, day 10. Personalised emails that sound like you, not a robot. You're on the tools, not on your phone."},
-          ].map((step,i) => {
+
+        <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 16 : 0 }}>
+          {steps.map((step, i) => {
             const StepIcon = step.Icon;
             return (
               <FadeIn key={i} delay={0.1 * i}>
-                <div style={{ padding:isMobile?24:40,borderRadius:20,background:"#FFFFFF",border:"1px solid #E5E7EB",textAlign:"left",transition:"all 0.3s ease",height:"100%",boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = theme.accent + "66"; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.08)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#E5E7EB"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; }}>
-                  <div style={{ fontSize:48,fontWeight:800,color:theme.accent,fontFamily:theme.fontDisplay,opacity:0.2,marginBottom:8 }}>{step.num}</div>
-                  <div style={{ width:48,height:48,borderRadius:12,background:"rgba(20,184,166,0.08)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16 }}><StepIcon size={24} color={theme.accent} /></div>
-                  <h3 style={{ fontSize:20,fontWeight:700,color:"#0A0E17",marginBottom:12 }}>{step.title}</h3>
-                  <p style={{ fontSize:14,color:"#6B7280",lineHeight:1.7 }}>{step.desc}</p>
+                <div style={{ display: isMobile ? "block" : "flex", alignItems: "flex-start", gap: 40, padding: isMobile ? 24 : "48px 0", borderBottom: i < steps.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none", ...(isMobile ? { borderRadius: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" } : {}) }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: isMobile ? 16 : 0, minWidth: isMobile ? "auto" : 80 }}>
+                    <span style={{ fontSize: isMobile ? 36 : 56, fontWeight: 700, color: "rgba(20,184,166,0.15)", fontFamily: theme.font, letterSpacing: "-0.04em", lineHeight: 1 }}>{step.num}</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flex: 1 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                      <StepIcon size={20} color={theme.accent} strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: isMobile ? 18 : 20, fontWeight: 600, color: "#FFFFFF", marginBottom: 8, fontFamily: theme.font, letterSpacing: "-0.01em" }}>{step.title}</h3>
+                      <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", lineHeight: 1.7, margin: 0, maxWidth: 600 }}>{step.desc}</p>
+                    </div>
+                  </div>
                 </div>
               </FadeIn>
             );
@@ -646,14 +713,27 @@ const HomePage = ({ dispatch }) => {
       </div>
     </div>
 
-    {/* ── CTA (dark) ── */}
-    <div style={{ padding:isMobile?"60px 20px":"100px 48px",textAlign:"center",background:`radial-gradient(ellipse at 50% 50%,rgba(20,184,166,0.12) 0%,transparent 60%),${theme.bg}` }}>
-      <FadeIn>
-        <h2 style={{ fontSize:isMobile?32:44,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Quote Faster. Chase Smarter. Win More Jobs.</h2>
-        <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,marginBottom:40 }}>Join NZ tradies using AI to turn job site photos and notes into accurate quotes in minutes — then close more jobs on autopilot.</p>
-        <Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Your Free Trial →</Button>
-      </FadeIn>
+    {/* ── CTA ── */}
+    <div style={{ padding: isMobile ? "80px 20px" : "120px 48px", textAlign: "center", position: "relative" }}>
+      {/* Glow behind CTA */}
+      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "80%", height: "80%", background: "radial-gradient(circle, rgba(20,184,166,0.08) 0%, transparent 60%)", pointerEvents: "none" }} />
+
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 700, margin: "0 auto" }}>
+        <FadeIn>
+          <div style={{ padding: isMobile ? "48px 24px" : "72px 64px", borderRadius: 20, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <h2 style={{ fontSize: isMobile ? 28 : 40, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Quote Faster. Chase Smarter.<br />Win More Jobs.</h2>
+            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", marginBottom: 36, lineHeight: 1.6 }}>Join NZ tradies using AI to turn job site photos and notes into accurate quotes in minutes — then close more jobs on autopilot.</p>
+            <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })} style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, background: theme.accent, color: "#000", border: "none", cursor: "pointer", transition: "all 0.2s", boxShadow: `0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)`, letterSpacing: "0.01em" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#5EEAD4"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 32px rgba(20,184,166,0.4), 0 0 80px rgba(20,184,166,0.15)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)"; }}>
+              Start Your Free Trial
+              <ArrowRight size={16} style={{ display: "inline", verticalAlign: "middle", marginLeft: 8 }} />
+            </button>
+          </div>
+        </FadeIn>
+      </div>
     </div>
+
     <Footer dispatch={dispatch} />
   </div>
   );
@@ -842,55 +922,74 @@ const AboutPage = ({ dispatch }) => {
     { value: "50%", label: "boost in replies from just one follow-up email", color: theme.green },
   ];
   return (
-  <div>
-    <div style={{ padding:isMobile?"100px 20px 60px":"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(20,184,166,0.08) 0%,transparent 50%),${theme.bg}` }}>
-      <h1 style={{ fontSize:isMobile?36:52,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay }}>The Story Behind Wynflow</h1>
-      <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,maxWidth:600,margin:"0 auto",lineHeight:1.6 }}>Built from a real problem, by someone who watched it happen every day.</p>
+  <div style={{ background: theme.bg }}>
+    <div style={{ padding:isMobile?"120px 20px 80px":"160px 48px 100px",textAlign:"center",position:"relative" }}>
+      <div style={{ position:"absolute",top:"-20%",left:"-10%",width:"50%",height:"60%",background:"radial-gradient(circle, rgba(20,184,166,0.06) 0%, transparent 70%)",pointerEvents:"none" }} />
+      <FadeIn>
+        <p style={{ fontSize:13,fontWeight:600,color:theme.accent,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:16 }}>Our Story</p>
+        <h1 style={{ fontSize:isMobile?36:56,fontWeight:700,color:"#FFFFFF",marginBottom:20,fontFamily:theme.font,letterSpacing:"-0.03em" }}>The Story Behind Wynflow</h1>
+        <p style={{ fontSize:isMobile?16:18,color:"rgba(255,255,255,0.45)",maxWidth:560,margin:"0 auto",lineHeight:1.7 }}>Built from a real problem, by someone who watched it happen every day.</p>
+      </FadeIn>
     </div>
-    <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.surface }}>
+    <div style={{ maxWidth:1100,margin:"0 auto",padding:"0 48px" }}><div style={{ height:1,background:"linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} /></div>
+    <div style={{ padding:isMobile?"60px 20px":"100px 48px" }}>
       <div style={{ maxWidth:720,margin:"0 auto" }}>
-        <div style={{ padding:isMobile?24:48,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,marginBottom:isMobile?32:64 }}>
-          <div style={{ width:56,height:56,borderRadius:16,overflow:"hidden",marginBottom:24 }}><WynflowLogo size={56} /></div>
-          <h2 style={{ fontSize:isMobile?22:28,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay,lineHeight:1.3 }}>It started with my dad's carpet shop.</h2>
-          <div style={{ display:"flex",flexDirection:"column",gap:20 }}>
-            <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,margin:0 }}>My dad ran a flooring business in Napier for years. Great at his trade, terrible at admin. I'd watch him spend his evenings at the kitchen table — measuring jobs, working out pricing, sending off quotes.</p>
-            <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,margin:0 }}>Then nothing. If the customer didn't respond straight away, the quote would just sit there. He'd get busy with the next job, the next measure, the next customer. By the time he thought about following up, he either couldn't find the quote or the customer had already gone with someone else.</p>
-            <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,margin:0 }}>One Christmas he told me: <span style={{ color:theme.text,fontWeight:500 }}>"If you want to get me something, get me a robot that does my quoting."</span> He was joking — but it stuck with me.</p>
-            <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,margin:0 }}>I started digging into it and realised it wasn't just him. Across every trade, every industry, the data tells the same story: businesses don't lose work because they're too expensive. They lose it because they're too slow to follow up.</p>
-            <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,margin:0 }}>That's where Wynflow came from — a system that sends your quotes, chases your customers automatically, and lets you track every single one from sent to booked.</p>
+        <FadeIn>
+          <div style={{ padding:isMobile?24:48,borderRadius:16,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",marginBottom:isMobile?32:64 }}>
+            <div style={{ width:48,height:48,borderRadius:12,overflow:"hidden",marginBottom:24 }}><WynflowLogo size={48} /></div>
+            <h2 style={{ fontSize:isMobile?22:28,fontWeight:700,color:"#FFFFFF",marginBottom:20,fontFamily:theme.font,letterSpacing:"-0.02em",lineHeight:1.3 }}>It started with my dad's carpet shop.</h2>
+            <div style={{ display:"flex",flexDirection:"column",gap:20 }}>
+              <p style={{ fontSize:15,color:"rgba(255,255,255,0.45)",lineHeight:1.8,margin:0 }}>My dad ran a flooring business in Napier for years. Great at his trade, terrible at admin. I'd watch him spend his evenings at the kitchen table — measuring jobs, working out pricing, sending off quotes.</p>
+              <p style={{ fontSize:15,color:"rgba(255,255,255,0.45)",lineHeight:1.8,margin:0 }}>Then nothing. If the customer didn't respond straight away, the quote would just sit there. He'd get busy with the next job, the next measure, the next customer. By the time he thought about following up, he either couldn't find the quote or the customer had already gone with someone else.</p>
+              <p style={{ fontSize:15,color:"rgba(255,255,255,0.45)",lineHeight:1.8,margin:0 }}>One Christmas he told me: <span style={{ color:"#FFFFFF",fontWeight:500 }}>"If you want to get me something, get me a robot that does my quoting."</span> He was joking — but it stuck with me.</p>
+              <p style={{ fontSize:15,color:"rgba(255,255,255,0.45)",lineHeight:1.8,margin:0 }}>I started digging into it and realised it wasn't just him. Across every trade, every industry, the data tells the same story: businesses don't lose work because they're too expensive. They lose it because they're too slow to follow up.</p>
+              <p style={{ fontSize:15,color:"rgba(255,255,255,0.45)",lineHeight:1.8,margin:0 }}>That's where Wynflow came from — a system that sends your quotes, chases your customers automatically, and lets you track every single one from sent to booked.</p>
+            </div>
           </div>
-        </div>
-        <h2 style={{ fontSize:isMobile?24:32,fontWeight:700,color:theme.text,marginBottom:12,fontFamily:theme.fontDisplay,textAlign:"center" }}>The Data Doesn't Lie</h2>
-        <p style={{ fontSize:15,color:theme.textMuted,textAlign:"center",marginBottom:isMobile?32:48,maxWidth:500,margin:"0 auto",lineHeight:1.6 }}>The research is clear: following up is the single biggest thing you can do to win more work.</p>
+        </FadeIn>
+        <FadeIn>
+          <div style={{ textAlign:"center",marginBottom:isMobile?32:48 }}>
+            <p style={{ fontSize:13,fontWeight:600,color:theme.accent,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:16 }}>The Data</p>
+            <h2 style={{ fontSize:isMobile?24:36,fontWeight:700,color:"#FFFFFF",marginBottom:12,fontFamily:theme.font,letterSpacing:"-0.02em" }}>The Data Doesn't Lie</h2>
+            <p style={{ fontSize:15,color:"rgba(255,255,255,0.4)",maxWidth:500,margin:"0 auto",lineHeight:1.6 }}>The research is clear: following up is the single biggest thing you can do to win more work.</p>
+          </div>
+        </FadeIn>
         <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1fr 1fr 1fr",gap:isMobile?12:16,marginBottom:isMobile?32:64 }}>
           {stats.map((s,i) => (
-            <div key={i} style={{ padding:isMobile?16:24,borderRadius:16,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}>
-              <div style={{ fontSize:isMobile?28:40,fontWeight:800,color:s.color,fontFamily:theme.fontDisplay,marginBottom:8 }}>{s.value}</div>
-              <div style={{ fontSize:12,color:theme.textMuted,lineHeight:1.5 }}>{s.label}</div>
-            </div>
+            <FadeIn key={i} delay={0.06*i}>
+              <div style={{ padding:isMobile?16:24,borderRadius:14,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",textAlign:"center",height:"100%" }}>
+                <div style={{ fontSize:isMobile?28:40,fontWeight:700,color:s.color,fontFamily:theme.font,letterSpacing:"-0.03em",marginBottom:8 }}>{s.value}</div>
+                <div style={{ fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.5 }}>{s.label}</div>
+              </div>
+            </FadeIn>
           ))}
         </div>
       </div>
     </div>
-    <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.bg }}>
+    <div style={{ maxWidth:1100,margin:"0 auto",padding:"0 48px" }}><div style={{ height:1,background:"linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} /></div>
+    <div style={{ padding:isMobile?"60px 20px":"100px 48px" }}>
       <div style={{ maxWidth:720,margin:"0 auto" }}>
-        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?24:48,alignItems:"start",marginBottom:isMobile?40:64 }}>
-          <div>
-            <div style={{ width:44,height:44,borderRadius:12,background:"rgba(239,68,68,0.1)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16 }}><XCircle size={22} color={theme.red} /></div>
-            <h3 style={{ fontSize:isMobile?20:24,fontWeight:700,color:theme.text,marginBottom:12,fontFamily:theme.fontDisplay }}>The Problem</h3>
-            <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Service businesses spend hours scoping jobs and writing quotes — only to let them die in someone's inbox. Research shows that 92% of people stop following up after just four attempts, even though most deals need five or more touchpoints. The first person to follow up wins the job 35-50% of the time.</p>
+        <FadeIn>
+          <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?24:48,alignItems:"start",marginBottom:isMobile?40:64 }}>
+            <div>
+              <div style={{ width:40,height:40,borderRadius:10,background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.15)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16 }}><XCircle size={20} color={theme.red} strokeWidth={1.5} /></div>
+              <h3 style={{ fontSize:isMobile?20:24,fontWeight:700,color:"#FFFFFF",marginBottom:12,fontFamily:theme.font,letterSpacing:"-0.02em" }}>The Problem</h3>
+              <p style={{ fontSize:15,color:"rgba(255,255,255,0.4)",lineHeight:1.8 }}>Service businesses spend hours scoping jobs and writing quotes — only to let them die in someone's inbox. Research shows that 92% of people stop following up after just four attempts, even though most deals need five or more touchpoints. The first person to follow up wins the job 35-50% of the time.</p>
+            </div>
+            <div>
+              <div style={{ width:40,height:40,borderRadius:10,background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.15)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16 }}><CheckCircle2 size={20} color={theme.green} strokeWidth={1.5} /></div>
+              <h3 style={{ fontSize:isMobile?20:24,fontWeight:700,color:"#FFFFFF",marginBottom:12,fontFamily:theme.font,letterSpacing:"-0.02em" }}>The Solution</h3>
+              <p style={{ fontSize:15,color:"rgba(255,255,255,0.4)",lineHeight:1.8 }}>Wynflow uses AI to generate quotes from job site photos — scope, materials, labour, all calculated from your rates and your trade. Then our automated system follows up at exactly the right intervals — professional, consistent, and hands-free. You get notified the moment a customer responds. No more lost jobs from slow quoting or forgotten follow-ups.</p>
+            </div>
           </div>
-          <div>
-            <div style={{ width:44,height:44,borderRadius:12,background:"rgba(34,197,94,0.1)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16 }}><CheckCircle2 size={22} color={theme.green} /></div>
-            <h3 style={{ fontSize:isMobile?20:24,fontWeight:700,color:theme.text,marginBottom:12,fontFamily:theme.fontDisplay }}>The Solution</h3>
-            <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8 }}>Wynflow uses AI to generate quotes from job site photos — scope, materials, labour, all calculated from your rates and your trade. Then our automated system follows up at exactly the right intervals — professional, consistent, and hands-free. You get notified the moment a customer responds. No more lost jobs from slow quoting or forgotten follow-ups.</p>
+        </FadeIn>
+        <FadeIn>
+          <div style={{ padding:isMobile?32:56,borderRadius:16,background:"rgba(20,184,166,0.04)",border:"1px solid rgba(20,184,166,0.12)",textAlign:"center",marginBottom:isMobile?40:64 }}>
+            <div style={{ fontSize:isMobile?56:80,fontWeight:700,background:`linear-gradient(135deg, ${theme.accent}, #5EEAD4)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",fontFamily:theme.font,letterSpacing:"-0.04em",lineHeight:1 }}>70%</div>
+            <p style={{ fontSize:isMobile?15:17,color:"rgba(255,255,255,0.4)",marginTop:16,maxWidth:500,margin:"16px auto 0",lineHeight:1.6 }}>increase in conversion rates just by making a few extra follow-up attempts. Most businesses leave this on the table.</p>
           </div>
-        </div>
-        <div style={{ padding:isMobile?32:56,borderRadius:24,background:`linear-gradient(135deg, rgba(20,184,166,0.08), rgba(20,184,166,0.02))`,border:`1px solid ${theme.accent}22`,textAlign:"center",marginBottom:isMobile?40:64 }}>
-          <div style={{ fontSize:isMobile?56:80,fontWeight:800,color:theme.accent,fontFamily:theme.fontDisplay,lineHeight:1 }}>70%</div>
-          <p style={{ fontSize:isMobile?15:17,color:theme.textMuted,marginTop:16,maxWidth:500,margin:"16px auto 0",lineHeight:1.6 }}>increase in conversion rates just by making a few extra follow-up attempts. Most businesses leave this on the table.</p>
-        </div>
-        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?16:24,marginBottom:isMobile?40:64 }}>
+        </FadeIn>
+        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?16:16,marginBottom:isMobile?40:64 }}>
           {[
             { icon: Clock, stat: "5 mins", desc: "Responding within 5 minutes makes you 9x more likely to convert a lead" },
             { icon: Mail, stat: "3 emails", desc: "Three follow-up emails hit the sweet spot with a 9.2% reply rate" },
@@ -898,34 +997,54 @@ const AboutPage = ({ dispatch }) => {
           ].map((item,i) => {
             const ItemIcon = item.icon;
             return (
-            <div key={i} style={{ padding:isMobile?20:28,borderRadius:16,background:theme.surface,border:`1px solid ${theme.border}`,textAlign:"center" }}>
-              <div style={{ width:44,height:44,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px" }}><ItemIcon size={20} color={theme.accent} /></div>
-              <div style={{ fontSize:isMobile?24:32,fontWeight:800,color:theme.text,fontFamily:theme.fontDisplay,marginBottom:8 }}>{item.stat}</div>
-              <p style={{ fontSize:13,color:theme.textMuted,lineHeight:1.5 }}>{item.desc}</p>
-            </div>
+            <FadeIn key={i} delay={0.08*i}>
+              <div style={{ padding:isMobile?20:28,borderRadius:14,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",textAlign:"center",height:"100%" }}>
+                <div style={{ width:40,height:40,borderRadius:10,background:"rgba(20,184,166,0.1)",border:"1px solid rgba(20,184,166,0.15)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px" }}><ItemIcon size={18} color={theme.accent} strokeWidth={1.5} /></div>
+                <div style={{ fontSize:isMobile?24:32,fontWeight:700,color:"#FFFFFF",fontFamily:theme.font,letterSpacing:"-0.03em",marginBottom:8 }}>{item.stat}</div>
+                <p style={{ fontSize:13,color:"rgba(255,255,255,0.4)",lineHeight:1.5 }}>{item.desc}</p>
+              </div>
+            </FadeIn>
             );
           })}
         </div>
       </div>
     </div>
-    <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.surface }}>
+    <div style={{ maxWidth:1100,margin:"0 auto",padding:"0 48px" }}><div style={{ height:1,background:"linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} /></div>
+    <div style={{ padding:isMobile?"60px 20px":"100px 48px" }}>
       <div style={{ maxWidth:720,margin:"0 auto" }}>
-        <div style={{ padding:isMobile?24:48,borderRadius:20,background:theme.bg,border:`1px solid ${theme.border}`,textAlign:"center" }}>
-          <h2 style={{ fontSize:isMobile?24:32,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Built by a Kiwi, for Kiwi Businesses</h2>
-          <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,maxWidth:560,margin:"0 auto 8px" }}>I'm Jesse — a young Kiwi based in Auckland. I built Wynflow because I saw firsthand how much time and money small businesses waste on things that should be automatic.</p>
-          <p style={{ fontSize:15,color:theme.textMuted,lineHeight:1.8,maxWidth:560,margin:"0 auto 24px" }}>Wynflow is built specifically for how NZ businesses actually work. No complicated setup, no enterprise pricing, no fluff. Snap photos, get an AI-generated quote, send it, and let automated follow-ups do the chasing. New Zealand has over 600,000 small businesses — 97% of all businesses in the country. Most of them are too busy doing the work to chase the paperwork. That's what Wynflow is for.</p>
-          <div style={{ display:"flex",gap:isMobile?16:32,justifyContent:"center",marginTop:32,flexWrap:"wrap" }}>
-            <div style={{ display:"flex",flexDirection:"column",alignItems:"center" }}><div style={{ width:48,height:48,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8 }}><Globe size={22} color={theme.accent} /></div><div style={{ fontSize:13,color:theme.textMuted }}>100% NZ Built</div></div>
-            <div style={{ display:"flex",flexDirection:"column",alignItems:"center" }}><div style={{ width:48,height:48,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8 }}><Cpu size={22} color={theme.accent} /></div><div style={{ fontSize:13,color:theme.textMuted }}>AI-Powered</div></div>
-            <div style={{ display:"flex",flexDirection:"column",alignItems:"center" }}><div style={{ width:48,height:48,borderRadius:12,background:theme.accentSoft,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8 }}><Wrench size={22} color={theme.accent} /></div><div style={{ fontSize:13,color:theme.textMuted }}>Made for Business</div></div>
+        <FadeIn>
+          <div style={{ padding:isMobile?24:48,borderRadius:16,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",textAlign:"center" }}>
+            <h2 style={{ fontSize:isMobile?24:32,fontWeight:700,color:"#FFFFFF",marginBottom:16,fontFamily:theme.font,letterSpacing:"-0.02em" }}>Built by a Kiwi, for Kiwi Businesses</h2>
+            <p style={{ fontSize:15,color:"rgba(255,255,255,0.4)",lineHeight:1.8,maxWidth:560,margin:"0 auto 8px" }}>I'm Jesse — a young Kiwi based in Auckland. I built Wynflow because I saw firsthand how much time and money small businesses waste on things that should be automatic.</p>
+            <p style={{ fontSize:15,color:"rgba(255,255,255,0.4)",lineHeight:1.8,maxWidth:560,margin:"0 auto 24px" }}>Wynflow is built specifically for how NZ businesses actually work. No complicated setup, no enterprise pricing, no fluff. Snap photos, get an AI-generated quote, send it, and let automated follow-ups do the chasing. New Zealand has over 600,000 small businesses — 97% of all businesses in the country. Most of them are too busy doing the work to chase the paperwork. That's what Wynflow is for.</p>
+            <div style={{ display:"flex",gap:isMobile?16:32,justifyContent:"center",marginTop:32,flexWrap:"wrap" }}>
+              {[{icon:Globe,label:"100% NZ Built"},{icon:Cpu,label:"AI-Powered"},{icon:Wrench,label:"Made for Business"}].map((b,i) => {
+                const BIcon = b.icon;
+                return (
+                <div key={i} style={{ display:"flex",flexDirection:"column",alignItems:"center" }}>
+                  <div style={{ width:44,height:44,borderRadius:12,background:"rgba(20,184,166,0.1)",border:"1px solid rgba(20,184,166,0.15)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8 }}><BIcon size={20} color={theme.accent} strokeWidth={1.5} /></div>
+                  <div style={{ fontSize:13,color:"rgba(255,255,255,0.4)" }}>{b.label}</div>
+                </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </FadeIn>
       </div>
     </div>
-    <div style={{ padding:isMobile?"40px 20px":"80px 48px",background:theme.bg,textAlign:"center" }}>
-      <h2 style={{ fontSize:isMobile?28:36,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Quote Smarter. Chase Less. Win More.</h2>
-      <p style={{ fontSize:16,color:theme.textMuted,marginBottom:32,maxWidth:440,margin:"0 auto 32px" }}>Let AI handle the quoting and automated follow-ups handle the chasing — while you stay on the tools.</p>
-      <Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Your Free Trial →</Button>
+    <div style={{ padding:isMobile?"60px 20px":"100px 48px",textAlign:"center",position:"relative" }}>
+      <div style={{ position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:"60%",height:"80%",background:"radial-gradient(circle, rgba(20,184,166,0.06) 0%, transparent 60%)",pointerEvents:"none" }} />
+      <FadeIn>
+        <div style={{ position:"relative",zIndex:1,maxWidth:600,margin:"0 auto",padding:isMobile?"48px 24px":"64px 48px",borderRadius:20,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)" }}>
+          <h2 style={{ fontSize:isMobile?28:36,fontWeight:700,color:"#FFFFFF",marginBottom:16,fontFamily:theme.font,letterSpacing:"-0.03em" }}>Quote Smarter. Chase Less. Win More.</h2>
+          <p style={{ fontSize:16,color:"rgba(255,255,255,0.4)",marginBottom:32,lineHeight:1.6 }}>Let AI handle the quoting and automated follow-ups handle the chasing — while you stay on the tools.</p>
+          <button onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })} style={{ fontFamily:theme.font,fontSize:15,fontWeight:600,padding:"14px 40px",borderRadius:10,background:theme.accent,color:"#000",border:"none",cursor:"pointer",transition:"all 0.2s",boxShadow:`0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)` }}
+            onMouseEnter={e=>{e.currentTarget.style.background="#5EEAD4";e.currentTarget.style.transform="translateY(-2px)";}}
+            onMouseLeave={e=>{e.currentTarget.style.background=theme.accent;e.currentTarget.style.transform="translateY(0)";}}>
+            Start Your Free Trial <ArrowRight size={16} style={{ display:"inline",verticalAlign:"middle",marginLeft:8 }} />
+          </button>
+        </div>
+      </FadeIn>
     </div>
     <Footer dispatch={dispatch} />
   </div>
@@ -934,47 +1053,76 @@ const AboutPage = ({ dispatch }) => {
 
 const PricingPage = ({ dispatch }) => {
   const isMobile = useIsMobile();
+  const plans = [
+    {name:"Starter",price:"29",desc:"AI quoting & automated follow-ups to win more jobs",features:["AI photo quote generator","Unlimited quotes","1 automated follow-up sequence","Customer quote request page","One-click Accept / Decline","File attachments","Quote dashboard & analytics","Email support"],highlighted:true,active:true,link:"https://buy.stripe.com/bJecN5cNf6gD70L1A973G00"},
+    {name:"Pro",price:"49",desc:"The full AI-powered toolkit for serious tradies",features:["Everything in Starter","Unlimited follow-up sequences","Custom follow-up messages","Advanced analytics & insights","Custom email branding","Team access (up to 3 users)","Priority support"],highlighted:false,active:true,link:"https://buy.stripe.com/9B6cN500t6gD2Kv92B73G01"},
+  ];
+  const faqs = [{q:"How does the AI quote generator work?",a:"Take photos on the job site, add a few details about the work, and Wynflow's AI analyses everything — your trade, your rates, the scope of work — to generate an itemised quote with materials, labour, and pricing. Review it, tweak if needed, and send."},{q:"Is there really a free trial?",a:"Yep. 14 days, full access including AI quoting, no credit card needed. Send real quotes from day one."},{q:"Can I cancel anytime?",a:"Absolutely. No lock-in contracts, no cancellation fees. But most tradies stay."},{q:"Do my customers know it's automated?",a:"Nope. Emails come from Wynflow on behalf of your business name. They look professional and personal — your customers just think you're on the ball."},{q:"What if I already use Xero / Tradify / Fergus?",a:"Keep using them for your invoicing. Wynflow is specifically for AI-powered quoting and automated follow-ups — it fills the gap most trade software misses."},{q:"How long does it take to set up?",a:"About 30 seconds. Sign up, enter your business details, and generate your first AI quote. The default follow-up sequence is ready to go."}];
   return (
-  <div>
-    <div style={{ padding:isMobile?"100px 20px 60px":"140px 48px 80px",textAlign:"center",background:`radial-gradient(ellipse at 50% 30%,rgba(20,184,166,0.08) 0%,transparent 50%),${theme.bg}` }}>
-      <h1 style={{ fontSize:isMobile?36:52,fontWeight:700,color:theme.text,marginBottom:20,fontFamily:theme.fontDisplay }}>Simple, Honest Pricing</h1>
-      <p style={{ fontSize:isMobile?16:18,color:theme.textMuted,maxWidth:500,margin:"0 auto",lineHeight:1.6 }}>No hidden fees. No lock-in contracts. Less than the cost of one lost job.</p>
+  <div style={{ background:theme.bg,minHeight:"100vh" }}>
+    <div style={{ padding:isMobile?"100px 20px 60px":"140px 48px 80px",textAlign:"center",position:"relative" }}>
+      <div style={{ position:"absolute",top:0,left:0,right:0,bottom:0,background:`radial-gradient(ellipse at 50% 20%,rgba(20,184,166,0.08) 0%,transparent 50%)`,pointerEvents:"none" }} />
+      <FadeIn>
+        <h1 style={{ fontSize:isMobile?36:56,fontWeight:700,color:"#FFFFFF",marginBottom:20,fontFamily:theme.font,letterSpacing:"-0.03em",position:"relative" }}>Simple, Honest Pricing</h1>
+        <p style={{ fontSize:isMobile?16:18,color:"rgba(255,255,255,0.4)",maxWidth:500,margin:"0 auto",lineHeight:1.7,position:"relative" }}>No hidden fees. No lock-in contracts. Less than the cost of one lost job.</p>
+      </FadeIn>
     </div>
-    <div style={{ padding:isMobile?"0 20px 60px":"0 48px 100px",background:theme.bg }}>
+    <div style={{ height:1,background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 50%,transparent)" }} />
+    <div style={{ padding:isMobile?"40px 20px 60px":"60px 48px 100px" }}>
       <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?20:32,maxWidth:800,margin:"0 auto" }}>
-        {[
-          {name:"Starter",price:"29",desc:"AI quoting & automated follow-ups to win more jobs",features:["AI photo quote generator","Unlimited quotes","1 automated follow-up sequence","Customer quote request page","One-click Accept / Decline","File attachments","Quote dashboard & analytics","Email support"],highlighted:true,active:true,link:"https://buy.stripe.com/bJecN5cNf6gD70L1A973G00"},
-          {name:"Pro",price:"49",desc:"The full AI-powered toolkit for serious tradies",features:["Everything in Starter","Unlimited follow-up sequences","Custom follow-up messages","Advanced analytics & insights","Custom email branding","Team access (up to 3 users)","Priority support"],highlighted:false,active:true,link:"https://buy.stripe.com/9B6cN500t6gD2Kv92B73G01"},
-        ].map((plan,i) => (
-          <div key={i} style={{ padding:isMobile?28:40,borderRadius:20,background:theme.surface,border:`${plan.highlighted?"2px":"1px"} solid ${plan.highlighted?theme.accent:theme.border}`,position:"relative",transform:plan.highlighted && !isMobile?"scale(1.03)":"none",boxShadow:plan.highlighted?`0 0 40px ${theme.accentGlow}`:"none",transition:"all 0.3s ease" }}>
-            {plan.highlighted && <div style={{ position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",padding:"6px 20px",borderRadius:20,background:theme.accent,color:"#000",fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:1 }}>Most Popular</div>}
-            <h3 style={{ fontSize:22,fontWeight:700,color:theme.text,marginBottom:8 }}>{plan.name}</h3>
-            <p style={{ fontSize:13,color:theme.textMuted,marginBottom:24 }}>{plan.desc}</p>
-            <div style={{ marginBottom:32 }}><span style={{ fontSize:52,fontWeight:800,color:theme.text,fontFamily:theme.fontDisplay }}>${plan.price}</span><span style={{ fontSize:16,color:theme.textMuted }}>/month</span></div>
-            {plan.active ? (
-              <Button onClick={() => window.open(plan.link, "_blank")} variant={plan.highlighted?"primary":"secondary"} style={{ width:"100%",justifyContent:"center",padding:"14px 24px",marginBottom:32 }}>
-                {plan.highlighted ? "Start Free Trial" : "Upgrade to Pro"}
-              </Button>
-            ) : (
-              <div style={{ width:"100%",textAlign:"center",padding:"14px 24px",marginBottom:32,borderRadius:10,background:theme.surfaceLight,border:`1px solid ${theme.border}`,color:theme.textMuted,fontWeight:600,fontSize:15 }}>Coming Soon</div>
-            )}
-            <div style={{ display:"flex",flexDirection:"column",gap:12 }}>{plan.features.map((f,j) => <div key={j} style={{ display:"flex",alignItems:"center",gap:10,fontSize:14,color:plan.active ? theme.textMuted : theme.textMuted + "88" }}><span style={{ color:plan.active ? theme.green : theme.textMuted,fontSize:16 }}>✓</span> {f}</div>)}</div>
-          </div>
+        {plans.map((plan,i) => (
+          <FadeIn key={i} delay={i * 0.15}>
+            <div style={{ padding:isMobile?28:40,borderRadius:20,background:plan.highlighted?"rgba(255,255,255,0.05)":"rgba(255,255,255,0.03)",border:`${plan.highlighted?"2px":"1px"} solid ${plan.highlighted?"rgba(20,184,166,0.3)":"rgba(255,255,255,0.06)"}`,position:"relative",transform:plan.highlighted && !isMobile?"scale(1.03)":"none",boxShadow:plan.highlighted?"0 0 60px rgba(20,184,166,0.12)":"none",transition:"all 0.3s ease",height:"100%" }}>
+              {plan.highlighted && <div style={{ position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",padding:"6px 20px",borderRadius:20,background:theme.accent,color:"#000",fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:1 }}>Most Popular</div>}
+              <h3 style={{ fontSize:22,fontWeight:700,color:"#FFFFFF",marginBottom:8,fontFamily:theme.font,letterSpacing:"-0.02em" }}>{plan.name}</h3>
+              <p style={{ fontSize:13,color:"rgba(255,255,255,0.4)",marginBottom:24,lineHeight:1.6 }}>{plan.desc}</p>
+              <div style={{ marginBottom:32 }}><span style={{ fontSize:52,fontWeight:800,color:"#FFFFFF",fontFamily:theme.font,letterSpacing:"-0.03em" }}>${plan.price}</span><span style={{ fontSize:16,color:"rgba(255,255,255,0.35)" }}>/month</span></div>
+              {plan.active && (
+                <button onClick={() => window.open(plan.link, "_blank")}
+                  style={{ width:"100%",padding:"14px 24px",marginBottom:32,borderRadius:10,fontSize:15,fontWeight:600,fontFamily:theme.font,cursor:"pointer",border:"none",transition:"all 0.2s",
+                    background:plan.highlighted?theme.accent:"rgba(255,255,255,0.06)",
+                    color:plan.highlighted?"#000":"#FFFFFF",
+                    boxShadow:plan.highlighted?"0 0 24px rgba(20,184,166,0.3)":"none",
+                  }}
+                  onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";if(plan.highlighted)e.currentTarget.style.background="#5EEAD4";else e.currentTarget.style.background="rgba(255,255,255,0.1)";}}
+                  onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";if(plan.highlighted)e.currentTarget.style.background=theme.accent;else e.currentTarget.style.background="rgba(255,255,255,0.06)";}}>
+                  {plan.highlighted ? "Start Free Trial" : "Upgrade to Pro"}
+                </button>
+              )}
+              <div style={{ display:"flex",flexDirection:"column",gap:12 }}>{plan.features.map((f,j) => <div key={j} style={{ display:"flex",alignItems:"center",gap:10,fontSize:14,color:"rgba(255,255,255,0.5)" }}><Check size={14} color={theme.accent} strokeWidth={2.5} /> {f}</div>)}</div>
+            </div>
+          </FadeIn>
         ))}
       </div>
     </div>
-    <div style={{ padding:"80px 48px",background:theme.surface }}>
-      <div style={{ maxWidth:700,margin:"0 auto" }}>
-        <h2 style={{ fontSize:36,fontWeight:700,color:theme.text,marginBottom:48,textAlign:"center",fontFamily:theme.fontDisplay }}>Frequently Asked Questions</h2>
-        {[{q:"How does the AI quote generator work?",a:"Take photos on the job site, add a few details about the work, and Wynflow's AI analyses everything — your trade, your rates, the scope of work — to generate an itemised quote with materials, labour, and pricing. Review it, tweak if needed, and send."},{q:"Is there really a free trial?",a:"Yep. 14 days, full access including AI quoting, no credit card needed. Send real quotes from day one."},{q:"Can I cancel anytime?",a:"Absolutely. No lock-in contracts, no cancellation fees. But most tradies stay."},{q:"Do my customers know it's automated?",a:"Nope. Emails come from Wynflow on behalf of your business name. They look professional and personal — your customers just think you're on the ball."},{q:"What if I already use Xero / Tradify / Fergus?",a:"Keep using them for your invoicing. Wynflow is specifically for AI-powered quoting and automated follow-ups — it fills the gap most trade software misses."},{q:"How long does it take to set up?",a:"About 30 seconds. Sign up, enter your business details, and generate your first AI quote. The default follow-up sequence is ready to go."}].map((faq,i) => (
-          <div key={i} style={{ padding:"24px 0",borderBottom:`1px solid ${theme.border}` }}><h3 style={{ fontSize:16,fontWeight:600,color:theme.text,marginBottom:8 }}>{faq.q}</h3><p style={{ fontSize:14,color:theme.textMuted,lineHeight:1.7 }}>{faq.a}</p></div>
-        ))}
-      </div>
+    <div style={{ height:1,background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 50%,transparent)" }} />
+    <div style={{ padding:isMobile?"60px 20px":"80px 48px" }}>
+      <FadeIn>
+        <div style={{ maxWidth:700,margin:"0 auto" }}>
+          <h2 style={{ fontSize:isMobile?28:36,fontWeight:700,color:"#FFFFFF",marginBottom:48,textAlign:"center",fontFamily:theme.font,letterSpacing:"-0.03em" }}>Frequently Asked Questions</h2>
+          {faqs.map((faq,i) => (
+            <div key={i} style={{ padding:"24px 0",borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
+              <h3 style={{ fontSize:16,fontWeight:600,color:"#FFFFFF",marginBottom:8,letterSpacing:"-0.01em" }}>{faq.q}</h3>
+              <p style={{ fontSize:14,color:"rgba(255,255,255,0.4)",lineHeight:1.7 }}>{faq.a}</p>
+            </div>
+          ))}
+        </div>
+      </FadeIn>
     </div>
-    <div style={{ padding:"80px 48px",background:theme.bg,textAlign:"center" }}>
-      <h2 style={{ fontSize:36,fontWeight:700,color:theme.text,marginBottom:16,fontFamily:theme.fontDisplay }}>Still Not Sure?</h2>
-      <p style={{ fontSize:16,color:theme.textMuted,marginBottom:32 }}>Start your free trial — generate your first AI quote in under a minute.</p>
-      <Button size="lg" onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })}>Start Free Trial →</Button>
+    <div style={{ height:1,background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 50%,transparent)" }} />
+    <div style={{ padding:isMobile?"60px 20px":"80px 48px",textAlign:"center",position:"relative" }}>
+      <div style={{ position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:"60%",height:"80%",background:"radial-gradient(circle, rgba(20,184,166,0.06) 0%, transparent 60%)",pointerEvents:"none" }} />
+      <FadeIn>
+        <div style={{ position:"relative",zIndex:1,maxWidth:600,margin:"0 auto",padding:isMobile?"48px 24px":"64px 48px",borderRadius:20,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)" }}>
+          <h2 style={{ fontSize:isMobile?28:36,fontWeight:700,color:"#FFFFFF",marginBottom:16,fontFamily:theme.font,letterSpacing:"-0.03em" }}>Still Not Sure?</h2>
+          <p style={{ fontSize:16,color:"rgba(255,255,255,0.4)",marginBottom:32,lineHeight:1.6 }}>Start your free trial — generate your first AI quote in under a minute.</p>
+          <button onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })} style={{ fontFamily:theme.font,fontSize:15,fontWeight:600,padding:"14px 40px",borderRadius:10,background:theme.accent,color:"#000",border:"none",cursor:"pointer",transition:"all 0.2s",boxShadow:"0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)" }}
+            onMouseEnter={e=>{e.currentTarget.style.background="#5EEAD4";e.currentTarget.style.transform="translateY(-2px)";}}
+            onMouseLeave={e=>{e.currentTarget.style.background=theme.accent;e.currentTarget.style.transform="translateY(0)";}}>
+            Start Free Trial <ArrowRight size={16} style={{ display:"inline",verticalAlign:"middle",marginLeft:8 }} />
+          </button>
+        </div>
+      </FadeIn>
     </div>
     <Footer dispatch={dispatch} />
   </div>
@@ -1043,7 +1191,7 @@ const ResetPasswordScreen = ({ dispatch }) => {
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
             <WynflowLogo size={48} />
-            <span style={{ fontSize: 28, fontWeight: 700, color: theme.text, fontFamily: theme.fontDisplay }}>Wynflow</span>
+            <span style={{ fontSize: 28, fontWeight: 700, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.02em" }}>Wynflow</span>
           </div>
         </div>
         <Card style={{ padding: 32 }}>
@@ -1208,9 +1356,9 @@ const AuthScreen = ({ dispatch, isSignup }) => {
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
             <div style={{ width: 48, height: 48, borderRadius: 14, overflow: "hidden" }}><WynflowLogo size={48} /></div>
-            <span style={{ fontSize: 28, fontWeight: 700, color: theme.text, fontFamily: theme.fontDisplay }}>Wynflow</span>
+            <span style={{ fontSize: 28, fontWeight: 700, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.02em" }}>Wynflow</span>
           </div>
-          <div style={{ fontSize: 15, color: theme.textMuted, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", lineHeight: 1.5 }}>
             {isSignup ? "Set up your account in 30 seconds" : "Welcome back — your quotes are waiting"}
           </div>
         </div>
@@ -1253,7 +1401,7 @@ const AuthScreen = ({ dispatch, isSignup }) => {
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 6 }}>Trade / Industry *</div>
                   <select value={trade} onChange={e => setTrade(e.target.value)}
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}`, color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", appearance: "auto" }}>
+                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#F1F3F7", fontSize: 14, fontFamily: theme.font, outline: "none", appearance: "auto" }}>
                     <option value="">Select your trade...</option>
                     {TRADE_CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
@@ -1321,10 +1469,9 @@ const Sidebar = ({ screen, dispatch, business }) => {
     return (
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100,
-        background: theme.surface, borderTop: `1px solid ${theme.border}`,
+        background: "rgba(10,14,23,0.85)", borderTop: "1px solid rgba(255,255,255,0.06)",
         display: "flex", justifyContent: "space-around", padding: "6px 4px env(safe-area-inset-bottom, 8px)",
-        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-        backgroundColor: theme.surface + "F0",
+        backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
       }}>
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -1333,7 +1480,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
             style={{
               display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
               cursor: "pointer", padding: "4px 6px",
-              color: screen === item.id ? theme.accent : theme.textMuted,
+              color: screen === item.id ? theme.accent : "rgba(255,255,255,0.35)",
             }}>
             <Icon size={18} />
             <span style={{ fontSize: 9, fontWeight: 600 }}>{item.label}</span>
@@ -1346,12 +1493,12 @@ const Sidebar = ({ screen, dispatch, business }) => {
 
   return (
     <div style={{
-      width: 260, background: theme.surface, borderRight: `1px solid ${theme.border}`,
+      width: 260, background: "rgba(255,255,255,0.02)", borderRight: "1px solid rgba(255,255,255,0.06)",
       display: "flex", flexDirection: "column", padding: "24px 16px", flexShrink: 0,
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 8px", marginBottom: 36 }}>
         <div style={{ width: 36, height: 36, borderRadius: 10, overflow: "hidden" }}><WynflowLogo size={36} /></div>
-        <span style={{ fontSize: 20, fontWeight: 700, color: theme.text, fontFamily: theme.fontDisplay }}>Wynflow</span>
+        <span style={{ fontSize: 20, fontWeight: 700, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.02em" }}>Wynflow</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
         {navItems.map((item) => {
@@ -1361,8 +1508,8 @@ const Sidebar = ({ screen, dispatch, business }) => {
             style={{
               display: "flex", alignItems: "center", gap: 12, padding: "12px 14px",
               borderRadius: 10, cursor: "pointer", fontSize: 14, fontWeight: 500,
-              background: screen === item.id ? theme.accentSoft : "transparent",
-              color: screen === item.id ? theme.accent : theme.textMuted,
+              background: screen === item.id ? "rgba(20,184,166,0.1)" : "transparent",
+              color: screen === item.id ? theme.accent : "rgba(255,255,255,0.4)",
               transition: "all 0.2s ease",
             }}>
             <Icon size={18} />
@@ -1372,11 +1519,11 @@ const Sidebar = ({ screen, dispatch, business }) => {
         })}
       </div>
       <div style={{
-        padding: "16px 14px", borderRadius: 12, background: theme.surfaceLight,
-        border: `1px solid ${theme.border}`,
+        padding: "16px 14px", borderRadius: 12, background: "rgba(255,255,255,0.03)",
+        border: "1px solid rgba(255,255,255,0.06)",
       }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, marginBottom: 2 }}>{business?.business_name}</div>
-        <div style={{ fontSize: 12, color: theme.textMuted }}>{business?.email}</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#FFFFFF", marginBottom: 2 }}>{business?.business_name}</div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{business?.email}</div>
         <div onClick={handleLogout}
           style={{ fontSize: 12, color: theme.red, cursor: "pointer", marginTop: 10, fontWeight: 500 }}>
           Sign out
@@ -3873,7 +4020,7 @@ export default function WynflowApp() {
     input:focus,textarea:focus { border-color:${theme.accent} !important;box-shadow:0 0 0 2px ${theme.accentGlow}; }
     ::-webkit-scrollbar { width:6px; }
     ::-webkit-scrollbar-track { background:transparent; }
-    ::-webkit-scrollbar-thumb { background:${theme.border};border-radius:3px; }
+    ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08);border-radius:3px; }
     @keyframes slideIn { from{transform:translateX(100px);opacity:0} to{transform:translateX(0);opacity:1} }
     @keyframes spin { to{transform:rotate(360deg)} }
     @media (max-width: 767px) {
@@ -3962,7 +4109,7 @@ export default function WynflowApp() {
       <style>{globalStyles}</style>
       {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
       {showOnboarding && <OnboardingTutorial business={business} onComplete={() => { setShowOnboarding(false); try { localStorage.setItem("wynflow_onboarded_" + business.id, "true"); } catch(e) {} setCookie("wynflow_onboarded", "true", 525600); }} />}
-      <div style={{ display: "flex", height: "100vh", fontFamily: theme.font, color: theme.text, overflow: "hidden", flexDirection: isMobile ? "column" : "row" }}>
+      <div style={{ display: "flex", height: "100vh", fontFamily: theme.font, color: "#F1F3F7", background: theme.bg, overflow: "hidden", flexDirection: isMobile ? "column" : "row" }}>
         <Sidebar screen={activeScreen} dispatch={dispatch} business={business} />
         <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "16px 14px 90px" : "32px 40px", WebkitOverflowScrolling: "touch" }}>
           {renderContent()}
