@@ -1,5 +1,5 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
-import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck } from "lucide-react";
+import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell } from "lucide-react";
 
 // ─── SEO Helper ───
 const SEO_CONFIG = {
@@ -1557,6 +1557,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
 const Dashboard = ({ quotes, dispatch }) => {
   const isMobile = useIsMobile();
   const [alertDismissed, setAlertDismissed] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
   const requested = quotes.filter((q) => q.status === "requested").length;
   const total = quotes.length;
   const pending = quotes.filter((q) => q.status === "sent" || q.status === "pending" || q.status === "opened").length;
@@ -1606,38 +1607,70 @@ const Dashboard = ({ quotes, dispatch }) => {
 
   return (
     <div>
-      <div style={{ marginBottom: isMobile ? 16 : 32 }}>
-        <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Dashboard</h1>
-        <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>Here's what's happening with your quotes</p>
+      {/* Dashboard header with notification bell */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: isMobile ? 16 : 32 }}>
+        <div>
+          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Dashboard</h1>
+          <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>Here's what's happening with your quotes</p>
+        </div>
+        {/* Notification bell */}
+        <div style={{ position: "relative" }}>
+          <button onClick={() => setBellOpen(!bellOpen)}
+            style={{ width: 40, height: 40, borderRadius: 10, background: bellOpen ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", transition: "all 0.2s" }}>
+            <Bell size={18} color={(requested + accepted) > 0 ? theme.text : theme.textDim} />
+            {(requested + accepted) > 0 && (
+              <div style={{ position: "absolute", top: -4, right: -4, width: 18, height: 18, borderRadius: 9, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#000", border: "2px solid #0A0E17" }}>
+                {requested + accepted}
+              </div>
+            )}
+          </button>
+          {/* Dropdown */}
+          {bellOpen && (
+            <>
+              <div onClick={() => setBellOpen(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 98 }} />
+              <div style={{ position: "absolute", top: 48, right: 0, width: isMobile ? "calc(100vw - 72px)" : 340, maxWidth: 340, background: "rgba(17,24,39,0.97)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, boxShadow: "0 16px 48px rgba(0,0,0,0.5)", zIndex: 99, overflow: "hidden", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
+                <div style={{ padding: "14px 18px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>Activity</div>
+                </div>
+                <div style={{ maxHeight: 300, overflowY: "auto" }}>
+                  {requested > 0 && (
+                    <div onClick={() => { dispatch({ type: "SET_SCREEN", payload: "quotes" }); setBellOpen(false); }}
+                      style={{ padding: "14px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.15s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(20,184,166,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <MessageSquare size={15} color="#14B8A6" />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>{requested} new quote request{requested > 1 ? "s" : ""}</div>
+                        <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>Review and send a quote</div>
+                      </div>
+                    </div>
+                  )}
+                  {accepted > 0 && (
+                    <div onClick={() => { dispatch({ type: "SET_SCREEN", payload: "quotes" }); setBellOpen(false); }}
+                      style={{ padding: "14px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.15s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(245,158,11,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <Clock size={15} color="#F59E0B" />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>{accepted} accepted — ready to book</div>
+                        <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>Call your customer{accepted > 1 ? "s" : ""} to confirm</div>
+                      </div>
+                    </div>
+                  )}
+                  {requested === 0 && accepted === 0 && (
+                    <div style={{ padding: "24px 18px", textAlign: "center" }}>
+                      <Bell size={20} color={theme.textDim} style={{ marginBottom: 8 }} />
+                      <div style={{ fontSize: 13, color: theme.textDim }}>No new activity</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
-      {requested > 0 && (
-        <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}
-          style={{
-            padding: "14px 20px", borderRadius: 10, marginBottom: 12, cursor: "pointer",
-            background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.25)",
-            display: "flex", alignItems: "center", gap: 12,
-          }}>
-          <MessageSquare size={18} color="#14B8A6" />
-          <span style={{ fontSize: 14, color: "#14B8A6", fontWeight: 500 }}>
-            {requested} new quote request{requested > 1 ? "s" : ""} — review and send a quote!
-          </span>
-        </div>
-      )}
-      {accepted > 0 && !alertDismissed && (
-        <div style={{
-            padding: "14px 20px", borderRadius: 10, marginBottom: 12,
-            background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)",
-            display: "flex", alignItems: "center", gap: 12,
-          }}>
-          <Clock size={18} color="#F59E0B" />
-          <span onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}
-            style={{ fontSize: 14, color: "#F59E0B", fontWeight: 500, flex: 1, cursor: "pointer" }}>
-            {accepted} accepted quote{accepted > 1 ? "s" : ""} need{accepted === 1 ? "s" : ""} to be booked in — call your customer{accepted > 1 ? "s" : ""}!
-          </span>
-          <button onClick={() => setAlertDismissed(true)}
-            style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#F59E0B", fontSize: 18, lineHeight: 1 }}>×</button>
-        </div>
-      )}
       <div style={{ display: "flex", gap: 8, marginBottom: isMobile ? 16 : 24, overflowX: isMobile ? "auto" : "visible", WebkitOverflowScrolling: "touch", paddingBottom: isMobile ? 4 : 0 }}>
         <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })} size={isMobile ? "sm" : "md"} style={{ background: "rgba(20,184,166,0.12)", color: "#14B8A6", whiteSpace: "nowrap", flexShrink: 0 }}><Cpu size={14} /> AI Quote</Button>
         <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })} variant="secondary" size={isMobile ? "sm" : "md"} style={{ whiteSpace: "nowrap", flexShrink: 0 }}><Plus size={14} /> Manual Quote</Button>
@@ -2390,11 +2423,26 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         const labourCost = hours * rate;
         const callout = parseFloat(business.callout_fee) || 0;
         const matCost = Math.max(0, total - labourCost - callout);
+        // Parse materials breakdown into individual line items
+        const materialsText = result.quote.materials_breakdown || "";
+        const parsedItems = materialsText.split("\n").filter(l => l.trim()).map(line => {
+          // Try to extract price from end of line (e.g. "Pipe fittings - $45" or "Cement x2 $30")
+          const priceMatch = line.match(/\$?([\d,.]+)\s*$/);
+          const price = priceMatch ? priceMatch[1].replace(",", "") : "";
+          const desc = priceMatch ? line.replace(priceMatch[0], "").replace(/[-–—:]\s*$/, "").trim() : line.trim();
+          return { description: desc, price };
+        });
+        // If no items parsed or no prices found, create one item with the total materials cost
+        const lineItems = parsedItems.length > 0 ? parsedItems : [{ description: materialsText || "Materials", price: matCost ? String(Math.round(matCost * 100) / 100) : "" }];
+        // Calculate materials cost from line items if prices were parsed
+        const itemsTotal = lineItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+        const finalMatCost = itemsTotal > 0 ? itemsTotal : matCost;
         setEditForm({
           scope: result.quote.scope_of_work || "",
-          materials: result.quote.materials_breakdown || "",
+          materials: materialsText,
+          lineItems,
           labourHours: result.quote.estimated_hours || "",
-          materialsCost: matCost ? String(Math.round(matCost * 100) / 100) : "",
+          materialsCost: finalMatCost ? String(Math.round(finalMatCost * 100) / 100) : "",
           amount: result.quote.total || "",
           notes: result.quote.notes || "",
           showBreakdown: true,
@@ -2414,7 +2462,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
   const recalcTotal = (fields) => {
     const hours = parseFloat(fields.labourHours) || 0;
     const rate = parseFloat(business.hourly_rate) || 0;
-    const matCost = parseFloat(fields.materialsCost) || 0;
+    const matCost = (fields.lineItems || []).reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
     const callout = fields.includeCallout ? (parseFloat(business.callout_fee) || 0) : 0;
     return String(Math.round((matCost + (hours * rate) + callout) * 100) / 100);
   };
@@ -2422,6 +2470,36 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
   const updatePricing = (key, val) => {
     setEditForm(prev => {
       const updated = { ...prev, [key]: val };
+      // Sync materialsCost from line items
+      updated.materialsCost = String((updated.lineItems || []).reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0));
+      updated.amount = recalcTotal(updated);
+      return updated;
+    });
+  };
+
+  const updateLineItem = (index, field, value) => {
+    setEditForm(prev => {
+      const items = [...(prev.lineItems || [])];
+      items[index] = { ...items[index], [field]: value };
+      const matCost = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+      const updated = { ...prev, lineItems: items, materialsCost: String(matCost) };
+      updated.amount = recalcTotal(updated);
+      return updated;
+    });
+  };
+
+  const addLineItem = () => {
+    setEditForm(prev => {
+      const items = [...(prev.lineItems || []), { description: "", price: "" }];
+      return { ...prev, lineItems: items };
+    });
+  };
+
+  const removeLineItem = (index) => {
+    setEditForm(prev => {
+      const items = (prev.lineItems || []).filter((_, i) => i !== index);
+      const matCost = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+      const updated = { ...prev, lineItems: items, materialsCost: String(matCost) };
       updated.amount = recalcTotal(updated);
       return updated;
     });
@@ -2440,9 +2518,11 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         const { data: seqSteps } = await db("sequence_steps").eq("sequence_id", seqId).order("step_order").limit(1).select();
         if (seqSteps && seqSteps[0]) { const d = new Date(); d.setDate(d.getDate() + seqSteps[0].delay_days); nextFollowUp = d.toISOString(); }
       }
+      const materialsText = (editForm.lineItems || []).filter(i => i.description.trim()).map(i => i.description + (i.price ? " — $" + i.price : "")).join("\n");
       const breakdown = {
         scope: editForm.scope,
-        materials: editForm.materials,
+        materials: materialsText,
+        lineItems: editForm.lineItems,
         materialsCost: editForm.materialsCost,
         labourHours: editForm.labourHours,
         labourRate: business.hourly_rate,
@@ -2455,7 +2535,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
       const { data: newQuote, error: quoteErr } = await db("quotes").insert({
         business_id: business.id, quote_number: "", customer_name: form.customerName,
         customer_email: form.customerEmail, customer_phone: form.customerPhone,
-        job_title: form.jobTitle, description: editForm.scope + (editForm.materials ? "\n\nMaterials:\n" + editForm.materials : "") + (editForm.notes ? "\n\nNotes:\n" + editForm.notes : ""),
+        job_title: form.jobTitle, description: editForm.scope + (materialsText ? "\n\nMaterials:\n" + materialsText : "") + (editForm.notes ? "\n\nNotes:\n" + editForm.notes : ""),
         amount: parseFloat(editForm.amount), status: "sent", sent_at: new Date().toISOString(),
         sequence_id: seqId, next_follow_up_at: nextFollowUp, current_step: 0, follow_up_paused: false,
         ai_estimate: parseFloat(editForm.amount), ai_estimate_notes: JSON.stringify(breakdown),
@@ -2545,12 +2625,11 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
             <p style={{ fontSize: 12, color: theme.textMuted }}>Review and edit below, then send to your customer</p>
           </Card>
           <Card style={isMobile ? { padding: 16 } : {}}>
-            <Input label="Scope of Work" value={editForm.scope} onChange={v => setEditForm(prev => ({ ...prev, scope: v }))} textarea />
-            <div style={{ marginTop: 12 }}><Input label="Materials Description" value={editForm.materials} onChange={v => setEditForm(prev => ({ ...prev, materials: v }))} textarea /></div>
+            <Input label="Description" value={editForm.scope} onChange={v => setEditForm(prev => ({ ...prev, scope: v }))} textarea />
           </Card>
           <Card style={isMobile ? { padding: 16 } : {}}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 600, color: theme.text, margin: 0 }}>Pricing Breakdown</h3>
+              <h3 style={{ fontSize: 14, fontWeight: 600, color: theme.text, margin: 0 }}>Pricing</h3>
               <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
                 <input type="checkbox" checked={editForm.showBreakdown} onChange={e => { const c = e.target.checked; setEditForm(prev => ({ ...prev, showBreakdown: c })); }} style={{ accentColor: theme.accent }} />
                 Show on invoice
@@ -2558,10 +2637,26 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {editForm.showBreakdown && (<>
-              <div style={{ display: "flex", gap: 12 }}>
-                <div style={{ flex: 1 }}><Input label="Materials Cost ($)" value={editForm.materialsCost} onChange={v => updatePricing("materialsCost", v)} type="number" /></div>
-                <div style={{ flex: 1 }}><Input label="Labour Hours" value={editForm.labourHours} onChange={v => updatePricing("labourHours", v)} type="number" /></div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>Materials</div>
+              {(editForm.lineItems || []).map((item, idx) => (
+                <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                  <div style={{ flex: 1 }}>
+                    <input value={item.description} onChange={e => updateLineItem(idx, "description", e.target.value)} placeholder="Item description"
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none" }} />
+                  </div>
+                  <div style={{ width: isMobile ? 90 : 110 }}>
+                    <input value={item.price} onChange={e => updateLineItem(idx, "price", e.target.value)} placeholder="$0" type="number"
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", textAlign: "right" }} />
+                  </div>
+                  <button onClick={() => removeLineItem(idx)} style={{ padding: "10px 8px", background: "none", border: "none", color: theme.textDim, cursor: "pointer", fontSize: 16, lineHeight: 1, flexShrink: 0 }}>×</button>
+                </div>
+              ))}
+              <button onClick={addLineItem} style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: `1px dashed rgba(255,255,255,0.1)`, color: theme.textMuted, fontSize: 13, cursor: "pointer", fontFamily: theme.font, transition: "all 0.2s" }}>+ Add item</button>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderTop: `1px solid rgba(255,255,255,0.06)`, marginTop: 4 }}>
+                <span style={{ fontSize: 12, color: theme.textMuted }}>Materials subtotal</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>${parseFloat(editForm.materialsCost || 0).toLocaleString()}</span>
               </div>
+              <div style={{ marginTop: 4 }}><Input label="Labour Hours" value={editForm.labourHours} onChange={v => updatePricing("labourHours", v)} type="number" /></div>
               {business.hourly_rate && <div style={{ fontSize: 12, color: theme.textMuted, marginTop: -4 }}>Labour: {editForm.labourHours || 0} hrs × ${business.hourly_rate}/hr = ${((parseFloat(editForm.labourHours) || 0) * parseFloat(business.hourly_rate)).toLocaleString()}</div>}
               {parseFloat(business.callout_fee) > 0 && (
                 <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
@@ -2828,11 +2923,23 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
         const labourCost = hours * rate;
         const callout = parseFloat(business.callout_fee) || 0;
         const matCost = Math.max(0, total - labourCost - callout);
+        // Parse materials breakdown into individual line items
+        const materialsText = result.quote.materials_breakdown || "";
+        const parsedItems = materialsText.split("\n").filter(l => l.trim()).map(line => {
+          const priceMatch = line.match(/\$?([\d,.]+)\s*$/);
+          const price = priceMatch ? priceMatch[1].replace(",", "") : "";
+          const desc = priceMatch ? line.replace(priceMatch[0], "").replace(/[-–—:]\s*$/, "").trim() : line.trim();
+          return { description: desc, price };
+        });
+        const lineItems = parsedItems.length > 0 ? parsedItems : [{ description: materialsText || "Materials", price: matCost ? String(Math.round(matCost * 100) / 100) : "" }];
+        const itemsTotal = lineItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+        const finalMatCost = itemsTotal > 0 ? itemsTotal : matCost;
         setEditForm({
           scope: result.quote.scope_of_work || "",
-          materials: result.quote.materials_breakdown || "",
+          materials: materialsText,
+          lineItems,
           labourHours: result.quote.estimated_hours || "",
-          materialsCost: matCost ? String(Math.round(matCost * 100) / 100) : "",
+          materialsCost: finalMatCost ? String(Math.round(finalMatCost * 100) / 100) : "",
           amount: result.quote.total || "",
           notes: result.quote.notes || "",
           showBreakdown: true,
@@ -2852,7 +2959,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
   const recalcTotal = (fields) => {
     const hours = parseFloat(fields.labourHours) || 0;
     const rate = parseFloat(business.hourly_rate) || 0;
-    const matCost = parseFloat(fields.materialsCost) || 0;
+    const matCost = (fields.lineItems || []).reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
     const callout = fields.includeCallout ? (parseFloat(business.callout_fee) || 0) : 0;
     return String(Math.round((matCost + (hours * rate) + callout) * 100) / 100);
   };
@@ -2860,6 +2967,32 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
   const updatePricing = (key, val) => {
     setEditForm(prev => {
       const updated = { ...prev, [key]: val };
+      updated.materialsCost = String((updated.lineItems || []).reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0));
+      updated.amount = recalcTotal(updated);
+      return updated;
+    });
+  };
+
+  const updateLineItem = (index, field, value) => {
+    setEditForm(prev => {
+      const items = [...(prev.lineItems || [])];
+      items[index] = { ...items[index], [field]: value };
+      const matCost = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+      const updated = { ...prev, lineItems: items, materialsCost: String(matCost) };
+      updated.amount = recalcTotal(updated);
+      return updated;
+    });
+  };
+
+  const addLineItem = () => {
+    setEditForm(prev => ({ ...prev, lineItems: [...(prev.lineItems || []), { description: "", price: "" }] }));
+  };
+
+  const removeLineItem = (index) => {
+    setEditForm(prev => {
+      const items = (prev.lineItems || []).filter((_, i) => i !== index);
+      const matCost = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+      const updated = { ...prev, lineItems: items, materialsCost: String(matCost) };
       updated.amount = recalcTotal(updated);
       return updated;
     });
@@ -2882,9 +3015,11 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
           nextFollowUp = d.toISOString();
         }
       }
+      const materialsText = (editForm.lineItems || []).filter(i => i.description.trim()).map(i => i.description + (i.price ? " — $" + i.price : "")).join("\n");
       const breakdown = {
         scope: editForm.scope,
-        materials: editForm.materials,
+        materials: materialsText,
+        lineItems: editForm.lineItems,
         materialsCost: editForm.materialsCost,
         labourHours: editForm.labourHours,
         labourRate: business.hourly_rate,
@@ -2896,7 +3031,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
       };
       await db("quotes").eq("id", quote.id).update({
         amount: parseFloat(editForm.amount),
-        description: editForm.scope + (editForm.materials ? "\n\nMaterials:\n" + editForm.materials : "") + (editForm.notes ? "\n\nNotes:\n" + editForm.notes : ""),
+        description: editForm.scope + (materialsText ? "\n\nMaterials:\n" + materialsText : "") + (editForm.notes ? "\n\nNotes:\n" + editForm.notes : ""),
         status: "sent",
         sent_at: new Date().toISOString(),
         sequence_id: seqId,
@@ -2973,21 +3108,36 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
             )}
           </div>
 
-          <Input label="Scope of Work" value={editForm.scope} onChange={v => setEditForm(prev => ({ ...prev, scope: v }))} textarea />
-          <Input label="Materials Description" value={editForm.materials} onChange={v => setEditForm(prev => ({ ...prev, materials: v }))} textarea />
+          <Input label="Description" value={editForm.scope} onChange={v => setEditForm(prev => ({ ...prev, scope: v }))} textarea />
           <div style={{ padding: 14, borderRadius: 10, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>Pricing Breakdown</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>Pricing</div>
               <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
                 <input type="checkbox" checked={editForm.showBreakdown} onChange={e => { const c = e.target.checked; setEditForm(prev => ({ ...prev, showBreakdown: c })); }} style={{ accentColor: theme.accent }} />
                 Show on invoice
               </label>
             </div>
             {editForm.showBreakdown && (<>
-            <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>
-              <div style={{ flex: 1 }}><Input label="Materials Cost ($)" value={editForm.materialsCost} onChange={v => updatePricing("materialsCost", v)} type="number" /></div>
-              <div style={{ flex: 1 }}><Input label="Labour Hours" value={editForm.labourHours} onChange={v => updatePricing("labourHours", v)} type="number" /></div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Materials</div>
+            {(editForm.lineItems || []).map((item, idx) => (
+              <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <input value={item.description} onChange={e => updateLineItem(idx, "description", e.target.value)} placeholder="Item description"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none" }} />
+                </div>
+                <div style={{ width: 90 }}>
+                  <input value={item.price} onChange={e => updateLineItem(idx, "price", e.target.value)} placeholder="$0" type="number"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", textAlign: "right" }} />
+                </div>
+                <button onClick={() => removeLineItem(idx)} style={{ padding: "10px 8px", background: "none", border: "none", color: theme.textDim, cursor: "pointer", fontSize: 16, lineHeight: 1, flexShrink: 0 }}>×</button>
+              </div>
+            ))}
+            <button onClick={addLineItem} style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px dashed rgba(255,255,255,0.1)", color: theme.textMuted, fontSize: 13, cursor: "pointer", fontFamily: theme.font, marginBottom: 8 }}>+ Add item</button>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderTop: "1px solid rgba(255,255,255,0.06)", marginBottom: 8 }}>
+              <span style={{ fontSize: 12, color: theme.textMuted }}>Materials subtotal</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>${parseFloat(editForm.materialsCost || 0).toLocaleString()}</span>
             </div>
+            <div style={{ marginBottom: 8 }}><Input label="Labour Hours" value={editForm.labourHours} onChange={v => updatePricing("labourHours", v)} type="number" /></div>
             {business.hourly_rate && <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>Labour: {editForm.labourHours || 0} hrs × ${business.hourly_rate}/hr = ${((parseFloat(editForm.labourHours) || 0) * parseFloat(business.hourly_rate)).toLocaleString()}</div>}
             {parseFloat(business.callout_fee) > 0 && (
               <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>
@@ -4077,34 +4227,274 @@ const Settings = ({ business, dispatch }) => {
 };
 
 // ─── Onboarding Tutorial ───
-const OnboardingTutorial = ({ business, onComplete }) => {
+const OnboardingTutorial = ({ business, dispatch, onComplete }) => {
   const [step, setStep] = useState(0);
+  const [linkCopied, setLinkCopied] = useState(false);
   const isMobile = useIsMobile();
+  const requestLink = `https://www.wynflow.co.nz/request/${business?.id || ""}`;
+
   const steps = [
-    { title: "Welcome to Wynflow!", desc: `Hey ${business?.contact_name || "there"}! Let's get you set up in 30 seconds.`, icon: "👋", content: "Wynflow sends your quotes to customers and automatically follows up if they don't respond. No more lost jobs from forgotten emails." },
-    { title: "Step 1: Send a Quote", desc: "Click 'AI Quote' or 'Manual Quote' to get started", icon: "📤", content: "Use AI Quote to generate a quote from photos and job details, or Manual Quote to enter everything yourself. Add your customer's details, the job title, and the amount. Hit send and the customer gets a branded email with your quote." },
-    { title: "Step 2: Wynflow Chases", desc: "Automated follow-ups do the hard work", icon: "🤖", content: "If your customer doesn't respond, Wynflow sends follow-up emails automatically — day 2, day 5, day 10. You can customise the timing and wording in the Follow-Ups tab." },
-    { title: "Step 3: Book the Job", desc: "They respond, you close it", icon: "✅", content: "Your customer clicks 'Book It In' or 'Decline' right in the email. You get notified instantly. Once accepted, call them to confirm the job and mark it as 'Booked' in your dashboard." },
-  ];
-  const s = steps[step];
-  return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(4px)" }}>
-      <div style={{ width: "100%", maxWidth: 500, background: theme.surface, borderRadius: 20, overflow: "hidden", border: `1px solid ${theme.border}` }}>
-        <div style={{ background: `linear-gradient(135deg, ${theme.bg}, ${theme.surfaceLight})`, padding: isMobile ? "32px 24px" : "40px 40px", textAlign: "center" }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>{s.icon}</div>
-          <h2 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color: theme.text, margin: "0 0 8px", fontFamily: theme.fontDisplay }}>{s.title}</h2>
-          <p style={{ fontSize: 14, color: theme.accent, fontWeight: 500, margin: 0 }}>{s.desc}</p>
+    // 0 — Welcome
+    {
+      icon: Sparkles, iconBg: "rgba(20,184,166,0.15)", iconColor: "#14B8A6",
+      title: `Welcome, ${business?.contact_name || "legend"}`,
+      subtitle: "Let's get you winning more jobs",
+      content: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <p style={{ fontSize: 15, color: theme.textMuted, lineHeight: 1.7, margin: 0 }}>
+            Wynflow is your AI-powered quoting tool — snap photos, generate professional quotes, and let automated follow-ups chase your customers so you don't have to.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {[
+              { icon: Cpu, text: "AI quotes from job site photos" },
+              { icon: RefreshCw, text: "Automated follow-up emails" },
+              { icon: Globe, text: "Personal quote request link" },
+              { icon: BarChart3, text: "Dashboard & analytics" },
+            ].map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(20,184,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <item.icon size={16} color="#14B8A6" />
+                </div>
+                <span style={{ fontSize: 14, color: theme.text, fontWeight: 500 }}>{item.text}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div style={{ padding: isMobile ? "24px 24px 20px" : "32px 40px 24px" }}>
-          <p style={{ fontSize: 15, color: theme.textMuted, lineHeight: 1.7, margin: "0 0 28px" }}>{s.content}</p>
-          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 20 }}>
-            {steps.map((_, i) => (<div key={i} style={{ width: i === step ? 24 : 8, height: 8, borderRadius: 4, background: i === step ? theme.accent : theme.border, transition: "all 0.3s" }} />))}
+      ),
+    },
+    // 1 — Dashboard
+    {
+      icon: LayoutDashboard, iconBg: "rgba(20,184,166,0.15)", iconColor: "#14B8A6",
+      title: "Your Dashboard",
+      subtitle: "Everything at a glance",
+      tab: "dashboard",
+      content: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, margin: 0 }}>
+            Your home base. See your quote stats, revenue, new requests, and recent activity — all in one place.
+          </p>
+          <div style={{ padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: theme.accent, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Quick Actions</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {[
+                { icon: Cpu, label: "AI Quote", color: "#14B8A6" },
+                { icon: Plus, label: "Manual Quote", color: theme.textMuted },
+                { icon: RefreshCw, label: "Follow-Ups", color: theme.textMuted },
+              ].map((btn, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, background: i === 0 ? "rgba(20,184,166,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${i === 0 ? "rgba(20,184,166,0.2)" : "rgba(255,255,255,0.08)"}` }}>
+                  <btn.icon size={13} color={btn.color} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: btn.color }}>{btn.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-            {step > 0 && <Button variant="secondary" size="sm" onClick={() => setStep(step - 1)}>Back</Button>}
-            {step < steps.length - 1 ? <Button size="sm" onClick={() => setStep(step + 1)}>Next →</Button> : <Button onClick={onComplete}>Let's Go! →</Button>}
+          <p style={{ fontSize: 13, color: theme.textDim, lineHeight: 1.5, margin: 0 }}>
+            Action alerts will appear when customers request quotes or accept — so you never miss a lead.
+          </p>
+        </div>
+      ),
+    },
+    // 2 — AI Quoting
+    {
+      icon: Cpu, iconBg: "rgba(20,184,166,0.15)", iconColor: "#14B8A6",
+      title: "AI Photo Quoting",
+      subtitle: "Your biggest time-saver",
+      tab: "aiQuote",
+      content: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, margin: 0 }}>
+            Snap photos on site, enter the customer details, and let AI generate a detailed quote with scope, materials, and pricing — ready to send in seconds.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {[
+              { num: "1", text: "Enter customer name, email, and job title" },
+              { num: "2", text: "Upload site photos and add any notes" },
+              { num: "3", text: "AI generates scope, materials & pricing" },
+              { num: "4", text: "Edit anything, preview, and hit send" },
+            ].map((s, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ width: 24, height: 24, borderRadius: 12, background: "rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 12, fontWeight: 700, color: theme.accent }}>{s.num}</div>
+                <span style={{ fontSize: 13, color: theme.text, lineHeight: 1.5 }}>{s.text}</span>
+              </div>
+            ))}
           </div>
-          {step < steps.length - 1 && <div style={{ textAlign: "center", marginTop: 12 }}><span onClick={onComplete} style={{ fontSize: 12, color: theme.textDim, cursor: "pointer" }}>Skip tutorial</span></div>}
+          <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(20,184,166,0.06)", border: "1px solid rgba(20,184,166,0.12)" }}>
+            <p style={{ fontSize: 13, color: theme.accent, margin: 0, lineHeight: 1.5 }}>
+              <strong>Tip:</strong> The more photos and notes you add, the more accurate the AI quote will be.
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    // 3 — Automated Follow-Ups
+    {
+      icon: RefreshCw, iconBg: "rgba(59,130,246,0.15)", iconColor: "#3B82F6",
+      title: "Automated Follow-Ups",
+      subtitle: "Wynflow chases so you don't have to",
+      tab: "sequences",
+      content: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, margin: 0 }}>
+            When a customer doesn't respond, Wynflow sends follow-up emails automatically. You set the timing and wording — it does the rest.
+          </p>
+          <div style={{ padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#3B82F6", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Default Sequence</div>
+            {[
+              { day: "Day 2", text: "Friendly check-in" },
+              { day: "Day 5", text: "Reminder with urgency" },
+              { day: "Day 10", text: "Final follow-up" },
+            ].map((f, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                <div style={{ width: 56, fontSize: 12, fontWeight: 600, color: theme.accent }}>{f.day}</div>
+                <span style={{ fontSize: 13, color: theme.text }}>{f.text}</span>
+                <Mail size={13} color={theme.textDim} style={{ marginLeft: "auto" }} />
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 13, color: theme.textDim, lineHeight: 1.5, margin: 0 }}>
+            Customise everything in the <strong style={{ color: theme.text }}>Follow-Ups</strong> tab — change timing, edit email wording, or add more steps.
+          </p>
+        </div>
+      ),
+    },
+    // 4 — Settings & AI Accuracy
+    {
+      icon: SettingsIcon, iconBg: "rgba(245,158,11,0.15)", iconColor: "#F59E0B",
+      title: "Settings & AI Accuracy",
+      subtitle: "Better data = better quotes",
+      tab: "settings",
+      content: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)" }}>
+            <p style={{ fontSize: 13, color: "#F59E0B", margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
+              The AI uses your settings to generate accurate quotes. Fill these in first for the best results.
+            </p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {[
+              { label: "Hourly Rate", desc: "Your standard hourly charge — used to calculate labour costs", important: true },
+              { label: "Callout Fee", desc: "Optional fixed fee added to each job", important: true },
+              { label: "Price List", desc: "Add your common materials and prices for spot-on estimates", important: true },
+              { label: "Business Details", desc: "Name, address, GST number — shown on professional quotes", important: false },
+              { label: "Deposit Settings", desc: "Require a deposit percentage on quotes", important: false },
+            ].map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: `1px solid ${item.important ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.06)"}` }}>
+                {item.important && <Zap size={14} color="#F59E0B" style={{ marginTop: 2, flexShrink: 0 }} />}
+                {!item.important && <Check size={14} color={theme.textDim} style={{ marginTop: 2, flexShrink: 0 }} />}
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>{item.label}</div>
+                  <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>{item.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ),
+    },
+    // 5 — Quote Request Link + Go
+    {
+      icon: Link, iconBg: "rgba(34,197,94,0.15)", iconColor: "#22C55E",
+      title: "Your Quote Request Link",
+      subtitle: "Let customers come to you",
+      content: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, margin: 0 }}>
+            Share this link anywhere — customers fill in their details and the request lands straight in your dashboard.
+          </p>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ flex: 1, padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 12, color: theme.accent, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {requestLink}
+            </div>
+            <button
+              onClick={() => { navigator.clipboard.writeText(requestLink); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }}
+              style={{ padding: "12px 16px", borderRadius: 10, background: linkCopied ? "rgba(34,197,94,0.15)" : "rgba(20,184,166,0.12)", border: `1px solid ${linkCopied ? "rgba(34,197,94,0.2)" : "rgba(20,184,166,0.2)"}`, color: linkCopied ? "#22C55E" : theme.accent, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: theme.font, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s", flexShrink: 0 }}
+            >
+              {linkCopied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+            </button>
+          </div>
+          <div style={{ padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#22C55E", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Where to share it</div>
+            {[
+              { label: "Google Business", tip: "Add as your booking link" },
+              { label: "Facebook & Instagram", tip: "Pop it in your bio" },
+              { label: "Your website", tip: "Add a 'Request a Quote' button" },
+              { label: "Email signature", tip: "Add to your footer" },
+            ].map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                <ArrowRight size={11} color={theme.textDim} />
+                <span style={{ fontSize: 13, color: theme.text }}><strong>{item.label}</strong> — <span style={{ color: theme.textMuted }}>{item.tip}</span></span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ),
+    },
+  ];
+
+  const s = steps[step];
+  const isLast = step === steps.length - 1;
+  const Icon = s.icon;
+
+  const goNext = () => {
+    if (isLast) {
+      // Navigate to settings so they fill in their details
+      dispatch({ type: "SET_SCREEN", payload: "settings" });
+      onComplete();
+    } else {
+      setStep(step + 1);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.75)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? 16 : 20, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
+      <div style={{ width: "100%", maxWidth: 520, background: "rgba(17,24,39,0.95)", borderRadius: 20, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 24px 80px rgba(0,0,0,0.5), 0 0 1px rgba(255,255,255,0.1)" }}>
+
+        {/* Header */}
+        <div style={{ padding: isMobile ? "28px 24px 20px" : "36px 40px 24px", background: "linear-gradient(180deg, rgba(20,184,166,0.06) 0%, transparent 100%)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: s.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon size={22} color={s.iconColor} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay, lineHeight: 1.2 }}>{s.title}</h2>
+              <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0", fontWeight: 500 }}>{s.subtitle}</p>
+            </div>
+          </div>
+          {/* Progress bar */}
+          <div style={{ display: "flex", gap: 4 }}>
+            {steps.map((_, i) => (
+              <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= step ? theme.accent : "rgba(255,255,255,0.06)", transition: "background 0.3s" }} />
+            ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: isMobile ? "0 24px 24px" : "0 40px 32px", maxHeight: isMobile ? "55vh" : "50vh", overflowY: "auto" }}>
+          {s.content}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: isMobile ? "0 24px 24px" : "0 40px 32px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", gap: 10 }}>
+            {step > 0 && (
+              <button onClick={() => setStep(step - 1)}
+                style={{ flex: 1, padding: "14px 20px", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: theme.textMuted, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: theme.font, transition: "all 0.2s" }}>
+                Back
+              </button>
+            )}
+            <button onClick={goNext}
+              style={{ flex: step > 0 ? 2 : 1, padding: "14px 20px", borderRadius: 12, background: isLast ? theme.accent : "rgba(20,184,166,0.15)", border: `1px solid ${isLast ? theme.accent : "rgba(20,184,166,0.25)"}`, color: isLast ? "#000" : theme.accent, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: theme.font, transition: "all 0.2s", boxShadow: isLast ? "0 0 20px rgba(20,184,166,0.25)" : "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              {isLast ? <><SettingsIcon size={16} /> Set Up My Settings</> : <>Next <ArrowRight size={15} /></>}
+            </button>
+          </div>
+          {!isLast && (
+            <div style={{ textAlign: "center" }}>
+              <span onClick={onComplete} style={{ fontSize: 12, color: theme.textDim, cursor: "pointer", transition: "color 0.2s" }}
+                onMouseEnter={e => e.target.style.color = theme.textMuted} onMouseLeave={e => e.target.style.color = theme.textDim}>
+                Skip for now
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -4320,7 +4710,7 @@ export default function WynflowApp() {
     <>
       <style>{globalStyles}</style>
       {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
-      {showOnboarding && <OnboardingTutorial business={business} onComplete={() => { setShowOnboarding(false); try { localStorage.setItem("wynflow_onboarded_" + business.id, "true"); } catch(e) {} setCookie("wynflow_onboarded", "true", 525600); }} />}
+      {showOnboarding && <OnboardingTutorial business={business} dispatch={dispatch} onComplete={() => { setShowOnboarding(false); try { localStorage.setItem("wynflow_onboarded_" + business.id, "true"); } catch(e) {} setCookie("wynflow_onboarded", "true", 525600); }} />}
       <div style={{ display: "flex", height: "100vh", fontFamily: theme.font, color: "#F1F3F7", background: theme.bg, overflow: "hidden", flexDirection: isMobile ? "column" : "row" }}>
         <Sidebar screen={activeScreen} dispatch={dispatch} business={business} />
         <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "16px 14px 90px" : "32px 40px", WebkitOverflowScrolling: "touch" }}>
