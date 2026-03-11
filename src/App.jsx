@@ -3876,19 +3876,7 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
       // Send invoice email via N8N
       await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-invoice", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          invoice_id: newInvoice[0].id,
-          breakdown: breakdown || null,
-          invoice_number: invoiceNumber,
-          due_date: dueDate,
-          payment_terms: form.paymentTerms,
-          is_deposit: form.isDeposit,
-          deposit_percentage: form.isDeposit ? form.depositPercentage : null,
-          gst_amount: gstAmount,
-          bank_name: business.bank_name || "",
-          bank_account_name: business.bank_account_name || "",
-          bank_account_number: business.bank_account_number || "",
-        }),
+        body: JSON.stringify({ invoice_id: newInvoice[0].id }),
       });
 
       dispatch({ type: "ADD_INVOICE", payload: newInvoice[0] });
@@ -4226,18 +4214,7 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
     try {
       await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-invoice", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          invoice_id: invoice.id,
-          breakdown: invoice.breakdown,
-          invoice_number: invoice.invoice_number,
-          due_date: invoice.due_date,
-          payment_terms: invoice.payment_terms,
-          is_deposit: invoice.is_deposit,
-          gst_amount: invoice.gst_amount,
-          bank_name: business.bank_name || "",
-          bank_account_name: business.bank_account_name || "",
-          bank_account_number: business.bank_account_number || "",
-        }),
+        body: JSON.stringify({ invoice_id: invoice.id }),
       });
       dispatch({ type: "NOTIFY", payload: { message: "Invoice resent!", type: "success" } });
     } catch (err) {
