@@ -1,5 +1,6 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
-import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle } from "lucide-react";
+import { jsPDF } from "jspdf";
+import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download } from "lucide-react";
 
 // ─── SEO Helper ───
 const SEO_CONFIG = {
@@ -334,6 +335,177 @@ const invoiceStatusConfig = {
   viewed: { label: "Viewed", color: theme.accentBlue, bg: theme.accentBlueSoft },
   overdue: { label: "Overdue", color: theme.red, bg: theme.redSoft },
   paid: { label: "Paid", color: theme.green, bg: theme.greenSoft },
+};
+
+// ─── Invoice PDF Generator (NZ-compliant) ───
+const fmtNZD = (n) => "$" + parseFloat(n || 0).toLocaleString("en-NZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtDate = (d) => new Date(d).toLocaleDateString("en-NZ", { day: "numeric", month: "long", year: "numeric" });
+
+const generateInvoicePDF = ({ business, invoice, breakdown }) => {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pw = 210, lm = 20, rm = 20, cw = pw - lm - rm;
+  let y = 20;
+  const isGST = !!business.gst_number;
+  const amount = parseFloat(invoice.amount || 0);
+  const gst = parseFloat(invoice.gst_amount || 0);
+  const total = amount + gst;
+
+  // Helper: check page overflow
+  const checkPage = (needed = 20) => { if (y + needed > 275) { doc.addPage(); y = 20; } };
+
+  // Helper: draw text
+  const txt = (x, yy, text, opts = {}) => {
+    doc.setFontSize(opts.size || 10);
+    doc.setFont("helvetica", opts.bold ? "bold" : "normal");
+    doc.setTextColor(opts.color || "#374151");
+    if (opts.align === "right") doc.text(text, x, yy, { align: "right" });
+    else doc.text(text, x, yy);
+  };
+
+  // Helper: section label
+  const label = (text) => {
+    checkPage(15);
+    doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor("#9ca3af");
+    doc.text(text.toUpperCase(), lm, y);
+    y += 5;
+  };
+
+  // ── Header ──
+  // Business info (left)
+  txt(lm, y, business.business_name, { size: 20, bold: true, color: "#0A0E17" }); y += 7;
+  if (business.address) { txt(lm, y, business.address, { size: 9, color: "#6b7280" }); y += 4; }
+  if (business.phone) { txt(lm, y, business.phone, { size: 9, color: "#6b7280" }); y += 4; }
+  if (business.email) { txt(lm, y, business.email, { size: 9, color: "#6b7280" }); y += 4; }
+  if (isGST) { txt(lm, y, "GST: " + business.gst_number, { size: 8, color: "#9ca3af" }); y += 4; }
+  if (business.license_number) { txt(lm, y, business.license_number, { size: 8, color: "#9ca3af" }); y += 4; }
+
+  // Invoice info (right)
+  const ry = 20;
+  txt(pw - rm, ry, isGST ? "TAX INVOICE" : "INVOICE", { size: 14, bold: true, color: "#14B8A6", align: "right" });
+  txt(pw - rm, ry + 7, invoice.invoice_number, { size: 12, bold: true, color: "#111827", align: "right" });
+  txt(pw - rm, ry + 13, fmtDate(invoice.sent_at || new Date()), { size: 9, color: "#6b7280", align: "right" });
+  txt(pw - rm, ry + 18, "Due: " + fmtDate(invoice.due_date), { size: 9, bold: true, color: "#111827", align: "right" });
+
+  y = Math.max(y, ry + 24);
+
+  // Teal accent line
+  doc.setDrawColor("#14B8A6"); doc.setLineWidth(1);
+  doc.line(lm, y, pw - rm, y); y += 8;
+
+  // ── Bill To ──
+  label("Bill To");
+  txt(lm, y, invoice.customer_name, { size: 12, bold: true, color: "#111827" }); y += 5;
+  if (invoice.customer_email) { txt(lm, y, invoice.customer_email, { size: 9, color: "#6b7280" }); y += 4; }
+  if (invoice.customer_phone) { txt(lm, y, invoice.customer_phone, { size: 9, color: "#6b7280" }); y += 4; }
+  y += 6;
+
+  // ── Job ──
+  label("Job");
+  txt(lm, y, invoice.job_title || "", { size: 13, bold: true, color: "#111827" }); y += 7;
+
+  // ── Scope of Work ──
+  if (invoice.description) {
+    label("Scope of Work");
+    doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor("#374151");
+    const lines = doc.splitTextToSize(invoice.description, cw);
+    lines.forEach(line => { checkPage(5); doc.text(line, lm, y); y += 4; });
+    y += 4;
+  }
+
+  // ── Line Items Table ──
+  checkPage(30);
+  label("Items");
+  // Table header
+  doc.setFillColor("#f3f4f6"); doc.rect(lm, y - 3, cw, 8, "F");
+  txt(lm + 2, y + 2, "Description", { size: 8, bold: true, color: "#6b7280" });
+  txt(pw - rm - 2, y + 2, "Amount", { size: 8, bold: true, color: "#6b7280", align: "right" });
+  y += 9;
+
+  const addRow = (desc, amt) => {
+    checkPage(8);
+    doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor("#374151");
+    const wrapped = doc.splitTextToSize(desc, cw - 45);
+    wrapped.forEach((line, i) => { doc.text(line, lm + 2, y); if (i === 0 && amt !== undefined) { txt(pw - rm - 2, y, fmtNZD(amt), { size: 9, color: "#111827", align: "right" }); } y += 4.5; });
+    doc.setDrawColor("#e5e7eb"); doc.setLineWidth(0.2); doc.line(lm, y, pw - rm, y); y += 2;
+  };
+
+  // Parse breakdown
+  const bd = breakdown ? (typeof breakdown === "string" ? JSON.parse(breakdown) : breakdown) : null;
+  let hasRows = false;
+
+  if (bd && bd.lineItems) {
+    bd.lineItems.filter(i => i.description?.trim()).forEach(item => { hasRows = true; addRow(item.description, item.price); });
+  }
+  if (bd && bd.materialsCost && parseFloat(bd.materialsCost) > 0) { hasRows = true; addRow("Materials", bd.materialsCost); }
+  if (bd && bd.labourHours && bd.labourRate) { hasRows = true; addRow("Labour (" + bd.labourHours + " hrs @ $" + bd.labourRate + "/hr)", parseFloat(bd.labourHours) * parseFloat(bd.labourRate)); }
+  if (bd && bd.includeCallout && bd.calloutFee && parseFloat(bd.calloutFee) > 0) { hasRows = true; addRow("Callout Fee", bd.calloutFee); }
+  if (invoice.is_deposit) { addRow("Deposit (" + (invoice.deposit_percentage || 0) + "%" + (invoice.linkedQuoteAmount ? " of " + fmtNZD(invoice.linkedQuoteAmount) : "") + ")", amount); hasRows = true; }
+  if (!hasRows && !invoice.is_deposit) { addRow(invoice.job_title || "Services", amount); }
+
+  y += 4;
+
+  // ── Totals ──
+  checkPage(30);
+  const tx = pw - rm - 2, tl = pw - rm - 60;
+  if (isGST) {
+    txt(tl, y, "Subtotal (ex GST)", { size: 9, color: "#6b7280" }); txt(tx, y, fmtNZD(amount), { size: 9, color: "#111827", align: "right" }); y += 6;
+    txt(tl, y, "GST (15%)", { size: 9, color: "#6b7280" }); txt(tx, y, fmtNZD(gst), { size: 9, color: "#111827", align: "right" }); y += 2;
+    doc.setDrawColor("#111827"); doc.setLineWidth(0.5); doc.line(tl, y, pw - rm, y); y += 6;
+  }
+  txt(tl, y, isGST ? "Total (incl. GST)" : "Total", { size: 13, bold: true, color: "#111827" });
+  txt(tx, y, fmtNZD(total), { size: 15, bold: true, color: "#14B8A6", align: "right" }); y += 6;
+
+  if (invoice.is_deposit && invoice.linkedQuoteAmount) {
+    txt(tl, y, "Balance remaining", { size: 8, color: "#9ca3af" });
+    txt(tx, y, fmtNZD(parseFloat(invoice.linkedQuoteAmount) - amount), { size: 8, color: "#6b7280", align: "right" }); y += 5;
+  }
+
+  if (!isGST) { txt(lm, y, "This business is not registered for GST", { size: 7, color: "#9ca3af" }); y += 5; }
+  y += 6;
+
+  // ── Payment Details (teal box) ──
+  if (business.bank_account_number) {
+    checkPage(35);
+    doc.setFillColor(240, 253, 250); doc.setDrawColor("#ccfbf1"); doc.setLineWidth(0.3);
+    doc.roundedRect(lm, y - 2, cw, 34, 3, 3, "FD"); y += 3;
+    doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor("#0d9488");
+    doc.text("PAYMENT DETAILS", lm + 6, y); y += 5;
+    const payRow = (lbl, val, bold) => { txt(lm + 6, y, lbl, { size: 9, color: "#6b7280" }); txt(pw - rm - 6, y, val, { size: 9, color: "#111827", align: "right", bold }); y += 5; };
+    if (business.bank_name) payRow("Bank", business.bank_name);
+    if (business.bank_account_name) payRow("Account Name", business.bank_account_name);
+    payRow("Account Number", business.bank_account_number, true);
+    payRow("Reference", invoice.invoice_number);
+    y += 6;
+  }
+
+  // ── Payment Terms ──
+  checkPage(15);
+  txt(lm, y, "Payment Terms: " + (invoice.payment_terms || "7 days") + "  •  Due: " + fmtDate(invoice.due_date), { size: 8, color: "#6b7280" }); y += 8;
+
+  // ── Notes ──
+  if (invoice.notes) {
+    checkPage(15); label("Notes");
+    doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor("#6b7280");
+    doc.splitTextToSize(invoice.notes, cw).forEach(line => { checkPage(4); doc.text(line, lm, y); y += 3.5; });
+    y += 4;
+  }
+
+  // ── Custom footer from settings ──
+  if (business.quote_footer) {
+    checkPage(15);
+    doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor("#6b7280");
+    doc.splitTextToSize(business.quote_footer, cw).forEach(line => { checkPage(4); doc.text(line, lm, y); y += 3.5; });
+    y += 4;
+  }
+
+  // ── Footer ──
+  checkPage(20);
+  doc.setDrawColor("#e5e7eb"); doc.setLineWidth(0.3); doc.line(lm, y, pw - rm, y); y += 6;
+  txt(lm, y, "Thank you for your business", { size: 9, bold: true, color: "#374151" }); y += 4;
+  txt(lm, y, business.business_name + (isGST ? "  •  GST: " + business.gst_number : ""), { size: 8, color: "#9ca3af" });
+  txt(pw - rm, y, "Powered by Wynflow", { size: 7, color: "#9ca3af", align: "right" });
+
+  return doc.output("blob");
 };
 
 const InvoiceBadge = ({ status, dueDate }) => {
@@ -3884,6 +4056,17 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
         dispatch({ type: "SET_BUSINESS", payload: { ...business, next_invoice_number: nextNum + 1 } });
       }
 
+      // Generate PDF and upload to Supabase storage
+      const invoiceForPDF = { ...invoiceData, id: invoiceId, invoice_number: invoiceNumber };
+      const pdfBlob = generateInvoicePDF({ business, invoice: invoiceForPDF, breakdown: breakdown || null });
+      const pdfFilename = `${invoiceNumber}-${Date.now()}.pdf`;
+      const uploadPath = `${business.id}/${pdfFilename}`;
+      const { error: uploadErr } = await supabase.uploadFile("invoice-pdfs", uploadPath, pdfBlob);
+      if (!uploadErr) {
+        await db("invoices").eq("id", invoiceId).update({ pdf_url: uploadPath, pdf_filename: pdfFilename });
+        dispatch({ type: "UPDATE_INVOICE", payload: { id: invoiceId, pdf_url: uploadPath, pdf_filename: pdfFilename } });
+      }
+
       // Send invoice email via N8N
       await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-invoice", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -4255,6 +4438,19 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
         dispatch({ type: "UPDATE_INVOICE", payload: { id: invoice.id, ...updates } });
       }
 
+      // Generate PDF if none exists yet
+      if (!invoice.pdf_url) {
+        const bd = typeof invoice.breakdown === "string" ? JSON.parse(invoice.breakdown) : invoice.breakdown;
+        const pdfBlob = generateInvoicePDF({ business, invoice, breakdown: bd });
+        const pdfFilename = `${invoice.invoice_number}-${Date.now()}.pdf`;
+        const uploadPath = `${business.id}/${pdfFilename}`;
+        const { error: uploadErr } = await supabase.uploadFile("invoice-pdfs", uploadPath, pdfBlob);
+        if (!uploadErr) {
+          await db("invoices").eq("id", invoice.id).update({ pdf_url: uploadPath, pdf_filename: pdfFilename });
+          dispatch({ type: "UPDATE_INVOICE", payload: { id: invoice.id, pdf_url: uploadPath, pdf_filename: pdfFilename } });
+        }
+      }
+
       await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-invoice", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ invoice_id: invoice.id }),
@@ -4354,6 +4550,27 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
                   </div>
                 );
               })}
+            </div>
+          </Card>
+        )}
+
+        {/* Download PDF */}
+        {invoice.pdf_url && (
+          <Card style={{ gridColumn: "1 / -1" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <FileText size={20} color={theme.accent} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Invoice PDF</div>
+                <div style={{ fontSize: 12, color: theme.textMuted }}>{invoice.pdf_filename || "invoice.pdf"}</div>
+              </div>
+              <Button variant="secondary" onClick={async () => {
+                try {
+                  const { signedURL } = await supabase.getSignedUrl("invoice-pdfs", invoice.pdf_url, 300);
+                  if (signedURL) window.open(signedURL, "_blank");
+                } catch { dispatch({ type: "NOTIFY", payload: { message: "Failed to download PDF", type: "error" } }); }
+              }} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Download size={16} /> Download PDF
+              </Button>
             </div>
           </Card>
         )}
