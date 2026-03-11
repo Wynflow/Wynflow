@@ -1,5 +1,5 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
-import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell } from "lucide-react";
+import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle } from "lucide-react";
 
 // ─── SEO Helper ───
 const SEO_CONFIG = {
@@ -221,6 +221,7 @@ const initialState = {
   prevScreen: "dashboard",
   quotes: [],
   sequences: [],
+  invoices: [],
   notification: null,
   loading: false,
 };
@@ -259,6 +260,17 @@ function appReducer(state, action) {
         ...state,
         sequences: state.sequences.map((s) =>
           s.id === action.payload.id ? { ...s, ...action.payload } : s
+        ),
+      };
+    case "SET_INVOICES":
+      return { ...state, invoices: action.payload };
+    case "ADD_INVOICE":
+      return { ...state, invoices: [action.payload, ...state.invoices], screen: "invoices" };
+    case "UPDATE_INVOICE":
+      return {
+        ...state,
+        invoices: state.invoices.map((inv) =>
+          inv.id === action.payload.id ? { ...inv, ...action.payload } : inv
         ),
       };
     case "NOTIFY":
@@ -314,6 +326,30 @@ const statusConfig = {
   booked: { label: "Booked", color: theme.green, bg: theme.greenSoft },
   declined: { label: "Declined", color: theme.red, bg: theme.redSoft },
   feedback: { label: "Feedback", color: theme.blue, bg: theme.blueSoft },
+};
+
+const invoiceStatusConfig = {
+  draft: { label: "Draft", color: theme.textMuted, bg: "rgba(139,149,168,0.12)" },
+  sent: { label: "Sent", color: theme.accent, bg: theme.accentSoft },
+  viewed: { label: "Viewed", color: theme.accentBlue, bg: theme.accentBlueSoft },
+  overdue: { label: "Overdue", color: theme.red, bg: theme.redSoft },
+  paid: { label: "Paid", color: theme.green, bg: theme.greenSoft },
+};
+
+const InvoiceBadge = ({ status, dueDate }) => {
+  // Compute overdue display state
+  const displayStatus = (status === "sent" || status === "viewed") && dueDate && new Date(dueDate) < new Date() ? "overdue" : status;
+  const config = invoiceStatusConfig[displayStatus] || invoiceStatusConfig.draft;
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px",
+      borderRadius: 20, fontSize: 12, fontWeight: 600, letterSpacing: 0.3,
+      color: config.color, background: config.bg, textTransform: "uppercase",
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: config.color }} />
+      {config.label}
+    </span>
+  );
 };
 
 const fonts = `@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Playfair+Display:wght@700;800&display=swap');`;
@@ -1473,6 +1509,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "quotes", label: "Quotes", icon: FileText },
+    { id: "invoices", label: "Invoices", icon: Receipt },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "sequences", label: "Follow-Ups", icon: RefreshCw },
     { id: "help", label: "Help", icon: HelpCircle },
@@ -1499,7 +1536,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
           <div key={item.id} onClick={() => dispatch({ type: "SET_SCREEN", payload: item.id })}
             style={{
               display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
-              cursor: "pointer", padding: "4px 6px",
+              cursor: "pointer", padding: "4px 4px",
               color: screen === item.id ? theme.accent : "rgba(255,255,255,0.35)",
             }}>
             <Icon size={18} />
@@ -1554,7 +1591,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
 };
 
 // ─── Dashboard ───
-const Dashboard = ({ quotes, dispatch }) => {
+const Dashboard = ({ quotes, dispatch, invoices = [] }) => {
   const isMobile = useIsMobile();
   const [alertDismissed, setAlertDismissed] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
@@ -1570,6 +1607,10 @@ const Dashboard = ({ quotes, dispatch }) => {
   const winRate = responded > 0 ? Math.round((won / responded) * 100) : 0;
   const avgQuoteValue = won > 0 ? Math.round(revenue / won) : 0;
   const recentQuotes = [...quotes].slice(0, 8);
+
+  // Invoice stats
+  const overdueInvoices = invoices.filter(i => (i.status === "sent" || i.status === "viewed") && i.due_date && new Date(i.due_date) < new Date()).length;
+  const outstandingAmount = invoices.filter(i => i.status === "sent" || i.status === "viewed").reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
 
   // Response time
   const responseTimes = quotes.filter(q => q.sent_at && q.responded_at).map(q => {
@@ -1617,10 +1658,10 @@ const Dashboard = ({ quotes, dispatch }) => {
         <div style={{ position: "relative" }}>
           <button onClick={() => setBellOpen(!bellOpen)}
             style={{ width: 40, height: 40, borderRadius: 10, background: bellOpen ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", transition: "all 0.2s" }}>
-            <Bell size={18} color={(requested + accepted) > 0 ? theme.text : theme.textDim} />
-            {(requested + accepted) > 0 && (
-              <div style={{ position: "absolute", top: -4, right: -4, width: 18, height: 18, borderRadius: 9, background: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#000", border: "2px solid #0A0E17" }}>
-                {requested + accepted}
+            <Bell size={18} color={(requested + accepted + overdueInvoices) > 0 ? theme.text : theme.textDim} />
+            {(requested + accepted + overdueInvoices) > 0 && (
+              <div style={{ position: "absolute", top: -4, right: -4, width: 18, height: 18, borderRadius: 9, background: overdueInvoices > 0 ? theme.red : theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff", border: "2px solid #0A0E17" }}>
+                {requested + accepted + overdueInvoices}
               </div>
             )}
           </button>
@@ -1659,7 +1700,20 @@ const Dashboard = ({ quotes, dispatch }) => {
                       </div>
                     </div>
                   )}
-                  {requested === 0 && accepted === 0 && (
+                  {overdueInvoices > 0 && (
+                    <div onClick={() => { dispatch({ type: "SET_SCREEN", payload: "invoices" }); setBellOpen(false); }}
+                      style={{ padding: "14px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.15s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(239,68,68,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <AlertTriangle size={15} color={theme.red} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>{overdueInvoices} overdue invoice{overdueInvoices > 1 ? "s" : ""}</div>
+                        <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>Chase up payment</div>
+                      </div>
+                    </div>
+                  )}
+                  {requested === 0 && accepted === 0 && overdueInvoices === 0 && (
                     <div style={{ padding: "24px 18px", textAlign: "center" }}>
                       <Bell size={20} color={theme.textDim} style={{ marginBottom: 8 }} />
                       <div style={{ fontSize: 13, color: theme.textDim }}>No new activity</div>
@@ -1678,12 +1732,13 @@ const Dashboard = ({ quotes, dispatch }) => {
       </div>
 
       {/* Stats row */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr 1fr", gap: isMobile ? 8 : 12, marginBottom: isMobile ? 16 : 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(6, 1fr)", gap: isMobile ? 8 : 12, marginBottom: isMobile ? 16 : 24 }}>
         <Stat label="Total" value={total} icon={FileText} />
         <Stat label="Awaiting" value={pending} accent={theme.accent} icon={Clock} />
         <Stat label="Accepted" value={accepted} accent="#F59E0B" icon={CheckCircle2} />
         <Stat label="Booked" value={booked} accent={theme.green} icon={Check} />
         <Stat label="Revenue" value={`$${revenue.toLocaleString()}`} accent={theme.green} icon={DollarSign} />
+        {outstandingAmount > 0 && <Stat label="Outstanding" value={`$${outstandingAmount.toLocaleString()}`} accent={overdueInvoices > 0 ? theme.red : "#F59E0B"} icon={Receipt} />}
       </div>
 
       {/* Two-column layout: Analytics + Recent Quotes */}
@@ -2123,7 +2178,7 @@ const QuotesList = ({ quotes, dispatch, sequences }) => {
 };
 
 // ─── Analytics ───
-const Analytics = ({ quotes }) => {
+const Analytics = ({ quotes, invoices = [] }) => {
   const isMobile = useIsMobile();
   
   // Quote stats
@@ -2268,6 +2323,47 @@ const Analytics = ({ quotes }) => {
             {reasonData.map(([reason, count]) => (
               <BarSimple key={reason} label={reason} value={count} max={maxCount} color={theme.red} count={count} />
             ))}
+          </Card>
+        );
+      })()}
+
+      {/* Invoicing analytics */}
+      {invoices.length > 0 && (() => {
+        const invoiced = invoices.reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
+        const collected = invoices.filter(i => i.status === "paid").reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
+        const outstanding = invoices.filter(i => i.status === "sent" || i.status === "viewed").reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
+        const paidInvoices = invoices.filter(i => i.status === "paid" && i.sent_at && i.paid_at);
+        const avgPayDays = paidInvoices.length > 0
+          ? Math.round(paidInvoices.reduce((sum, i) => sum + Math.round((new Date(i.paid_at) - new Date(i.sent_at)) / (1000 * 60 * 60 * 24)), 0) / paidInvoices.length)
+          : null;
+        const paidCount = invoices.filter(i => i.status === "paid").length;
+        const overdueCount = invoices.filter(i => (i.status === "sent" || i.status === "viewed") && i.due_date && new Date(i.due_date) < new Date()).length;
+        const collectionRate = (paidCount + overdueCount) > 0 ? Math.round((paidCount / (paidCount + overdueCount)) * 100) : 100;
+        return (
+          <Card style={{ marginTop: 24 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 8 }}><Receipt size={18} /> Invoicing</h3>
+            <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 20px" }}>{invoices.length} invoice{invoices.length !== 1 ? "s" : ""} total</p>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
+              <div style={{ padding: 14, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: theme.accent, fontFamily: theme.fontDisplay }}>${invoiced.toLocaleString()}</div>
+                <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>Invoiced</div>
+              </div>
+              <div style={{ padding: 14, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: theme.green, fontFamily: theme.fontDisplay }}>${collected.toLocaleString()}</div>
+                <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>Collected</div>
+              </div>
+              <div style={{ padding: 14, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: outstanding > 0 ? "#F59E0B" : theme.textDim, fontFamily: theme.fontDisplay }}>${outstanding.toLocaleString()}</div>
+                <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>Outstanding</div>
+              </div>
+              <div style={{ padding: 14, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: collectionRate >= 80 ? theme.green : collectionRate >= 50 ? "#F59E0B" : theme.red, fontFamily: theme.fontDisplay }}>{collectionRate}%</div>
+                <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>Collection Rate</div>
+              </div>
+            </div>
+            {avgPayDays !== null && (
+              <div style={{ fontSize: 13, color: theme.textMuted }}>Average payment time: <strong style={{ color: theme.text }}>{avgPayDays} day{avgPayDays !== 1 ? "s" : ""}</strong></div>
+            )}
           </Card>
         );
       })()}
@@ -3269,7 +3365,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
 };
 
 // ─── Quote Detail ───
-const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
+const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices = [] }) => {
   const isMobile = useIsMobile();
   const quote = quotes.find((q) => q.id === quoteId);
   const [steps, setSteps] = useState([]);
@@ -3445,6 +3541,7 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Button onClick={() => updateStatus("booked")} style={{ background: theme.green, color: "#fff", display: "inline-flex", alignItems: "center", gap: 6 }}><Check size={16} /> Mark as Booked</Button>
+            <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "createInvoice:" + quote.id })} style={{ background: theme.accentSoft, color: theme.accent, display: "inline-flex", alignItems: "center", gap: 6 }}><Receipt size={16} /> Create Invoice</Button>
             <Button onClick={() => updateStatus("declined")} variant="danger" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><XCircle size={16} /> Actually Declined</Button>
           </div>
         </Card>
@@ -3460,6 +3557,7 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
               </p>
             </div>
           </div>
+          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "createInvoice:" + quote.id })} style={{ marginTop: 16, background: theme.accentSoft, color: theme.accent, display: "inline-flex", alignItems: "center", gap: 6 }}><Receipt size={16} /> Create Invoice</Button>
         </Card>
         )}
         {quote.status === "declined" && (
@@ -3514,6 +3612,793 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business }) => {
         {quote.status === "requested" && (
         <QuoteGenerator quote={quote} business={business} dispatch={dispatch} sequences={sequences} quotes={quotes} />
         )}
+        {/* Linked invoices */}
+        {invoices.filter(inv => inv.quote_id === quote.id).length > 0 && (
+          <Card style={{ gridColumn: "1 / -1" }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px", display: "flex", alignItems: "center", gap: 8 }}><Receipt size={18} /> Invoices</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {invoices.filter(inv => inv.quote_id === quote.id).map(inv => (
+                <div key={inv.id} onClick={() => dispatch({ type: "SET_SCREEN", payload: "invoiceDetail:" + inv.id })}
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", cursor: "pointer", transition: "all 0.15s" }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(20,184,166,0.2)"} onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"}>
+                  <div>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>#{inv.invoice_number}</span>
+                    <span style={{ fontSize: 13, color: theme.textMuted, marginLeft: 8 }}>${parseFloat(inv.amount || 0).toLocaleString()}</span>
+                    {inv.is_deposit && <span style={{ fontSize: 11, color: theme.accent, marginLeft: 8 }}>Deposit</span>}
+                  </div>
+                  <InvoiceBadge status={inv.status} dueDate={inv.due_date} />
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── Invoices List ───
+const InvoicesList = ({ invoices, dispatch }) => {
+  const isMobile = useIsMobile();
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+
+  const isOverdue = (inv) => (inv.status === "sent" || inv.status === "viewed") && inv.due_date && new Date(inv.due_date) < new Date();
+
+  const filtered = invoices.filter((inv) => {
+    if (filter === "overdue") return isOverdue(inv);
+    if (filter !== "all" && inv.status !== filter) return false;
+    if (search && !inv.customer_name?.toLowerCase().includes(search.toLowerCase()) && !inv.job_title?.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const counts = {
+    all: invoices.length,
+    draft: invoices.filter(i => i.status === "draft").length,
+    sent: invoices.filter(i => i.status === "sent" || i.status === "viewed").length,
+    overdue: invoices.filter(i => isOverdue(i)).length,
+    paid: invoices.filter(i => i.status === "paid").length,
+  };
+
+  const tabs = [
+    { key: "all", label: "All" },
+    { key: "draft", label: "Draft", count: counts.draft },
+    { key: "sent", label: "Sent", count: counts.sent },
+    { key: "overdue", label: "Overdue", count: counts.overdue, dot: counts.overdue > 0 },
+    { key: "paid", label: "Paid", count: counts.paid },
+  ];
+
+  const daysUntilDue = (dueDate) => {
+    if (!dueDate) return null;
+    const diff = Math.ceil((new Date(dueDate) - new Date()) / (1000 * 60 * 60 * 24));
+    if (diff < 0) return `${Math.abs(diff)}d overdue`;
+    if (diff === 0) return "Due today";
+    return `${diff}d left`;
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: isMobile ? 16 : 28, flexDirection: isMobile ? "column" : "row", gap: isMobile ? 12 : 0 }}>
+        <div>
+          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Invoices</h1>
+          <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>{invoices.length} total invoice{invoices.length !== 1 ? "s" : ""}</p>
+        </div>
+        <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "createInvoice" })} size={isMobile ? "sm" : "md"} style={{ background: "rgba(20,184,166,0.12)", color: "#14B8A6" }}><Plus size={14} /> New Invoice</Button>
+      </div>
+
+      {/* Filter tabs */}
+      <div style={{ display: "flex", gap: 6, marginBottom: isMobile ? 12 : 20, overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 4, flexWrap: "nowrap", alignItems: "center" }}>
+        {tabs.map((tab) => (
+          <span key={tab.key} onClick={() => setFilter(tab.key)}
+            style={{
+              padding: isMobile ? "6px 10px" : "8px 14px", borderRadius: 8, fontSize: isMobile ? 11 : 13, fontWeight: 500, cursor: "pointer",
+              background: filter === tab.key ? theme.accentSoft : theme.surfaceLight,
+              color: filter === tab.key ? theme.accent : theme.textMuted,
+              border: `1px solid ${filter === tab.key ? theme.accent + "33" : theme.border}`,
+              whiteSpace: "nowrap", flexShrink: 0, display: "flex", alignItems: "center", gap: 6,
+            }}>
+            {tab.label}
+            {tab.dot && <span style={{ width: 6, height: 6, borderRadius: 3, background: theme.red, flexShrink: 0 }} />}
+            {tab.count > 0 && !tab.dot && <span style={{ fontSize: isMobile ? 10 : 11, fontWeight: 600, color: filter === tab.key ? theme.accent : theme.textDim }}>{tab.count}</span>}
+          </span>
+        ))}
+      </div>
+
+      {/* Search */}
+      <input value={search} onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search invoices..."
+        style={{
+          width: "100%", padding: "10px 14px 10px 38px", borderRadius: 10, fontSize: 14,
+          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+          color: theme.text, outline: "none", fontFamily: theme.font, marginBottom: isMobile ? 12 : 20,
+          boxSizing: "border-box",
+        }}
+      />
+
+      {/* Invoice list */}
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 48 }}>
+          <Receipt size={32} color={theme.textDim} style={{ marginBottom: 12 }} />
+          <div style={{ fontSize: 14, color: theme.textDim }}>No invoices{filter !== "all" ? ` with status "${filter}"` : ""}</div>
+          {invoices.length === 0 && (
+            <p style={{ fontSize: 13, color: theme.textDim, marginTop: 8 }}>Create your first invoice from an accepted quote or start a new one</p>
+          )}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {filtered.map((inv) => (
+            <div key={inv.id} onClick={() => dispatch({ type: "SET_SCREEN", payload: "invoiceDetail:" + inv.id })}
+              style={{
+                padding: isMobile ? "12px 14px" : "16px 20px", borderRadius: 12, cursor: "pointer",
+                background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.borderColor = "rgba(20,184,166,0.2)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.customer_name}</span>
+                    {inv.invoice_number && <span style={{ fontSize: 11, color: theme.textDim }}>#{inv.invoice_number}</span>}
+                  </div>
+                  <div style={{ fontSize: isMobile ? 12 : 13, color: theme.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.job_title}</div>
+                  {inv.due_date && inv.status !== "paid" && inv.status !== "draft" && (
+                    <div style={{ fontSize: 11, marginTop: 4, color: isOverdue(inv) ? theme.red : theme.textDim, fontWeight: isOverdue(inv) ? 600 : 400 }}>
+                      {daysUntilDue(inv.due_date)}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+                  <span style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: theme.accent }}>${parseFloat(inv.amount || 0).toLocaleString()}</span>
+                  <InvoiceBadge status={inv.status} dueDate={inv.due_date} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Create Invoice Form ───
+const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, quoteId }) => {
+  const isMobile = useIsMobile();
+  const [sending, setSending] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Find linked quote if creating from a quote
+  const linkedQuote = quoteId ? quotes?.find(q => q.id === quoteId) : null;
+
+  // Parse breakdown from quote's ai_estimate_notes if available
+  const parseBreakdown = (quote) => {
+    if (!quote?.ai_estimate_notes) return null;
+    try {
+      const notes = quote.ai_estimate_notes;
+      if (typeof notes === "object") return notes;
+      return JSON.parse(notes);
+    } catch { return null; }
+  };
+
+  const breakdown = linkedQuote ? parseBreakdown(linkedQuote) : null;
+
+  const [form, setForm] = useState({
+    customerName: linkedQuote?.customer_name || "",
+    customerEmail: linkedQuote?.customer_email || "",
+    customerPhone: linkedQuote?.customer_phone || "",
+    jobTitle: linkedQuote?.job_title || "",
+    description: linkedQuote?.description || "",
+    amount: linkedQuote ? String(linkedQuote.amount || "") : "",
+    isDeposit: false,
+    depositPercentage: business?.deposit_percentage || 25,
+    paymentTerms: business?.default_payment_terms || "7 days",
+    notes: "",
+    showBreakdown: breakdown?.showBreakdown ?? true,
+  });
+
+  // Calculate due date from payment terms
+  const getDueDate = (terms) => {
+    const d = new Date();
+    if (terms === "On receipt") return d.toISOString().split("T")[0];
+    if (terms === "20th of month") {
+      d.setDate(20);
+      if (new Date() > d) d.setMonth(d.getMonth() + 1);
+      return d.toISOString().split("T")[0];
+    }
+    const days = parseInt(terms) || 7;
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split("T")[0];
+  };
+
+  const [dueDate, setDueDate] = useState(getDueDate(form.paymentTerms));
+
+  const invoiceAmount = form.isDeposit && linkedQuote
+    ? Math.round(parseFloat(linkedQuote.amount || 0) * (form.depositPercentage / 100) * 100) / 100
+    : parseFloat(form.amount) || 0;
+
+  const gstAmount = business?.gst_number ? Math.round(invoiceAmount * 3 / 23 * 100) / 100 : 0;
+
+  // Generate invoice number
+  const nextNum = business?.next_invoice_number || (invoices?.length || 0) + 1;
+  const invoiceNumber = `INV-${String(nextNum).padStart(3, "0")}`;
+
+  const update = (key, val) => setForm({ ...form, [key]: val });
+
+  const sendInvoice = async () => {
+    if (!form.customerName || !form.customerEmail || !form.amount) {
+      dispatch({ type: "NOTIFY", payload: { message: "Please fill in customer name, email, and amount", type: "error" } });
+      return;
+    }
+    setSending(true);
+    try {
+      // Create invoice in Supabase
+      const invoiceData = {
+        business_id: business.id,
+        quote_id: linkedQuote?.id || null,
+        invoice_number: invoiceNumber,
+        customer_name: form.customerName,
+        customer_email: form.customerEmail,
+        customer_phone: form.customerPhone,
+        job_title: form.jobTitle,
+        description: form.description,
+        amount: invoiceAmount,
+        gst_amount: gstAmount,
+        is_deposit: form.isDeposit,
+        deposit_percentage: form.isDeposit ? form.depositPercentage : null,
+        due_date: dueDate,
+        payment_terms: form.paymentTerms,
+        status: "sent",
+        breakdown: breakdown || null,
+        notes: form.notes,
+        sent_at: new Date().toISOString(),
+      };
+
+      // Assign reminder sequence if available
+      const reminderSeq = sequences?.find(s => s.type === "invoice" && s.is_default);
+      if (reminderSeq) {
+        invoiceData.reminder_sequence_id = reminderSeq.id;
+        const { data: firstStep } = await db("sequence_steps").eq("sequence_id", reminderSeq.id).order("step_order").limit(1).select();
+        if (firstStep?.[0]) {
+          const nextReminder = new Date();
+          nextReminder.setDate(nextReminder.getDate() + (firstStep[0].delay_days || 7));
+          invoiceData.next_reminder_at = nextReminder.toISOString();
+        }
+        invoiceData.current_reminder_step = 0;
+        invoiceData.reminders_paused = false;
+      }
+
+      const { data: newInvoice, error } = await db("invoices").insert([invoiceData]).select();
+      if (error) throw error;
+
+      // Increment invoice number on business
+      await db("businesses").eq("id", business.id).update({ next_invoice_number: nextNum + 1 });
+
+      // Send invoice email via N8N
+      await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-invoice", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoice_id: newInvoice[0].id,
+          breakdown: breakdown || null,
+          invoice_number: invoiceNumber,
+          due_date: dueDate,
+          payment_terms: form.paymentTerms,
+          is_deposit: form.isDeposit,
+          deposit_percentage: form.isDeposit ? form.depositPercentage : null,
+          gst_amount: gstAmount,
+          bank_name: business.bank_name || "",
+          bank_account_name: business.bank_account_name || "",
+          bank_account_number: business.bank_account_number || "",
+        }),
+      });
+
+      dispatch({ type: "ADD_INVOICE", payload: newInvoice[0] });
+      dispatch({ type: "SET_BUSINESS", payload: { ...business, next_invoice_number: nextNum + 1 } });
+      dispatch({ type: "NOTIFY", payload: { message: "Invoice sent!", type: "success" } });
+    } catch (err) {
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to send invoice — try again", type: "error" } });
+    }
+    setSending(false);
+  };
+
+  const saveAsDraft = async () => {
+    if (!form.customerName || !form.amount) {
+      dispatch({ type: "NOTIFY", payload: { message: "Please fill in customer name and amount", type: "error" } });
+      return;
+    }
+    setSending(true);
+    try {
+      const invoiceData = {
+        business_id: business.id,
+        quote_id: linkedQuote?.id || null,
+        invoice_number: invoiceNumber,
+        customer_name: form.customerName,
+        customer_email: form.customerEmail,
+        customer_phone: form.customerPhone,
+        job_title: form.jobTitle,
+        description: form.description,
+        amount: invoiceAmount,
+        gst_amount: gstAmount,
+        is_deposit: form.isDeposit,
+        deposit_percentage: form.isDeposit ? form.depositPercentage : null,
+        due_date: dueDate,
+        payment_terms: form.paymentTerms,
+        status: "draft",
+        breakdown: breakdown || null,
+        notes: form.notes,
+      };
+      const { data: newInvoice, error } = await db("invoices").insert([invoiceData]).select();
+      if (error) throw error;
+      await db("businesses").eq("id", business.id).update({ next_invoice_number: nextNum + 1 });
+      dispatch({ type: "ADD_INVOICE", payload: newInvoice[0] });
+      dispatch({ type: "SET_BUSINESS", payload: { ...business, next_invoice_number: nextNum + 1 } });
+      dispatch({ type: "NOTIFY", payload: { message: "Invoice saved as draft", type: "success" } });
+    } catch (err) {
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to save invoice", type: "error" } });
+    }
+    setSending(false);
+  };
+
+  // Invoice Preview Modal
+  const InvoicePreviewModal = () => (
+    <div onClick={() => setShowPreview(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(4px)" }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 620, maxHeight: "90vh", overflowY: "auto", borderRadius: 12, background: "#fff", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
+        <div style={{ padding: "32px 40px" }}>
+          {/* Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: "#0A0E17", fontFamily: theme.fontDisplay }}>{business.business_name}</div>
+              {business.address && <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>{business.address}</div>}
+              {business.phone && <div style={{ fontSize: 13, color: "#6b7280" }}>{business.phone}</div>}
+              {business.email && <div style={{ fontSize: 13, color: "#6b7280" }}>{business.email}</div>}
+              {(business.gst_number || business.license_number) && (
+                <div style={{ display: "flex", gap: 12, marginTop: 4 }}>
+                  {business.gst_number && <div style={{ fontSize: 11, color: "#9ca3af" }}>GST: {business.gst_number}</div>}
+                  {business.license_number && <div style={{ fontSize: 11, color: "#9ca3af" }}>{business.license_number}</div>}
+                </div>
+              )}
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 11, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1 }}>Invoice</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginTop: 2 }}>{invoiceNumber}</div>
+              <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>{new Date().toLocaleDateString("en-NZ", { day: "numeric", month: "long", year: "numeric" })}</div>
+              <div style={{ fontSize: 13, color: "#111827", fontWeight: 600, marginTop: 2 }}>Due: {new Date(dueDate).toLocaleDateString("en-NZ", { day: "numeric", month: "long", year: "numeric" })}</div>
+            </div>
+          </div>
+          <div style={{ borderBottom: "3px solid #14B8A6", marginBottom: 24 }} />
+
+          {/* Customer */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Bill To</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: "#111827" }}>{form.customerName}</div>
+            {form.customerEmail && <div style={{ fontSize: 13, color: "#6b7280" }}>{form.customerEmail}</div>}
+            {form.customerPhone && <div style={{ fontSize: 13, color: "#6b7280" }}>{form.customerPhone}</div>}
+          </div>
+
+          {/* Job */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Job</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>{form.jobTitle}</div>
+          </div>
+
+          {/* Description */}
+          {form.description && (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Description</div>
+              <div style={{ fontSize: 14, color: "#374151", lineHeight: 1.7, whiteSpace: "pre-line" }}>{form.description}</div>
+            </div>
+          )}
+
+          {/* Pricing */}
+          <div style={{ background: "#f9fafb", borderRadius: 10, padding: 20, marginBottom: 24 }}>
+            {form.isDeposit && (
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <span style={{ fontSize: 14, color: "#6b7280" }}>Deposit ({form.depositPercentage}%)</span>
+                <span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${invoiceAmount.toLocaleString()}</span>
+              </div>
+            )}
+            {!form.isDeposit && form.showBreakdown && breakdown && (<>
+              {breakdown.lineItems?.filter(i => i.description?.trim()).map((item, idx) => (
+                <div key={idx} style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                  <span style={{ fontSize: 14, color: "#6b7280" }}>{item.description}</span>
+                  {item.price && <span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${parseFloat(item.price).toLocaleString()}</span>}
+                </div>
+              ))}
+              {parseFloat(breakdown.materialsCost) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Materials</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${parseFloat(breakdown.materialsCost).toLocaleString()}</span></div>}
+              {breakdown.labourHours && breakdown.labourRate && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Labour ({breakdown.labourHours} hrs @ ${breakdown.labourRate}/hr)</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${(parseFloat(breakdown.labourHours) * parseFloat(breakdown.labourRate)).toLocaleString()}</span></div>}
+              {breakdown.includeCallout && parseFloat(breakdown.calloutFee) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Callout Fee</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${parseFloat(breakdown.calloutFee).toLocaleString()}</span></div>}
+            </>)}
+            {gstAmount > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, paddingTop: 8, borderTop: "1px solid #e5e7eb" }}>
+                <span style={{ fontSize: 14, color: "#6b7280" }}>GST (15%)</span>
+                <span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${gstAmount.toLocaleString()}</span>
+              </div>
+            )}
+            <div style={{ borderTop: "2px solid #111827", paddingTop: 12, marginTop: 12, display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>{form.isDeposit ? "Deposit Due" : "Total (incl. GST)"}</span>
+              <span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${invoiceAmount.toLocaleString()}</span>
+            </div>
+            {form.isDeposit && linkedQuote && (
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+                <span style={{ fontSize: 13, color: "#9ca3af" }}>Balance remaining</span>
+                <span style={{ fontSize: 13, color: "#6b7280", fontWeight: 600 }}>${(parseFloat(linkedQuote.amount) - invoiceAmount).toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Payment terms */}
+          <div style={{ marginBottom: 24, padding: "14px 16px", borderRadius: 8, background: "#f9fafb", border: "1px solid #e5e7eb" }}>
+            <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 8 }}>Payment Terms</div>
+            <div style={{ fontSize: 14, color: "#374151", marginBottom: 4 }}><strong>Due:</strong> {new Date(dueDate).toLocaleDateString("en-NZ", { day: "numeric", month: "long", year: "numeric" })}</div>
+            <div style={{ fontSize: 14, color: "#374151" }}><strong>Terms:</strong> {form.paymentTerms}</div>
+          </div>
+
+          {/* Bank details */}
+          {(business.bank_name || business.bank_account_number) && (
+            <div style={{ marginBottom: 24, padding: "14px 16px", borderRadius: 8, background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+              <div style={{ fontSize: 12, color: "#16a34a", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 8 }}>Bank Details</div>
+              {business.bank_name && <div style={{ fontSize: 14, color: "#374151" }}><strong>Bank:</strong> {business.bank_name}</div>}
+              {business.bank_account_name && <div style={{ fontSize: 14, color: "#374151" }}><strong>Account:</strong> {business.bank_account_name}</div>}
+              {business.bank_account_number && <div style={{ fontSize: 14, color: "#374151" }}><strong>Number:</strong> {business.bank_account_number}</div>}
+              <div style={{ fontSize: 13, color: "#6b7280", marginTop: 8, fontStyle: "italic" }}>Please use {invoiceNumber} as your payment reference</div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {form.notes && (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Notes</div>
+              <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-line" }}>{form.notes}</div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 11, color: "#9ca3af" }}>Powered by <span style={{ color: "#14B8A6", fontWeight: 600 }}>Wynflow</span></div>
+          </div>
+        </div>
+        <div style={{ padding: "16px 40px 24px", background: "#f9fafb", borderTop: "1px solid #e5e7eb", display: "flex", gap: 12, justifyContent: "flex-end" }}>
+          <Button variant="secondary" onClick={() => setShowPreview(false)}>Close</Button>
+          <Button onClick={() => { setShowPreview(false); sendInvoice(); }} disabled={sending}><Send size={16} /> Send Invoice</Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ marginBottom: isMobile ? 16 : 32 }}>
+        <span onClick={() => dispatch({ type: "GO_BACK" })}
+          style={{ fontSize: 13, color: theme.textMuted, cursor: "pointer", display: "block", marginBottom: 6 }}>← Back</span>
+        <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>
+          {linkedQuote ? "Invoice from Quote" : "New Invoice"}
+        </h1>
+        <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>{invoiceNumber}</p>
+      </div>
+
+      {showPreview && <InvoicePreviewModal />}
+
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 24 }}>
+        {/* Customer details */}
+        <Card>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Customer Details</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Input label="Customer Name *" value={form.customerName} onChange={e => update("customerName", e.target.value)} />
+            <Input label="Email *" type="email" value={form.customerEmail} onChange={e => update("customerEmail", e.target.value)} />
+            <Input label="Phone" value={form.customerPhone} onChange={e => update("customerPhone", e.target.value)} />
+          </div>
+        </Card>
+
+        {/* Job details */}
+        <Card>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Job Details</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Input label="Job Title" value={form.jobTitle} onChange={e => update("jobTitle", e.target.value)} />
+            <Input label="Description" type="textarea" value={form.description} onChange={e => update("description", e.target.value)} />
+          </div>
+        </Card>
+
+        {/* Pricing */}
+        <Card>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Pricing</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <Input label="Amount ($) *" type="number" value={form.amount} onChange={e => update("amount", e.target.value)} />
+            {business?.require_deposit && linkedQuote && (
+              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                <input type="checkbox" checked={form.isDeposit} onChange={e => update("isDeposit", e.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: theme.accent }} />
+                <span style={{ fontSize: 14, color: theme.text }}>Deposit invoice ({form.depositPercentage}%)</span>
+              </label>
+            )}
+            {form.isDeposit && (
+              <div style={{ padding: 12, borderRadius: 8, background: theme.accentSoft, border: `1px solid ${theme.accent}33` }}>
+                <div style={{ fontSize: 13, color: theme.accent }}>Deposit: ${invoiceAmount.toLocaleString()} of ${parseFloat(linkedQuote?.amount || 0).toLocaleString()}</div>
+              </div>
+            )}
+            {gstAmount > 0 && (
+              <div style={{ fontSize: 13, color: theme.textMuted }}>GST (15%): ${gstAmount.toLocaleString()}</div>
+            )}
+          </div>
+        </Card>
+
+        {/* Payment terms */}
+        <Card>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Payment Terms</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 13, color: theme.textMuted, display: "block", marginBottom: 6 }}>Terms</label>
+              <select value={form.paymentTerms} onChange={e => { update("paymentTerms", e.target.value); setDueDate(getDueDate(e.target.value)); }}
+                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, fontSize: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontFamily: theme.font, outline: "none" }}>
+                <option value="7 days">7 days</option>
+                <option value="14 days">14 days</option>
+                <option value="20th of month">20th of month</option>
+                <option value="On receipt">On receipt</option>
+              </select>
+            </div>
+            <Input label="Due Date" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+            <Input label="Notes" type="textarea" value={form.notes} onChange={e => update("notes", e.target.value)} placeholder="Payment instructions, terms, etc." />
+          </div>
+        </Card>
+
+        {/* Bank details (read-only) */}
+        {(business?.bank_name || business?.bank_account_number) && (
+          <Card style={{ gridColumn: "1 / -1" }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Bank Details (from Settings)</h3>
+            <div style={{ display: "flex", gap: 24, flexWrap: "wrap", fontSize: 14, color: theme.textMuted }}>
+              {business.bank_name && <div><strong style={{ color: theme.text }}>Bank:</strong> {business.bank_name}</div>}
+              {business.bank_account_name && <div><strong style={{ color: theme.text }}>Account:</strong> {business.bank_account_name}</div>}
+              {business.bank_account_number && <div><strong style={{ color: theme.text }}>Number:</strong> {business.bank_account_number}</div>}
+            </div>
+            {!business.bank_account_number && (
+              <p style={{ fontSize: 13, color: theme.red, marginTop: 8 }}>Add your bank details in Settings so customers know where to pay</p>
+            )}
+          </Card>
+        )}
+
+        {/* Actions */}
+        <Card style={{ gridColumn: "1 / -1" }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <Button onClick={() => setShowPreview(true)} variant="secondary"><Search size={16} /> Preview Invoice</Button>
+            <Button onClick={saveAsDraft} variant="secondary" disabled={sending}><FileText size={16} /> Save as Draft</Button>
+            <Button onClick={sendInvoice} disabled={sending}><Send size={16} /> {sending ? "Sending..." : "Send Invoice"}</Button>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// ─── Invoice Detail ───
+const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) => {
+  const isMobile = useIsMobile();
+  const invoice = invoices.find((i) => i.id === invoiceId);
+  const [steps, setSteps] = useState([]);
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    if (!invoice?.reminder_sequence_id) return;
+    db("sequence_steps").eq("sequence_id", invoice.reminder_sequence_id).order("step_order").select()
+      .then(({ data }) => setSteps(data || []));
+  }, [invoice?.id]);
+
+  if (!invoice) return <div style={{ color: theme.textMuted, padding: 48 }}>Invoice not found</div>;
+
+  const isOverdue = (invoice.status === "sent" || invoice.status === "viewed") && invoice.due_date && new Date(invoice.due_date) < new Date();
+  const daysOverdue = isOverdue ? Math.abs(Math.ceil((new Date(invoice.due_date) - new Date()) / (1000 * 60 * 60 * 24))) : 0;
+
+  const updateStatus = async (status, extra = {}) => {
+    const updates = { status, ...extra };
+    if (status === "paid") {
+      updates.paid_at = new Date().toISOString();
+      updates.reminders_paused = true;
+    }
+    const { error } = await db("invoices").eq("id", invoice.id).update(updates);
+    if (error) {
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to update — try again", type: "error" } });
+      return;
+    }
+    dispatch({ type: "UPDATE_INVOICE", payload: { id: invoice.id, ...updates } });
+    const messages = { paid: "Invoice marked as paid!", sent: "Invoice resent!" };
+    dispatch({ type: "NOTIFY", payload: { message: messages[status] || `Invoice updated`, type: "success" } });
+    if (status === "paid") setTimeout(() => dispatch({ type: "GO_BACK" }), 300);
+  };
+
+  const sendReminder = async () => {
+    if (!window.confirm("Send a payment reminder to " + invoice.customer_name + "?")) return;
+    setSending(true);
+    try {
+      await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-invoice-reminder", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoice_id: invoice.id, current_step: invoice.current_reminder_step || 0, sequence_id: invoice.reminder_sequence_id }),
+      });
+      const newStep = (invoice.current_reminder_step || 0) + 1;
+      await db("invoices").eq("id", invoice.id).update({ current_reminder_step: newStep });
+      dispatch({ type: "UPDATE_INVOICE", payload: { id: invoice.id, current_reminder_step: newStep } });
+      dispatch({ type: "NOTIFY", payload: { message: "Payment reminder sent!", type: "success" } });
+    } catch (err) {
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to send reminder", type: "error" } });
+    }
+    setSending(false);
+  };
+
+  const resendInvoice = async () => {
+    if (!window.confirm("Resend this invoice to " + invoice.customer_email + "?")) return;
+    setSending(true);
+    try {
+      await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-invoice", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoice_id: invoice.id,
+          breakdown: invoice.breakdown,
+          invoice_number: invoice.invoice_number,
+          due_date: invoice.due_date,
+          payment_terms: invoice.payment_terms,
+          is_deposit: invoice.is_deposit,
+          gst_amount: invoice.gst_amount,
+          bank_name: business.bank_name || "",
+          bank_account_name: business.bank_account_name || "",
+          bank_account_number: business.bank_account_number || "",
+        }),
+      });
+      dispatch({ type: "NOTIFY", payload: { message: "Invoice resent!", type: "success" } });
+    } catch (err) {
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to resend invoice", type: "error" } });
+    }
+    setSending(false);
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: isMobile ? 16 : 32 }}>
+        <span onClick={() => dispatch({ type: "GO_BACK" })}
+          style={{ fontSize: 13, color: theme.textMuted, cursor: "pointer", display: "block", marginBottom: 6 }}>← Back</span>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 8 : 0 }}>
+          <div>
+            <h1 style={{ fontSize: isMobile ? 20 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>{invoice.job_title || "Invoice"}</h1>
+            <p style={{ fontSize: isMobile ? 12 : 14, color: theme.textMuted, margin: "4px 0 0" }}>Invoice #{invoice.invoice_number} • {new Date(invoice.created_at).toLocaleDateString()}</p>
+          </div>
+          <InvoiceBadge status={invoice.status} dueDate={invoice.due_date} />
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 24 }}>
+        {/* Customer */}
+        <Card>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Customer</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div><div style={{ fontSize: 12, color: theme.textMuted }}>Name</div><div style={{ fontSize: 15, color: theme.text, fontWeight: 500 }}>{invoice.customer_name}</div></div>
+            <div><div style={{ fontSize: 12, color: theme.textMuted }}>Email</div><div style={{ fontSize: 15, color: theme.text }}>{invoice.customer_email}</div></div>
+            {invoice.customer_phone && <div><div style={{ fontSize: 12, color: theme.textMuted }}>Phone</div><div style={{ fontSize: 15, color: theme.text }}>{invoice.customer_phone}</div></div>}
+          </div>
+        </Card>
+
+        {/* Invoice details */}
+        <Card>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Invoice Details</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 12, color: theme.textMuted }}>Amount</div>
+              <div style={{ fontSize: 28, color: theme.accent, fontWeight: 700, fontFamily: theme.fontDisplay }}>${parseFloat(invoice.amount || 0).toLocaleString()}</div>
+            </div>
+            {invoice.gst_amount > 0 && (
+              <div style={{ fontSize: 13, color: theme.textMuted }}>Includes GST: ${parseFloat(invoice.gst_amount).toLocaleString()}</div>
+            )}
+            {invoice.is_deposit && (
+              <div style={{ padding: 12, borderRadius: 8, background: theme.accentSoft, border: `1px solid ${theme.accent}33` }}>
+                <div style={{ fontSize: 13, color: theme.accent, fontWeight: 600 }}>Deposit Invoice ({invoice.deposit_percentage}%)</div>
+              </div>
+            )}
+            <div>
+              <div style={{ fontSize: 12, color: theme.textMuted }}>Due Date</div>
+              <div style={{ fontSize: 15, color: isOverdue ? theme.red : theme.text, fontWeight: isOverdue ? 600 : 400 }}>
+                {new Date(invoice.due_date).toLocaleDateString("en-NZ", { day: "numeric", month: "long", year: "numeric" })}
+                {isOverdue && ` (${daysOverdue} day${daysOverdue !== 1 ? "s" : ""} overdue)`}
+              </div>
+            </div>
+            <div><div style={{ fontSize: 12, color: theme.textMuted }}>Terms</div><div style={{ fontSize: 15, color: theme.text }}>{invoice.payment_terms}</div></div>
+            {invoice.description && <div><div style={{ fontSize: 12, color: theme.textMuted }}>Description</div><div style={{ fontSize: 14, color: theme.text, lineHeight: 1.5 }}>{invoice.description}</div></div>}
+            {invoice.quote_id && (
+              <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + invoice.quote_id })}
+                style={{ fontSize: 13, color: theme.accent, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                <FileText size={14} /> View linked quote
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Reminder timeline */}
+        {steps.length > 0 && (
+          <Card style={{ gridColumn: "1 / -1" }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Payment Reminder Timeline</h3>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {steps.map((step, i) => {
+                const completed = i < (invoice.current_reminder_step || 0);
+                const isNext = i === (invoice.current_reminder_step || 0);
+                return (
+                  <div key={i} style={{ display: "flex", gap: 16 }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 24 }}>
+                      <div style={{
+                        width: 12, height: 12, borderRadius: "50%", flexShrink: 0,
+                        background: completed ? theme.green : isNext ? theme.accent : theme.border,
+                        boxShadow: isNext ? `0 0 10px ${theme.accentGlow}` : "none",
+                      }} />
+                      {i < steps.length - 1 && <div style={{ width: 2, flex: 1, background: completed ? theme.green + "44" : theme.border, minHeight: 40 }} />}
+                    </div>
+                    <div style={{ paddingBottom: 24 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: completed ? theme.green : isNext ? theme.accent : theme.textMuted }}>
+                        {completed ? "Sent" : isNext ? "Next up" : "Scheduled"} — Day {step.delay_days} after due
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: theme.text, marginTop: 4 }}>
+                        {step.email_subject.replace("{job}", invoice.job_title || "").replace("{name}", invoice.customer_name?.split(" ")[0] || "")}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+
+        {/* Overdue warning */}
+        {isOverdue && invoice.status !== "paid" && (
+          <Card style={{ gridColumn: "1 / -1", background: theme.redSoft, border: `1px solid ${theme.red}33` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+              <AlertTriangle size={20} color={theme.red} />
+              <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.red, margin: 0 }}>Payment Overdue</h3>
+            </div>
+            <p style={{ fontSize: 14, color: theme.textMuted, margin: "0 0 16px", lineHeight: 1.5 }}>
+              This invoice is <strong>{daysOverdue} day{daysOverdue !== 1 ? "s" : ""}</strong> overdue. Send a payment reminder or contact {invoice.customer_name}.
+            </p>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <Button onClick={() => updateStatus("paid")} style={{ background: theme.green, color: "#fff", display: "inline-flex", alignItems: "center", gap: 6 }}><CreditCard size={16} /> Mark as Paid</Button>
+              <Button onClick={sendReminder} variant="secondary" disabled={sending}><Mail size={16} /> Send Reminder</Button>
+              <Button onClick={resendInvoice} variant="secondary" disabled={sending}><Send size={16} /> Resend Invoice</Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Sent/Viewed actions */}
+        {(invoice.status === "sent" || invoice.status === "viewed") && !isOverdue && (
+          <Card style={{ gridColumn: "1 / -1" }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Actions</h3>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <Button onClick={() => updateStatus("paid")} style={{ background: theme.green, color: "#fff", display: "inline-flex", alignItems: "center", gap: 6 }}><CreditCard size={16} /> Mark as Paid</Button>
+              <Button onClick={sendReminder} variant="secondary" disabled={sending}><Mail size={16} /> Send Reminder</Button>
+              <Button onClick={resendInvoice} variant="secondary" disabled={sending}><Send size={16} /> Resend Invoice</Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Draft actions */}
+        {invoice.status === "draft" && (
+          <Card style={{ gridColumn: "1 / -1" }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Actions</h3>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <Button onClick={resendInvoice} disabled={sending}><Send size={16} /> Send Invoice</Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Paid success */}
+        {invoice.status === "paid" && (
+          <Card style={{ gridColumn: "1 / -1", background: theme.greenSoft, border: `1px solid ${theme.green}33` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <CheckCircle2 size={24} color={theme.green} />
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.green, margin: 0 }}>Paid!</h3>
+                <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>
+                  {invoice.paid_at ? `Paid on ${new Date(invoice.paid_at).toLocaleDateString()}` : "This invoice has been paid."}
+                </p>
+              </div>
+            </div>
+            {/* Create balance invoice if this was a deposit */}
+            {invoice.is_deposit && invoice.quote_id && (
+              <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "createInvoice:" + invoice.quote_id })}
+                variant="secondary" style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Receipt size={16} /> Create Balance Invoice
+              </Button>
+            )}
+          </Card>
+        )}
       </div>
     </div>
   );
@@ -3528,15 +4413,18 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
   const [adding, setAdding] = useState(null);
   const [newStep, setNewStep] = useState({ delay: "", subject: "", body: "" });
   const [saving, setSaving] = useState(false);
+  const [seqType, setSeqType] = useState("quote");
   const MAX_STEPS = 5;
 
-  const exampleData = { name: "Sarah", job: "Kitchen Renovation", amount: "4,500", business_name: business?.business_name || "Your Business" };
+  const exampleData = { name: "Sarah", job: "Kitchen Renovation", amount: "4,500", business_name: business?.business_name || "Your Business", invoice_number: "INV-001", due_date: "15 April 2026" };
 
   const previewText = (text) => text
     .replace(/{name}/g, exampleData.name)
     .replace(/{job}/g, exampleData.job)
     .replace(/{amount}/g, exampleData.amount)
-    .replace(/{business_name}/g, exampleData.business_name);
+    .replace(/{business_name}/g, exampleData.business_name)
+    .replace(/{invoice_number}/g, exampleData.invoice_number)
+    .replace(/{due_date}/g, exampleData.due_date);
 
   const loadSteps = async (seqId) => {
     try {
@@ -3608,9 +4496,13 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
     }
   };
 
+  const placeholderTags = seqType === "invoice"
+    ? ["{name}", "{job}", "{amount}", "{business_name}", "{invoice_number}", "{due_date}"]
+    : ["{name}", "{job}", "{amount}", "{business_name}"];
+
   const PlaceholderButtons = ({ field }) => (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-      {["{name}", "{job}", "{amount}", "{business_name}"].map(tag => (
+      {placeholderTags.map(tag => (
         <button key={tag} onClick={() => insertPlaceholder(field, tag)}
           style={{ padding: "3px 8px", borderRadius: 4, fontSize: 11, fontFamily: "monospace", background: theme.accentSoft, color: theme.accent, border: "none", cursor: "pointer" }}>
           + {tag}
@@ -3711,13 +4603,35 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
     <div>
       <div style={{ marginBottom: isMobile ? 16 : 32 }}>
         <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Follow-Up Sequences</h1>
-        <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>Customise the automated emails that chase your quotes. Up to {MAX_STEPS} steps per sequence.</p>
+        <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>
+          {seqType === "quote" ? "Automated emails that chase your quotes" : "Payment reminders for your invoices"}. Up to {MAX_STEPS} steps per sequence.
+        </p>
+      </div>
+
+      {/* Type toggle */}
+      <div style={{ display: "flex", gap: 6, marginBottom: isMobile ? 12 : 20 }}>
+        {[{ key: "quote", label: "Quote Follow-Ups", icon: FileText }, { key: "invoice", label: "Invoice Reminders", icon: Receipt }].map(tab => (
+          <span key={tab.key} onClick={() => setSeqType(tab.key)}
+            style={{
+              padding: isMobile ? "8px 12px" : "10px 16px", borderRadius: 8, fontSize: isMobile ? 12 : 13, fontWeight: 600, cursor: "pointer",
+              background: seqType === tab.key ? theme.accentSoft : "rgba(255,255,255,0.03)",
+              color: seqType === tab.key ? theme.accent : theme.textMuted,
+              border: `1px solid ${seqType === tab.key ? theme.accent + "33" : "rgba(255,255,255,0.06)"}`,
+              display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s",
+            }}>
+            <tab.icon size={14} /> {tab.label}
+          </span>
+        ))}
       </div>
 
       <Card style={{ marginBottom: 24, padding: isMobile ? 16 : 24 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 12px" }}>How Follow-Ups Work</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 12px" }}>
+          {seqType === "quote" ? "How Follow-Ups Work" : "How Payment Reminders Work"}
+        </h3>
         <p style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.7, margin: "0 0 16px" }}>
-          When you send a quote, Wynflow automatically sends follow-up emails if the customer doesn't respond.
+          {seqType === "quote"
+            ? "When you send a quote, Wynflow automatically sends follow-up emails if the customer doesn't respond."
+            : "When an invoice passes its due date, Wynflow can automatically send payment reminder emails."}
           Each step below is one email in the sequence — you control the timing and the message.
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -3742,7 +4656,7 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
       </Card>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        {sequences.map((seq) => {
+        {sequences.filter(seq => (seq.type || "quote") === seqType).map((seq) => {
           const seqSteps = steps[seq.id] || [];
           return (
           <Card key={seq.id}>
@@ -3854,6 +4768,16 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
           </Card>
           );
         })}
+        {sequences.filter(seq => (seq.type || "quote") === seqType).length === 0 && (
+          <div style={{ textAlign: "center", padding: 32 }}>
+            <div style={{ fontSize: 14, color: theme.textDim, marginBottom: 8 }}>
+              {seqType === "invoice" ? "No invoice reminder sequences yet" : "No follow-up sequences"}
+            </div>
+            {seqType === "invoice" && (
+              <p style={{ fontSize: 13, color: theme.textDim }}>Invoice reminder sequences will be created automatically when you set up invoicing. You can also create them in your Supabase dashboard.</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -4031,6 +4955,7 @@ const Settings = ({ business, dispatch }) => {
   const [gstNumber, setGstNumber] = useState(business?.gst_number || "");
   const [licenseNumber, setLicenseNumber] = useState(business?.license_number || "");
   const [quoteFooter, setQuoteFooter] = useState(business?.quote_footer || "");
+  const [defaultPaymentTerms, setDefaultPaymentTerms] = useState(business?.default_payment_terms || "7 days");
   const [saving, setSaving] = useState(false);
   const [declineReasons, setDeclineReasons] = useState(business?.decline_reasons || DEFAULT_DECLINE_REASONS);
   const [newReason, setNewReason] = useState("");
@@ -4057,6 +4982,7 @@ const Settings = ({ business, dispatch }) => {
       gst_number: gstNumber,
       license_number: licenseNumber,
       quote_footer: quoteFooter,
+      default_payment_terms: defaultPaymentTerms,
     };
     try {
       const { error } = await db("businesses").eq("id", business.id).update(updates);
@@ -4227,6 +5153,20 @@ const Settings = ({ business, dispatch }) => {
                 </div>
               </>
             )}
+          </div>
+        </Card>
+        <Card style={isMobile ? { padding: 16 } : {}}>
+          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Invoice Settings</h3>
+          <p style={{ fontSize: 12, color: theme.textMuted, margin: "0 0 12px" }}>Default payment terms for new invoices.</p>
+          <div>
+            <label style={{ fontSize: 13, color: theme.textMuted, display: "block", marginBottom: 6 }}>Default Payment Terms</label>
+            <select value={defaultPaymentTerms} onChange={e => setDefaultPaymentTerms(e.target.value)}
+              style={{ width: "100%", padding: "10px 14px", borderRadius: 10, fontSize: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontFamily: theme.font, outline: "none" }}>
+              <option value="7 days">7 days</option>
+              <option value="14 days">14 days</option>
+              <option value="20th of month">20th of month</option>
+              <option value="On receipt">On receipt</option>
+            </select>
           </div>
         </Card>
         <Card style={isMobile ? { padding: 16 } : {}}>
@@ -4608,7 +5548,7 @@ const OnboardingTutorial = ({ business, dispatch, onComplete }) => {
 //    before any conditional returns, to comply with React's Rules of Hooks.
 export default function WynflowApp() {
   const [state, dispatch] = useReducer(appReducer, initialState);
-  const { user, business, screen, quotes, sequences, notification, loading } = state;
+  const { user, business, screen, quotes, sequences, invoices, notification, loading } = state;
 
   // ✅ ALL hooks must be called before any conditional returns
   const isMobile = useIsMobile();
@@ -4619,12 +5559,14 @@ export default function WynflowApp() {
     if (!business) return;
     dispatch({ type: "SET_LOADING", payload: true });
     try {
-      const [quotesRes, seqRes] = await Promise.all([
+      const [quotesRes, seqRes, invoicesRes] = await Promise.all([
         db("quotes").eq("business_id", business.id).order("created_at", { ascending: false }).select(),
         db("follow_up_sequences").eq("business_id", business.id).select(),
+        db("invoices").eq("business_id", business.id).order("created_at", { ascending: false }).select(),
       ]);
       if (quotesRes.data) dispatch({ type: "SET_QUOTES", payload: quotesRes.data });
       if (seqRes.data) dispatch({ type: "SET_SEQUENCES", payload: seqRes.data });
+      if (invoicesRes.data) dispatch({ type: "SET_INVOICES", payload: invoicesRes.data });
     } catch (err) {
       dispatch({ type: "NOTIFY", payload: { message: "Failed to load data. Please refresh.", type: "error" } });
     }
@@ -4708,7 +5650,7 @@ export default function WynflowApp() {
   }, [business?.id]);
 
   useEffect(() => {
-    if (business && (screen === "dashboard" || screen === "quotes")) {
+    if (business && (screen === "dashboard" || screen === "quotes" || screen === "invoices")) {
       loadData();
     }
   }, [screen, business, loadData]);
@@ -4795,16 +5737,19 @@ export default function WynflowApp() {
   const renderContent = () => {
     if (loading) return <Spinner />;
     switch (activeScreen) {
-      case "dashboard": return <Dashboard quotes={quotes} dispatch={dispatch} />;
+      case "dashboard": return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} />;
       case "quotes": return <QuotesList quotes={quotes} dispatch={dispatch} sequences={sequences} />;
-      case "analytics": return <Analytics quotes={quotes} />;
+      case "analytics": return <Analytics quotes={quotes} invoices={invoices} />;
       case "newQuote": return <NewQuoteForm dispatch={dispatch} business={business} sequences={sequences} />;
       case "aiQuote": return <AIQuoteForm dispatch={dispatch} business={business} sequences={sequences} quotes={quotes} />;
       case "sequences": return <SequencesManager sequences={sequences} business={business} dispatch={dispatch} />;
-      case "quoteDetail": return <QuoteDetail quoteId={detailId} quotes={quotes} sequences={sequences} dispatch={dispatch} business={business} />;
+      case "quoteDetail": return <QuoteDetail quoteId={detailId} quotes={quotes} sequences={sequences} dispatch={dispatch} business={business} invoices={invoices} />;
+      case "invoices": return <InvoicesList invoices={invoices} dispatch={dispatch} />;
+      case "createInvoice": return <CreateInvoiceForm dispatch={dispatch} business={business} quotes={quotes} sequences={sequences} invoices={invoices} quoteId={detailId} />;
+      case "invoiceDetail": return <InvoiceDetail invoiceId={detailId} invoices={invoices} business={business} dispatch={dispatch} sequences={sequences} quotes={quotes} />;
       case "help": return <HelpCentre />;
       case "settings": return <Settings business={business} dispatch={dispatch} />;
-      default: return <Dashboard quotes={quotes} dispatch={dispatch} />;
+      default: return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} />;
     }
   };
 
