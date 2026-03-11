@@ -1,6 +1,6 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
 import { jsPDF } from "jspdf";
-import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download } from "lucide-react";
+import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History } from "lucide-react";
 
 // ─── SEO Helper ───
 const SEO_CONFIG = {
@@ -252,6 +252,8 @@ function appReducer(state, action) {
           q.id === action.payload.id ? { ...q, ...action.payload } : q
         ),
       };
+    case "DELETE_QUOTE":
+      return { ...state, quotes: state.quotes.filter(q => q.id !== action.payload), screen: "quotes" };
     case "SET_SEQUENCES":
       return { ...state, sequences: action.payload };
     case "ADD_SEQUENCE":
@@ -274,6 +276,8 @@ function appReducer(state, action) {
           inv.id === action.payload.id ? { ...inv, ...action.payload } : inv
         ),
       };
+    case "DELETE_INVOICE":
+      return { ...state, invoices: state.invoices.filter(inv => inv.id !== action.payload), screen: "invoices" };
     case "NOTIFY":
       return { ...state, notification: action.payload };
     case "CLEAR_NOTIFY":
@@ -321,7 +325,7 @@ const statusConfig = {
   draft: { label: "Draft", color: theme.textMuted, bg: "rgba(139,149,168,0.12)" },
   pending: { label: "Pending", color: theme.blue, bg: theme.blueSoft },
   requested: { label: "Requested", color: "#14B8A6", bg: "rgba(20,184,166,0.12)" },
-  sent: { label: "Sent", color: theme.accent, bg: theme.accentSoft },
+  sent: { label: "Awaiting Response", color: theme.accent, bg: theme.accentSoft },
   opened: { label: "Opened", color: theme.accentBlue, bg: theme.accentBlueSoft },
   accepted: { label: "Accepted", color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
   booked: { label: "Booked", color: theme.green, bg: theme.greenSoft },
@@ -1690,8 +1694,11 @@ const Sidebar = ({ screen, dispatch, business }) => {
 
   const handleLogout = async () => {
     await supabase.auth_signOut();
+    supabase.token = null;
+    supabase.user = null;
     clearCookies();
     dispatch({ type: "LOGOUT" });
+    window.history.replaceState(null, "", "/");
   };
 
   if (isMobile) {
@@ -1725,7 +1732,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
       width: 260, background: "rgba(255,255,255,0.02)", borderRight: "1px solid rgba(255,255,255,0.06)",
       display: "flex", flexDirection: "column", padding: "24px 16px", flexShrink: 0,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 8px", marginBottom: 36 }}>
+      <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "dashboard" })} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 8px", marginBottom: 36, cursor: "pointer" }}>
         <div style={{ width: 36, height: 36, borderRadius: 10, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><WynflowLogo size={36} /></div>
         <span style={{ fontSize: 20, fontWeight: 700, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.02em" }}>Wynflow</span>
       </div>
@@ -2016,7 +2023,7 @@ const Dashboard = ({ quotes, dispatch, invoices = [] }) => {
           {stepData.length > 0 && (
             <Card>
               <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 4px" }}>Follow-Up Effectiveness</h3>
-              <p style={{ fontSize: 12, color: theme.textDim, margin: "0 0 14px" }}>When customers accept your quotes</p>
+              <p style={{ fontSize: 12, color: theme.textDim, margin: "0 0 14px" }}>When customers respond to your quotes</p>
               {stepData.map(([label, count]) => {
                 const maxStep = Math.max(...stepData.map(s => s[1]));
                 return (
@@ -2131,7 +2138,7 @@ const QuotesList = ({ quotes, dispatch, sequences }) => {
         events.push({ type: "sent", quote: q, date: q.sent_at, text: `Quote sent to ${q.customer_name} — $${parseFloat(q.amount || 0).toLocaleString()}` });
       }
       if ((q.status === "accepted" || q.status === "booked") && q.responded_at) {
-        events.push({ type: "accepted", quote: q, date: q.responded_at, text: `${q.customer_name} accepted your quote — $${parseFloat(q.amount || 0).toLocaleString()}` });
+        events.push({ type: "accepted", quote: q, date: q.responded_at, text: `${q.customer_name} responded — accepted $${parseFloat(q.amount || 0).toLocaleString()}` });
       }
       if (q.status === "declined" && q.responded_at) {
         events.push({ type: "declined", quote: q, date: q.responded_at, text: `${q.customer_name} declined — ${q.decline_reason || "no reason given"}` });
@@ -2180,7 +2187,7 @@ const QuotesList = ({ quotes, dispatch, sequences }) => {
     { key: "all", label: "All" },
     { key: "requested", label: "Requested", count: counts.requested, dot: counts.requested > 0 },
     { key: "accepted", label: "Accepted", count: counts.accepted },
-    { key: "sent", label: "Sent", count: counts.sent },
+    { key: "sent", label: "Awaiting", count: counts.sent },
     { key: "booked", label: "Booked", count: counts.booked },
     { key: "declined", label: "Declined", count: counts.declined },
     { key: "noResponse", label: "No Response", count: counts.noResponse },
@@ -2439,14 +2446,14 @@ const Analytics = ({ quotes, invoices = [] }) => {
 
         {/* Which follow-up converts */}
         <Card>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>When Do Customers Accept?</h3>
-          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 20px" }}>Which follow-up email triggered the acceptance</p>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>When Do Customers Respond?</h3>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 20px" }}>Which follow-up email triggered the response</p>
           {stepData.length > 0 ? (
             stepData.map(([label, count]) => (
               <BarSimple key={label} label={label} value={count} max={Math.max(...stepData.map(s => s[1]))} color={theme.accent} count={count} />
             ))
           ) : (
-            <p style={{ fontSize: 14, color: theme.textDim, textAlign: "center", padding: 20 }}>No accepted quotes yet</p>
+            <p style={{ fontSize: 14, color: theme.textDim, textAlign: "center", padding: 20 }}>No responses yet</p>
           )}
         </Card>
       </div>
@@ -2658,11 +2665,11 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         const compressed = await compressImage(photo);
         photoData.push({ name: photo.name, type: "image/jpeg", data: compressed });
       }
-      // Build recent quote history for AI learning (last 20 sent/accepted quotes)
+      // Build recent quote history for AI learning — includes historical quotes tagged with source
       const quoteHistory = quotes
         .filter(q => ["sent", "accepted", "booked", "opened"].includes(q.status) && q.amount)
-        .slice(0, 20)
-        .map(q => ({ job_title: q.job_title, description: q.description, amount: q.amount, status: q.status }));
+        .slice(0, 30)
+        .map(q => ({ job_title: q.job_title, description: q.description, amount: q.amount, status: q.status, source: q.source || "wynflow" }));
       const res = await fetch("https://wynfallautomation.app.n8n.cloud/webhook/generate-quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -3239,11 +3246,11 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
       // Also include customer's original photos if they're base64
       const customerPhotos = (quote.photos || []).filter(p => typeof p === "string" && p.startsWith("data:")).map((p, i) => ({ name: `customer-${i}.jpg`, type: "image/jpeg", data: p }));
 
-      // Build recent quote history for AI learning (last 20 sent/accepted quotes)
+      // Build recent quote history for AI learning — includes historical quotes tagged with source
       const quoteHistory = (quotes || [])
         .filter(q => ["sent", "accepted", "booked", "opened"].includes(q.status) && q.amount && q.id !== quote.id)
-        .slice(0, 20)
-        .map(q => ({ job_title: q.job_title, description: q.description, amount: q.amount, status: q.status }));
+        .slice(0, 30)
+        .map(q => ({ job_title: q.job_title, description: q.description, amount: q.amount, status: q.status, source: q.source || "wynflow" }));
       const res = await fetch("https://wynfallautomation.app.n8n.cloud/webhook/generate-quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -3579,6 +3586,17 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
     }
   };
 
+  const deleteQuote = async () => {
+    if (!window.confirm("Are you sure you want to delete this quote? This cannot be undone.")) return;
+    const { error } = await db("quotes").eq("id", quote.id).delete();
+    if (error) {
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to delete quote", type: "error" } });
+      return;
+    }
+    dispatch({ type: "DELETE_QUOTE", payload: quote.id });
+    dispatch({ type: "NOTIFY", payload: { message: "Quote deleted", type: "success" } });
+  };
+
   return (
     <div>
       <div style={{ marginBottom: isMobile ? 16 : 32 }}>
@@ -3763,6 +3781,7 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Button onClick={() => updateStatus("accepted")} style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B", display: "inline-flex", alignItems: "center", gap: 6 }}><Check size={16} /> Mark Accepted</Button>
             <Button onClick={() => updateStatus("declined")} variant="danger" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><XCircle size={16} /> Mark Declined</Button>
+            <Button onClick={deleteQuote} variant="danger" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(239,68,68,0.08)", color: theme.red }}><Trash2 size={16} /> Delete Quote</Button>
             <Button variant="secondary" onClick={async () => {
               if (!window.confirm("Are you sure you want to send a follow-up email to " + quote.customer_name + "?")) return;
               try {
@@ -3784,6 +3803,13 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
         {quote.status === "requested" && (
         <QuoteGenerator quote={quote} business={business} dispatch={dispatch} sequences={sequences} quotes={quotes} />
         )}
+        {/* Delete quote — available for all statuses */}
+        {(quote.status === "accepted" || quote.status === "booked" || quote.status === "declined" || quote.status === "requested") && (
+          <div style={{ gridColumn: "1 / -1", textAlign: "right" }}>
+            <Button onClick={deleteQuote} variant="danger" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(239,68,68,0.08)", color: theme.red }}><Trash2 size={16} /> Delete Quote</Button>
+          </div>
+        )}
+
         {/* Linked invoices */}
         {invoices.filter(inv => inv.quote_id === quote.id).length > 0 && (
           <Card style={{ gridColumn: "1 / -1" }}>
@@ -4424,6 +4450,17 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
     setSending(false);
   };
 
+  const deleteInvoice = async () => {
+    if (!window.confirm("Are you sure you want to delete this invoice? This cannot be undone.")) return;
+    const { error } = await db("invoices").eq("id", invoice.id).delete();
+    if (error) {
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to delete invoice", type: "error" } });
+      return;
+    }
+    dispatch({ type: "DELETE_INVOICE", payload: invoice.id });
+    dispatch({ type: "NOTIFY", payload: { message: "Invoice deleted", type: "success" } });
+  };
+
   const resendInvoice = async () => {
     const isDraft = invoice.status === "draft";
     const msg = isDraft ? "Send this invoice to " + invoice.customer_email + "?" : "Resend this invoice to " + invoice.customer_email + "?";
@@ -4511,7 +4548,6 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
               </div>
             </div>
             <div><div style={{ fontSize: 12, color: theme.textMuted }}>Terms</div><div style={{ fontSize: 15, color: theme.text }}>{invoice.payment_terms}</div></div>
-            {invoice.description && <div><div style={{ fontSize: 12, color: theme.textMuted }}>Description</div><div style={{ fontSize: 14, color: theme.text, lineHeight: 1.5 }}>{invoice.description}</div></div>}
             {invoice.quote_id && (
               <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + invoice.quote_id })}
                 style={{ fontSize: 13, color: theme.accent, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
@@ -4589,6 +4625,7 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
               <Button onClick={() => updateStatus("paid")} style={{ background: theme.green, color: "#fff", display: "inline-flex", alignItems: "center", gap: 6 }}><CreditCard size={16} /> Mark as Paid</Button>
               <Button onClick={sendReminder} variant="secondary" disabled={sending}><Mail size={16} /> Send Reminder</Button>
               <Button onClick={resendInvoice} variant="secondary" disabled={sending}><Send size={16} /> Resend Invoice</Button>
+              <Button onClick={deleteInvoice} variant="danger" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Trash2 size={16} /> Delete</Button>
             </div>
           </Card>
         )}
@@ -4601,6 +4638,7 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
               <Button onClick={() => updateStatus("paid")} style={{ background: theme.green, color: "#fff", display: "inline-flex", alignItems: "center", gap: 6 }}><CreditCard size={16} /> Mark as Paid</Button>
               <Button onClick={sendReminder} variant="secondary" disabled={sending}><Mail size={16} /> Send Reminder</Button>
               <Button onClick={resendInvoice} variant="secondary" disabled={sending}><Send size={16} /> Resend Invoice</Button>
+              <Button onClick={deleteInvoice} variant="danger" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Trash2 size={16} /> Delete</Button>
             </div>
           </Card>
         )}
@@ -4612,6 +4650,7 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "editInvoice:" + invoice.id })} variant="secondary"><FileText size={16} /> Edit Invoice</Button>
               <Button onClick={resendInvoice} disabled={sending}><Send size={16} /> Send Invoice</Button>
+              <Button onClick={deleteInvoice} variant="danger" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Trash2 size={16} /> Delete</Button>
             </div>
           </Card>
         )}
@@ -5054,7 +5093,7 @@ const HELP_ARTICLES = [
   ]},
   { category: "Analytics", items: [
     { q: "What does the win rate mean?", a: "It's the percentage of customers who responded and accepted (or booked). If 10 customers responded and 7 said yes, your win rate is 70%. It only counts quotes that have had a response, not ones still waiting." },
-    { q: "What does 'When Do Customers Accept?' show?", a: "It tells you which follow-up email triggers the most acceptances. If most people accept after Follow-Up 2, you know your second email is doing the heavy lifting — and that follow-ups genuinely work for your business." },
+    { q: "What does 'When Do Customers Respond?' show?", a: "It tells you which follow-up email triggers the most responses. If most people respond after Follow-Up 2, you know your second email is doing the heavy lifting — and that follow-ups genuinely work for your business." },
     { q: "How is revenue calculated?", a: "Revenue is the total amount from all accepted and booked quotes. It helps you see the dollar value of jobs you're winning through Wynflow." },
     { q: "Why should I care about decline reasons?", a: "If 60% of declines are 'Too expensive', you might need to revisit your pricing or better communicate value upfront. If most say 'Went with someone else', your follow-ups might need to be faster. Data helps you improve." },
   ]},
@@ -5169,6 +5208,120 @@ const HelpCentre = () => {
   );
 };
 
+// ─── Historical Quotes (AI Training Data) ───
+const HistoricalQuotes = ({ business, dispatch, quotes }) => {
+  const isMobile = useIsMobile();
+  const [form, setForm] = useState({ jobTitle: "", description: "", amount: "", customerName: "", status: "booked" });
+  const [saving, setSaving] = useState(false);
+  const historicalQuotes = quotes.filter(q => q.source === "historical");
+
+  const update = (key, val) => setForm({ ...form, [key]: val });
+
+  const saveQuote = async () => {
+    if (!form.jobTitle || !form.amount) {
+      dispatch({ type: "NOTIFY", payload: { message: "Job title and amount are required", type: "error" } });
+      return;
+    }
+    setSaving(true);
+    try {
+      const quoteData = {
+        business_id: business.id,
+        job_title: form.jobTitle,
+        description: form.description,
+        amount: parseFloat(form.amount),
+        customer_name: form.customerName || "Historical Customer",
+        status: form.status,
+        source: "historical",
+        created_at: new Date().toISOString(),
+      };
+      const { data, error } = await db("quotes").insert(quoteData);
+      if (error) throw error;
+      dispatch({ type: "ADD_QUOTE", payload: data[0] });
+      dispatch({ type: "SET_SCREEN", payload: "historicalQuotes" });
+      setForm({ jobTitle: "", description: "", amount: "", customerName: "", status: "booked" });
+      dispatch({ type: "NOTIFY", payload: { message: "Historical quote added — AI will use this for future estimates", type: "success" } });
+    } catch (err) {
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to save quote", type: "error" } });
+    }
+    setSaving(false);
+  };
+
+  const deleteHistorical = async (id) => {
+    if (!window.confirm("Delete this historical quote?")) return;
+    const { error } = await db("quotes").eq("id", id).delete();
+    if (!error) {
+      dispatch({ type: "DELETE_QUOTE", payload: id });
+      dispatch({ type: "SET_SCREEN", payload: "historicalQuotes" });
+      dispatch({ type: "NOTIFY", payload: { message: "Quote removed", type: "success" } });
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: isMobile ? 16 : 32 }}>
+        <span onClick={() => dispatch({ type: "SET_SCREEN", payload: "settings" })}
+          style={{ fontSize: 13, color: theme.textMuted, cursor: "pointer", display: "block", marginBottom: 6 }}>← Back to Settings</span>
+        <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Historical Quotes</h1>
+        <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>Add old quotes so the AI learns from your pricing history</p>
+      </div>
+
+      {/* Add new historical quote */}
+      <Card style={{ marginBottom: 24 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px", display: "flex", alignItems: "center", gap: 8 }}><Plus size={18} color={theme.accent} /> Add a Past Quote</h3>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14 }}>
+          <Input label="Job Title *" placeholder="e.g. Bathroom reno, 3 Elm St" value={form.jobTitle} onChange={v => update("jobTitle", v)} />
+          <Input label="Amount (excl. GST) *" type="number" placeholder="e.g. 4500" value={form.amount} onChange={v => update("amount", v)} />
+          <Input label="Customer Name" placeholder="Optional" value={form.customerName} onChange={v => update("customerName", v)} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 6 }}>Outcome</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {[{ value: "booked", label: "Won" }, { value: "declined", label: "Lost" }, { value: "accepted", label: "Accepted" }].map(opt => (
+                <div key={opt.value} onClick={() => update("status", opt.value)}
+                  style={{ flex: 1, padding: "10px 12px", borderRadius: 8, textAlign: "center", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                    background: form.status === opt.value ? theme.accentSoft : "rgba(255,255,255,0.03)",
+                    color: form.status === opt.value ? theme.accent : theme.textMuted,
+                    border: `1px solid ${form.status === opt.value ? theme.accent + "33" : theme.border}`,
+                  }}>{opt.label}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <Input label="Description / Scope" type="textarea" placeholder="Brief description of the job (helps AI learn your pricing patterns)" value={form.description} onChange={v => update("description", v)} style={{ marginTop: 14 }} />
+        <Button onClick={saveQuote} disabled={saving} style={{ marginTop: 16 }}><Plus size={14} /> {saving ? "Saving..." : "Add Quote"}</Button>
+      </Card>
+
+      {/* Existing historical quotes */}
+      {historicalQuotes.length > 0 && (
+        <Card>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Your Historical Quotes ({historicalQuotes.length})</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {historicalQuotes.map(q => (
+              <div key={q.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.job_title}</div>
+                  <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>{q.customer_name} • ${parseFloat(q.amount || 0).toLocaleString()}</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                  <Badge status={q.status} />
+                  <Trash2 size={14} color={theme.red} style={{ cursor: "pointer", opacity: 0.6 }} onClick={() => deleteHistorical(q.id)} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {historicalQuotes.length === 0 && (
+        <Card style={{ textAlign: "center", padding: 48 }}>
+          <History size={32} color={theme.textDim} style={{ marginBottom: 12 }} />
+          <div style={{ fontSize: 15, color: theme.textMuted, fontWeight: 500, marginBottom: 4 }}>No historical quotes yet</div>
+          <div style={{ fontSize: 13, color: theme.textDim }}>Add your past jobs above so the AI can learn your pricing patterns</div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
 const DEFAULT_DECLINE_REASONS = ["Too expensive", "Went with someone else", "Changed my mind", "Timing isn't right", "Other"];
 
 const Settings = ({ business, dispatch }) => {
@@ -5267,7 +5420,7 @@ const Settings = ({ business, dispatch }) => {
           <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>Manage your business profile</p>
         </div>
         {isMobile && (
-          <button onClick={async () => { await supabase.auth_signOut(); clearCookies(); dispatch({ type: "LOGOUT" }); }}
+          <button onClick={async () => { await supabase.auth_signOut(); supabase.token = null; supabase.user = null; clearCookies(); dispatch({ type: "LOGOUT" }); window.history.replaceState(null, "", "/"); }}
             style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)", color: theme.red, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: theme.font, flexShrink: 0 }}>
             Sign Out
           </button>
@@ -5364,6 +5517,16 @@ const Settings = ({ business, dispatch }) => {
                 </div>
               )}
               <p style={{ fontSize: 11, color: theme.textDim, margin: "6px 0 0" }}>{priceList.length} item{priceList.length !== 1 ? "s" : ""} in your price list</p>
+            </div>
+            <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "historicalQuotes" })}
+              style={{ marginTop: 16, padding: "14px 16px", borderRadius: 10, background: "rgba(20,184,166,0.06)", border: "1px solid rgba(20,184,166,0.15)", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, transition: "all 0.15s" }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"} onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(20,184,166,0.15)"}>
+              <History size={18} color={theme.accent} />
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Historical Quotes</div>
+                <div style={{ fontSize: 12, color: theme.textMuted }}>Add old quotes to train the AI on your pricing</div>
+              </div>
+              <ArrowRight size={16} color={theme.textMuted} style={{ marginLeft: "auto" }} />
             </div>
           </div>
         </Card>
@@ -5987,6 +6150,7 @@ export default function WynflowApp() {
       case "editInvoice": return <CreateInvoiceForm dispatch={dispatch} business={business} quotes={quotes} sequences={sequences} invoices={invoices} editInvoice={invoices.find(i => i.id === detailId)} />;
       case "invoiceDetail": return <InvoiceDetail invoiceId={detailId} invoices={invoices} business={business} dispatch={dispatch} sequences={sequences} quotes={quotes} />;
       case "help": return <HelpCentre />;
+      case "historicalQuotes": return <HistoricalQuotes business={business} dispatch={dispatch} quotes={quotes} />;
       case "settings": return <Settings business={business} dispatch={dispatch} />;
       default: return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} />;
     }
