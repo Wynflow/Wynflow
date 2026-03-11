@@ -4069,9 +4069,9 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Customer Details</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <Input label="Customer Name *" value={form.customerName} onChange={e => update("customerName", e.target.value)} />
-            <Input label="Email *" type="email" value={form.customerEmail} onChange={e => update("customerEmail", e.target.value)} />
-            <Input label="Phone" value={form.customerPhone} onChange={e => update("customerPhone", e.target.value)} />
+            <Input label="Customer Name *" value={form.customerName} onChange={v => update("customerName", v)} />
+            <Input label="Email *" type="email" value={form.customerEmail} onChange={v => update("customerEmail", v)} />
+            <Input label="Phone" value={form.customerPhone} onChange={v => update("customerPhone", v)} />
           </div>
         </Card>
 
@@ -4079,8 +4079,8 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Job Details</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <Input label="Job Title" value={form.jobTitle} onChange={e => update("jobTitle", e.target.value)} />
-            <Input label="Description" type="textarea" value={form.description} onChange={e => update("description", e.target.value)} />
+            <Input label="Job Title" value={form.jobTitle} onChange={v => update("jobTitle", v)} />
+            <Input label="Description" type="textarea" value={form.description} onChange={v => update("description", v)} />
           </div>
         </Card>
 
@@ -4088,7 +4088,7 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
         <Card>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Pricing</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <Input label="Amount ($) *" type="number" value={form.amount} onChange={e => update("amount", e.target.value)} />
+            <Input label="Amount ($) *" type="number" value={form.amount} onChange={v => update("amount", v)} />
             {business?.require_deposit && linkedQuote && (
               <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                 <input type="checkbox" checked={form.isDeposit} onChange={e => update("isDeposit", e.target.checked)}
@@ -4121,8 +4121,8 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
                 <option value="On receipt">On receipt</option>
               </select>
             </div>
-            <Input label="Due Date" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
-            <Input label="Notes" type="textarea" value={form.notes} onChange={e => update("notes", e.target.value)} placeholder="Payment instructions, terms, etc." />
+            <Input label="Due Date" type="date" value={dueDate} onChange={v => setDueDate(v)} />
+            <Input label="Notes" type="textarea" value={form.notes} onChange={v => update("notes", v)} placeholder="Payment instructions, terms, etc." />
           </div>
         </Card>
 
