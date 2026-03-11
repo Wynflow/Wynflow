@@ -2323,7 +2323,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
             <div style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>{form.jobTitle}</div>
           </div>
           {editForm?.scope && <div style={{ marginBottom: 24 }}><div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Scope of Work</div><div style={{ fontSize: 14, color: "#374151", lineHeight: 1.7, whiteSpace: "pre-line" }}>{editForm.scope}</div></div>}
-          {editForm?.materials && <div style={{ marginBottom: 24 }}><div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Materials</div><div style={{ fontSize: 14, color: "#374151", lineHeight: 1.8, whiteSpace: "pre-line" }}>{editForm.materials}</div></div>}
+          {editForm?.showBreakdown && editForm?.materials && <div style={{ marginBottom: 24 }}><div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Materials</div><div style={{ fontSize: 14, color: "#374151", lineHeight: 1.8, whiteSpace: "pre-line" }}>{editForm.materials}</div></div>}
           <div style={{ background: "#f9fafb", borderRadius: 10, padding: 20, marginBottom: 24 }}>
             {editForm?.showBreakdown && (<>
               {parseFloat(editForm?.materialsCost) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Materials</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${parseFloat(editForm.materialsCost).toLocaleString()}</span></div>}
@@ -2445,7 +2445,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
           materialsCost: finalMatCost ? String(Math.round(finalMatCost * 100) / 100) : "",
           amount: result.quote.total || "",
           notes: result.quote.notes || "",
-          showBreakdown: true,
+          showBreakdown: business.default_show_breakdown !== undefined ? business.default_show_breakdown : true,
           includeCallout: parseFloat(business.callout_fee) > 0,
           showBusinessDetails: !!(business.address || business.gst_number || business.license_number),
         });
@@ -2610,8 +2610,9 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
           </div>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 24 }}>
-          <Card style={{ gridColumn: "1 / -1", background: "rgba(20,184,166,0.04)", border: "1px solid rgba(20,184,166,0.2)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 24, alignItems: "start" }}>
+          {/* Status banner */}
+          <Card style={{ gridColumn: "1 / -1", background: "rgba(20,184,166,0.04)", border: "1px solid rgba(20,184,166,0.2)", ...(isMobile ? { padding: 16 } : {}) }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
               <CheckCircle2 size={16} color={theme.green} />
               <span style={{ fontSize: 14, fontWeight: 600, color: theme.green }}>Quote Generated for {form.customerName}</span>
@@ -2622,59 +2623,70 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
                 }}>{generated.confidence.charAt(0).toUpperCase() + generated.confidence.slice(1)} Confidence</span>
               )}
             </div>
-            <p style={{ fontSize: 12, color: theme.textMuted }}>Review and edit below, then send to your customer</p>
+            <p style={{ fontSize: 12, color: theme.textMuted }}>Edit on the left — {isMobile ? "preview below" : "live preview on the right"}</p>
           </Card>
+
+          {/* Left column: Edit form */}
           <Card style={isMobile ? { padding: 16 } : {}}>
             <Input label="Description" value={editForm.scope} onChange={v => setEditForm(prev => ({ ...prev, scope: v }))} textarea />
-          </Card>
-          <Card style={isMobile ? { padding: 16 } : {}}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 600, color: theme.text, margin: 0 }}>Pricing</h3>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
-                <input type="checkbox" checked={editForm.showBreakdown} onChange={e => { const c = e.target.checked; setEditForm(prev => ({ ...prev, showBreakdown: c })); }} style={{ accentColor: theme.accent }} />
-                Show on invoice
-              </label>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {editForm.showBreakdown && (<>
-              <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>Materials</div>
-              {(editForm.lineItems || []).map((item, idx) => (
-                <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                  <div style={{ flex: 1 }}>
-                    <input value={item.description} onChange={e => updateLineItem(idx, "description", e.target.value)} placeholder="Item description"
-                      style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none" }} />
-                  </div>
-                  <div style={{ width: isMobile ? 90 : 110 }}>
-                    <input value={item.price} onChange={e => updateLineItem(idx, "price", e.target.value)} placeholder="$0" type="number"
-                      style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", textAlign: "right" }} />
-                  </div>
-                  <button onClick={() => removeLineItem(idx)} style={{ padding: "10px 8px", background: "none", border: "none", color: theme.textDim, cursor: "pointer", fontSize: 16, lineHeight: 1, flexShrink: 0 }}>×</button>
-                </div>
-              ))}
-              <button onClick={addLineItem} style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: `1px dashed rgba(255,255,255,0.1)`, color: theme.textMuted, fontSize: 13, cursor: "pointer", fontFamily: theme.font, transition: "all 0.2s" }}>+ Add item</button>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderTop: `1px solid rgba(255,255,255,0.06)`, marginTop: 4 }}>
-                <span style={{ fontSize: 12, color: theme.textMuted }}>Materials subtotal</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>${parseFloat(editForm.materialsCost || 0).toLocaleString()}</span>
-              </div>
-              <div style={{ marginTop: 4 }}><Input label="Labour Hours" value={editForm.labourHours} onChange={v => updatePricing("labourHours", v)} type="number" /></div>
-              {business.hourly_rate && <div style={{ fontSize: 12, color: theme.textMuted, marginTop: -4 }}>Labour: {editForm.labourHours || 0} hrs × ${business.hourly_rate}/hr = ${((parseFloat(editForm.labourHours) || 0) * parseFloat(business.hourly_rate)).toLocaleString()}</div>}
-              {parseFloat(business.callout_fee) > 0 && (
+
+            {/* Pricing section */}
+            <div style={{ marginTop: 20, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600, color: theme.text, margin: 0 }}>Pricing</h3>
                 <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
-                  <input type="checkbox" checked={editForm.includeCallout} onChange={e => updatePricing("includeCallout", e.target.checked)} style={{ accentColor: theme.accent }} />
-                  Include callout fee (${parseFloat(business.callout_fee).toLocaleString()})
+                  <input type="checkbox" checked={editForm.showBreakdown} onChange={e => {
+                    const c = e.target.checked;
+                    setEditForm(prev => ({ ...prev, showBreakdown: c }));
+                    if (confirm(c ? "Always show pricing breakdown on future quotes?" : "Always hide pricing breakdown on future quotes?")) {
+                      db("businesses").eq("id", business.id).update({ default_show_breakdown: c });
+                    }
+                  }} style={{ accentColor: theme.accent }} />
+                  Show on invoice
                 </label>
-              )}
-              </>)}
-              <div style={{ borderTop: editForm.showBreakdown ? `1px solid ${theme.border}` : "none", paddingTop: editForm.showBreakdown ? 10 : 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total (incl. GST)</span>
-                <span style={{ fontSize: 22, fontWeight: 700, color: theme.accent }}>${parseFloat(editForm.amount || 0).toLocaleString()}</span>
               </div>
-              <div style={{ marginTop: -4 }}><Input label="Override Total ($)" value={editForm.amount} onChange={v => setEditForm(prev => ({ ...prev, amount: v }))} type="number" /></div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {editForm.showBreakdown && (<>
+                <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>Materials</div>
+                {(editForm.lineItems || []).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <div style={{ flex: 1 }}>
+                      <input value={item.description} onChange={e => updateLineItem(idx, "description", e.target.value)} placeholder="Item description"
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none" }} />
+                    </div>
+                    <div style={{ width: isMobile ? 90 : 110 }}>
+                      <input value={item.price} onChange={e => updateLineItem(idx, "price", e.target.value)} placeholder="$0" type="number"
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", textAlign: "right" }} />
+                    </div>
+                    <button onClick={() => removeLineItem(idx)} style={{ padding: "10px 8px", background: "none", border: "none", color: theme.textDim, cursor: "pointer", fontSize: 16, lineHeight: 1, flexShrink: 0 }}>×</button>
+                  </div>
+                ))}
+                <button onClick={addLineItem} style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px dashed rgba(255,255,255,0.1)", color: theme.textMuted, fontSize: 13, cursor: "pointer", fontFamily: theme.font, transition: "all 0.2s" }}>+ Add item</button>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 4 }}>
+                  <span style={{ fontSize: 12, color: theme.textMuted }}>Materials subtotal</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>${parseFloat(editForm.materialsCost || 0).toLocaleString()}</span>
+                </div>
+                <div style={{ marginTop: 4 }}><Input label="Labour Hours" value={editForm.labourHours} onChange={v => updatePricing("labourHours", v)} type="number" /></div>
+                {business.hourly_rate && <div style={{ fontSize: 12, color: theme.textMuted, marginTop: -4 }}>Labour: {editForm.labourHours || 0} hrs × ${business.hourly_rate}/hr = ${((parseFloat(editForm.labourHours) || 0) * parseFloat(business.hourly_rate)).toLocaleString()}</div>}
+                {parseFloat(business.callout_fee) > 0 && (
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
+                    <input type="checkbox" checked={editForm.includeCallout} onChange={e => updatePricing("includeCallout", e.target.checked)} style={{ accentColor: theme.accent }} />
+                    Include callout fee (${parseFloat(business.callout_fee).toLocaleString()})
+                  </label>
+                )}
+                </>)}
+                <div style={{ borderTop: editForm.showBreakdown ? `1px solid ${theme.border}` : "none", paddingTop: editForm.showBreakdown ? 10 : 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total (incl. GST)</span>
+                  <span style={{ fontSize: 22, fontWeight: 700, color: theme.accent }}>${parseFloat(editForm.amount || 0).toLocaleString()}</span>
+                </div>
+                <div style={{ marginTop: -4 }}><Input label="Override Total ($)" value={editForm.amount} onChange={v => setEditForm(prev => ({ ...prev, amount: v }))} type="number" /></div>
+              </div>
             </div>
-            <div style={{ marginTop: 12 }}><Input label="Notes / Terms" value={editForm.notes} onChange={v => setEditForm(prev => ({ ...prev, notes: v }))} textarea placeholder="e.g. Valid for 30 days, 25% deposit required..." /></div>
+
+            <div style={{ marginTop: 16 }}><Input label="Notes / Terms" value={editForm.notes} onChange={v => setEditForm(prev => ({ ...prev, notes: v }))} textarea placeholder="e.g. Valid for 30 days, 25% deposit required..." /></div>
             <div style={{ marginTop: 12 }}><Input label="Customer Email *" value={form.customerEmail} onChange={v => update("customerEmail", v)} type="email" /></div>
             {(business.address || business.gst_number || business.license_number || business.quote_footer) && (
-              <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 10, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
+              <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                   <input type="checkbox" checked={editForm.showBusinessDetails} onChange={e => { const c = e.target.checked; setEditForm(prev => ({ ...prev, showBusinessDetails: c })); }} style={{ accentColor: theme.accent }} />
                   <div>
@@ -2685,9 +2697,79 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
               </div>
             )}
           </Card>
+
+          {/* Right column: Live preview (desktop) / Preview button trigger (mobile) */}
+          <div style={{ position: isMobile ? "static" : "sticky", top: isMobile ? "auto" : 32 }}>
+            {isMobile && (
+              <Button variant="secondary" onClick={() => setShowPreview(true)} style={{ width: "100%", justifyContent: "center", marginBottom: 12 }}><FileText size={16} /> Preview Quote</Button>
+            )}
+            {!isMobile && (
+              <div style={{ borderRadius: 12, background: "#fff", boxShadow: "0 4px 24px rgba(0,0,0,0.15)", overflow: "hidden" }}>
+                <div style={{ padding: "6px 16px", background: "#f9fafb", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: 1 }}>Live Preview</span>
+                  <div style={{ width: 6, height: 6, borderRadius: 3, background: "#22C55E" }} />
+                </div>
+                <div style={{ padding: "24px 28px", maxHeight: "70vh", overflowY: "auto" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+                    <div>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: "#0A0E17", fontFamily: theme.fontDisplay }}>{business.business_name}</div>
+                      {editForm?.showBusinessDetails && business.address && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>{business.address}</div>}
+                      {business.phone && <div style={{ fontSize: 11, color: "#6b7280", marginTop: editForm?.showBusinessDetails && business.address ? 0 : 3 }}>{business.phone}</div>}
+                      {business.email && <div style={{ fontSize: 11, color: "#6b7280" }}>{business.email}</div>}
+                      {editForm?.showBusinessDetails && (business.gst_number || business.license_number) && (
+                        <div style={{ display: "flex", gap: 8, marginTop: 3 }}>
+                          {business.gst_number && <div style={{ fontSize: 10, color: "#9ca3af" }}>GST: {business.gst_number}</div>}
+                          {business.license_number && <div style={{ fontSize: 10, color: "#9ca3af" }}>{business.license_number}</div>}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1 }}>Quote</div>
+                      <div style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>{new Date().toLocaleDateString("en-NZ", { day: "numeric", month: "long", year: "numeric" })}</div>
+                    </div>
+                  </div>
+                  <div style={{ borderBottom: "2px solid #14B8A6", marginBottom: 18 }} />
+                  <div style={{ marginBottom: 18 }}>
+                    <div style={{ fontSize: 10, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>Prepared For</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{form.customerName}</div>
+                    {form.customerEmail && <div style={{ fontSize: 11, color: "#6b7280" }}>{form.customerEmail}</div>}
+                    {form.customerPhone && <div style={{ fontSize: 11, color: "#6b7280" }}>{form.customerPhone}</div>}
+                  </div>
+                  <div style={{ marginBottom: 18 }}>
+                    <div style={{ fontSize: 10, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>Job</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{form.jobTitle}</div>
+                  </div>
+                  {editForm?.scope && <div style={{ marginBottom: 18 }}><div style={{ fontSize: 10, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>Scope of Work</div><div style={{ fontSize: 12, color: "#374151", lineHeight: 1.6, whiteSpace: "pre-line" }}>{editForm.scope}</div></div>}
+                  {editForm?.showBreakdown && editForm?.lineItems?.some(i => i.description.trim()) && (
+                    <div style={{ marginBottom: 18 }}>
+                      <div style={{ fontSize: 10, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Materials</div>
+                      {editForm.lineItems.filter(i => i.description.trim()).map((item, idx) => (
+                        <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid #f3f4f6" }}>
+                          <span style={{ fontSize: 12, color: "#374151" }}>{item.description}</span>
+                          {item.price && <span style={{ fontSize: 12, color: "#111827", fontWeight: 500 }}>${parseFloat(item.price).toLocaleString()}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ background: "#f9fafb", borderRadius: 8, padding: 14, marginBottom: 18 }}>
+                    {editForm?.showBreakdown && (<>
+                      {parseFloat(editForm?.materialsCost) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 12, color: "#6b7280" }}>Materials</span><span style={{ fontSize: 12, color: "#111827", fontWeight: 500 }}>${parseFloat(editForm.materialsCost).toLocaleString()}</span></div>}
+                      {editForm?.labourHours && business.hourly_rate && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 12, color: "#6b7280" }}>Labour ({editForm.labourHours} hrs @ ${business.hourly_rate}/hr)</span><span style={{ fontSize: 12, color: "#111827", fontWeight: 500 }}>${(parseFloat(editForm.labourHours) * parseFloat(business.hourly_rate)).toLocaleString()}</span></div>}
+                      {editForm?.includeCallout && parseFloat(business.callout_fee) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 12, color: "#6b7280" }}>Callout Fee</span><span style={{ fontSize: 12, color: "#111827", fontWeight: 500 }}>${parseFloat(business.callout_fee).toLocaleString()}</span></div>}
+                    </>)}
+                    <div style={{ borderTop: editForm?.showBreakdown ? "2px solid #111827" : "none", paddingTop: editForm?.showBreakdown ? 10 : 0, marginTop: editForm?.showBreakdown ? 8 : 0, display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Total (incl. GST)</span><span style={{ fontSize: 18, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(editForm?.amount || 0).toLocaleString()}</span></div>
+                  </div>
+                  {editForm?.notes && <div style={{ marginBottom: 18 }}><div style={{ fontSize: 10, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>Terms & Conditions</div><div style={{ fontSize: 11, color: "#6b7280", lineHeight: 1.5, whiteSpace: "pre-line" }}>{editForm.notes}</div></div>}
+                  {editForm?.showBusinessDetails && business.quote_footer && <div style={{ marginBottom: 18, padding: "10px 12px", borderRadius: 6, background: "#f9fafb", border: "1px solid #e5e7eb" }}><div style={{ fontSize: 11, color: "#6b7280", lineHeight: 1.5, whiteSpace: "pre-line" }}>{business.quote_footer}</div></div>}
+                  <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontSize: 9, color: "#9ca3af" }}>Powered by <span style={{ color: "#14B8A6", fontWeight: 600 }}>Wynflow</span></div><div style={{ fontSize: 9, color: "#9ca3af" }}>Valid for 30 days</div></div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Action buttons */}
           <div style={{ gridColumn: "1 / -1", display: "flex", gap: 12, justifyContent: "flex-end" }}>
             <Button variant="secondary" onClick={() => { setGenerated(null); setEditForm(null); }}>Regenerate</Button>
-            <Button variant="secondary" onClick={() => setShowPreview(true)}><FileText size={16} /> Preview</Button>
             <Button onClick={sendQuote} disabled={sending} style={{ padding: "14px 32px" }}>
               <Send size={16} /> {sending ? "Sending..." : "Send Quote to " + form.customerName.split(" ")[0]}
             </Button>
@@ -2942,7 +3024,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
           materialsCost: finalMatCost ? String(Math.round(finalMatCost * 100) / 100) : "",
           amount: result.quote.total || "",
           notes: result.quote.notes || "",
-          showBreakdown: true,
+          showBreakdown: business.default_show_breakdown !== undefined ? business.default_show_breakdown : true,
           includeCallout: parseFloat(business.callout_fee) > 0,
           showBusinessDetails: !!(business.address || business.gst_number || business.license_number),
         });
@@ -3113,7 +3195,13 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>Pricing</div>
               <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
-                <input type="checkbox" checked={editForm.showBreakdown} onChange={e => { const c = e.target.checked; setEditForm(prev => ({ ...prev, showBreakdown: c })); }} style={{ accentColor: theme.accent }} />
+                <input type="checkbox" checked={editForm.showBreakdown} onChange={e => {
+                  const c = e.target.checked;
+                  setEditForm(prev => ({ ...prev, showBreakdown: c }));
+                  if (confirm(c ? "Always show pricing breakdown on future quotes?" : "Always hide pricing breakdown on future quotes?")) {
+                    db("businesses").eq("id", business.id).update({ default_show_breakdown: c });
+                  }
+                }} style={{ accentColor: theme.accent }} />
                 Show on invoice
               </label>
             </div>
@@ -4009,10 +4097,24 @@ const Settings = ({ business, dispatch }) => {
 
   return (
     <div>
-      <div style={{ marginBottom: isMobile ? 16 : 32 }}>
-        <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Settings</h1>
-        <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>Manage your business profile</p>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: isMobile ? 16 : 32 }}>
+        <div>
+          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Settings</h1>
+          <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>Manage your business profile</p>
+        </div>
+        {isMobile && (
+          <button onClick={async () => { await supabase.auth_signOut(); clearCookies(); dispatch({ type: "LOGOUT" }); }}
+            style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)", color: theme.red, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: theme.font, flexShrink: 0 }}>
+            Sign Out
+          </button>
+        )}
       </div>
+      {/* Sticky save bar on mobile */}
+      {isMobile && (
+        <div style={{ position: "sticky", top: -16, zIndex: 10, margin: "0 -14px", padding: "10px 14px", background: "rgba(10,14,23,0.92)", borderBottom: "1px solid rgba(255,255,255,0.06)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", marginBottom: 12 }}>
+          <Button onClick={saveSettings} disabled={saving} style={{ width: "100%", justifyContent: "center" }}>{saving ? "Saving..." : "Save Changes"}</Button>
+        </div>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 10 : 24 }}>
         <Card style={isMobile ? { padding: 16 } : {}}>
           <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 14px" }}>Business Profile</h3>
@@ -4029,7 +4131,7 @@ const Settings = ({ business, dispatch }) => {
                 {TRADE_CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-            <Button onClick={saveSettings} disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
+            {!isMobile && <Button onClick={saveSettings} disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>}
           </div>
         </Card>
         <Card style={isMobile ? { padding: 16 } : {}}>
