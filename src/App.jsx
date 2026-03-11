@@ -3762,10 +3762,13 @@ const InvoicesList = ({ invoices, dispatch }) => {
 };
 
 // ─── Create Invoice Form ───
-const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, quoteId }) => {
+const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, quoteId, editInvoice }) => {
   const isMobile = useIsMobile();
   const [sending, setSending] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+
+  // Editing an existing draft or creating new
+  const isEditing = !!editInvoice;
 
   // Find linked quote if creating from a quote
   const linkedQuote = quoteId ? quotes?.find(q => q.id === quoteId) : null;
@@ -3780,19 +3783,19 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
     } catch { return null; }
   };
 
-  const breakdown = linkedQuote ? parseBreakdown(linkedQuote) : null;
+  const breakdown = linkedQuote ? parseBreakdown(linkedQuote) : (isEditing && editInvoice.breakdown ? editInvoice.breakdown : null);
 
   const [form, setForm] = useState({
-    customerName: linkedQuote?.customer_name || "",
-    customerEmail: linkedQuote?.customer_email || "",
-    customerPhone: linkedQuote?.customer_phone || "",
-    jobTitle: linkedQuote?.job_title || "",
-    description: linkedQuote?.description || "",
-    amount: linkedQuote ? String(linkedQuote.amount || "") : "",
-    isDeposit: false,
-    depositPercentage: business?.deposit_percentage || 25,
-    paymentTerms: business?.default_payment_terms || "7 days",
-    notes: "",
+    customerName: editInvoice?.customer_name || linkedQuote?.customer_name || "",
+    customerEmail: editInvoice?.customer_email || linkedQuote?.customer_email || "",
+    customerPhone: editInvoice?.customer_phone || linkedQuote?.customer_phone || "",
+    jobTitle: editInvoice?.job_title || linkedQuote?.job_title || "",
+    description: editInvoice?.description || linkedQuote?.description || "",
+    amount: editInvoice ? String(editInvoice.amount || "") : linkedQuote ? String(linkedQuote.amount || "") : "",
+    isDeposit: editInvoice?.is_deposit || false,
+    depositPercentage: editInvoice?.deposit_percentage || business?.deposit_percentage || 25,
+    paymentTerms: editInvoice?.payment_terms || business?.default_payment_terms || "7 days",
+    notes: editInvoice?.notes || "",
     showBreakdown: breakdown?.showBreakdown ?? true,
   });
 
@@ -3810,19 +3813,50 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
     return d.toISOString().split("T")[0];
   };
 
-  const [dueDate, setDueDate] = useState(getDueDate(form.paymentTerms));
+  const [dueDate, setDueDate] = useState(editInvoice?.due_date || getDueDate(form.paymentTerms));
 
   const invoiceAmount = form.isDeposit && linkedQuote
     ? Math.round(parseFloat(linkedQuote.amount || 0) * (form.depositPercentage / 100) * 100) / 100
     : parseFloat(form.amount) || 0;
 
-  const gstAmount = business?.gst_number ? Math.round(invoiceAmount * 3 / 23 * 100) / 100 : 0;
+  // GST: 15% on top of the amount (amount is GST-exclusive)
+  const gstAmount = business?.gst_number ? Math.round(invoiceAmount * 0.15 * 100) / 100 : 0;
+  const totalAmount = invoiceAmount + gstAmount;
 
-  // Generate invoice number
-  const nextNum = business?.next_invoice_number || (invoices?.length || 0) + 1;
-  const invoiceNumber = `INV-${String(nextNum).padStart(3, "0")}`;
+  // Invoice number: use existing for edits, otherwise derive from highest existing invoice
+  const nextNum = isEditing ? null : (() => {
+    if (business?.next_invoice_number) return business.next_invoice_number;
+    // Derive from highest existing invoice number
+    let max = 0;
+    (invoices || []).forEach(inv => {
+      const match = inv.invoice_number?.match(/INV-(\d+)/);
+      if (match) max = Math.max(max, parseInt(match[1]));
+    });
+    return max + 1;
+  })();
+  const invoiceNumber = isEditing ? editInvoice.invoice_number : `INV-${String(nextNum).padStart(3, "0")}`;
 
   const update = (key, val) => setForm({ ...form, [key]: val });
+
+  const buildInvoiceData = (status) => ({
+    business_id: business.id,
+    quote_id: linkedQuote?.id || editInvoice?.quote_id || null,
+    invoice_number: invoiceNumber,
+    customer_name: form.customerName,
+    customer_email: form.customerEmail,
+    customer_phone: form.customerPhone,
+    job_title: form.jobTitle,
+    description: form.description,
+    amount: invoiceAmount,
+    gst_amount: gstAmount,
+    is_deposit: form.isDeposit,
+    deposit_percentage: form.isDeposit ? form.depositPercentage : null,
+    due_date: dueDate,
+    payment_terms: form.paymentTerms,
+    status,
+    breakdown: breakdown || null,
+    notes: form.notes,
+  });
 
   const sendInvoice = async () => {
     if (!form.customerName || !form.customerEmail || !form.amount) {
@@ -3831,56 +3865,31 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
     }
     setSending(true);
     try {
-      // Create invoice in Supabase
-      const invoiceData = {
-        business_id: business.id,
-        quote_id: linkedQuote?.id || null,
-        invoice_number: invoiceNumber,
-        customer_name: form.customerName,
-        customer_email: form.customerEmail,
-        customer_phone: form.customerPhone,
-        job_title: form.jobTitle,
-        description: form.description,
-        amount: invoiceAmount,
-        gst_amount: gstAmount,
-        is_deposit: form.isDeposit,
-        deposit_percentage: form.isDeposit ? form.depositPercentage : null,
-        due_date: dueDate,
-        payment_terms: form.paymentTerms,
-        status: "sent",
-        breakdown: breakdown || null,
-        notes: form.notes,
-        sent_at: new Date().toISOString(),
-      };
+      let invoiceId;
+      const invoiceData = { ...buildInvoiceData("sent"), sent_at: new Date().toISOString() };
 
-      // Assign reminder sequence if available
-      const reminderSeq = sequences?.find(s => s.type === "invoice" && s.is_default);
-      if (reminderSeq) {
-        invoiceData.reminder_sequence_id = reminderSeq.id;
-        const { data: firstStep } = await db("sequence_steps").eq("sequence_id", reminderSeq.id).order("step_order").limit(1).select();
-        if (firstStep?.[0]) {
-          const nextReminder = new Date();
-          nextReminder.setDate(nextReminder.getDate() + (firstStep[0].delay_days || 7));
-          invoiceData.next_reminder_at = nextReminder.toISOString();
-        }
-        invoiceData.current_reminder_step = 0;
-        invoiceData.reminders_paused = false;
+      if (isEditing) {
+        // Update existing draft → sent
+        const { error } = await db("invoices").eq("id", editInvoice.id).update(invoiceData);
+        if (error) throw new Error("Failed to update invoice");
+        invoiceId = editInvoice.id;
+        dispatch({ type: "UPDATE_INVOICE", payload: { id: editInvoice.id, ...invoiceData } });
+      } else {
+        // Create new invoice
+        const { data: newInvoice, error } = await db("invoices").insert(invoiceData);
+        if (error) throw new Error("Failed to create invoice");
+        invoiceId = newInvoice[0].id;
+        await db("businesses").eq("id", business.id).update({ next_invoice_number: nextNum + 1 });
+        dispatch({ type: "ADD_INVOICE", payload: newInvoice[0] });
+        dispatch({ type: "SET_BUSINESS", payload: { ...business, next_invoice_number: nextNum + 1 } });
       }
-
-      const { data: newInvoice, error } = await db("invoices").insert([invoiceData]).select();
-      if (error) throw error;
-
-      // Increment invoice number on business
-      await db("businesses").eq("id", business.id).update({ next_invoice_number: nextNum + 1 });
 
       // Send invoice email via N8N
       await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-invoice", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoice_id: newInvoice[0].id }),
+        body: JSON.stringify({ invoice_id: invoiceId }),
       });
 
-      dispatch({ type: "ADD_INVOICE", payload: newInvoice[0] });
-      dispatch({ type: "SET_BUSINESS", payload: { ...business, next_invoice_number: nextNum + 1 } });
       dispatch({ type: "NOTIFY", payload: { message: "Invoice sent!", type: "success" } });
     } catch (err) {
       dispatch({ type: "NOTIFY", payload: { message: "Failed to send invoice — try again", type: "error" } });
@@ -3895,31 +3904,21 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
     }
     setSending(true);
     try {
-      const invoiceData = {
-        business_id: business.id,
-        quote_id: linkedQuote?.id || null,
-        invoice_number: invoiceNumber,
-        customer_name: form.customerName,
-        customer_email: form.customerEmail,
-        customer_phone: form.customerPhone,
-        job_title: form.jobTitle,
-        description: form.description,
-        amount: invoiceAmount,
-        gst_amount: gstAmount,
-        is_deposit: form.isDeposit,
-        deposit_percentage: form.isDeposit ? form.depositPercentage : null,
-        due_date: dueDate,
-        payment_terms: form.paymentTerms,
-        status: "draft",
-        breakdown: breakdown || null,
-        notes: form.notes,
-      };
-      const { data: newInvoice, error } = await db("invoices").insert([invoiceData]).select();
-      if (error) throw error;
-      await db("businesses").eq("id", business.id).update({ next_invoice_number: nextNum + 1 });
-      dispatch({ type: "ADD_INVOICE", payload: newInvoice[0] });
-      dispatch({ type: "SET_BUSINESS", payload: { ...business, next_invoice_number: nextNum + 1 } });
-      dispatch({ type: "NOTIFY", payload: { message: "Invoice saved as draft", type: "success" } });
+      const invoiceData = buildInvoiceData("draft");
+
+      if (isEditing) {
+        const { error } = await db("invoices").eq("id", editInvoice.id).update(invoiceData);
+        if (error) throw new Error("Failed to update invoice");
+        dispatch({ type: "UPDATE_INVOICE", payload: { id: editInvoice.id, ...invoiceData } });
+      } else {
+        const { data: newInvoice, error } = await db("invoices").insert(invoiceData);
+        if (error) throw new Error("Failed to save invoice");
+        await db("businesses").eq("id", business.id).update({ next_invoice_number: nextNum + 1 });
+        dispatch({ type: "ADD_INVOICE", payload: newInvoice[0] });
+        dispatch({ type: "SET_BUSINESS", payload: { ...business, next_invoice_number: nextNum + 1 } });
+      }
+
+      dispatch({ type: "NOTIFY", payload: { message: isEditing ? "Invoice updated" : "Invoice saved as draft", type: "success" } });
     } catch (err) {
       dispatch({ type: "NOTIFY", payload: { message: "Failed to save invoice", type: "error" } });
     }
@@ -4002,8 +4001,8 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
               </div>
             )}
             <div style={{ borderTop: "2px solid #111827", paddingTop: 12, marginTop: 12, display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>{form.isDeposit ? "Deposit Due" : "Total (incl. GST)"}</span>
-              <span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${invoiceAmount.toLocaleString()}</span>
+              <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>{form.isDeposit ? "Deposit Due" : gstAmount > 0 ? "Total (incl. GST)" : "Total"}</span>
+              <span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${totalAmount.toLocaleString()}</span>
             </div>
             {form.isDeposit && linkedQuote && (
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
@@ -4058,7 +4057,7 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
         <span onClick={() => dispatch({ type: "GO_BACK" })}
           style={{ fontSize: 13, color: theme.textMuted, cursor: "pointer", display: "block", marginBottom: 6 }}>← Back</span>
         <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>
-          {linkedQuote ? "Invoice from Quote" : "New Invoice"}
+          {isEditing ? "Edit Invoice" : linkedQuote ? "Invoice from Quote" : "New Invoice"}
         </h1>
         <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>{invoiceNumber}</p>
       </div>
@@ -4103,7 +4102,7 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
               </div>
             )}
             {gstAmount > 0 && (
-              <div style={{ fontSize: 13, color: theme.textMuted }}>GST (15%): ${gstAmount.toLocaleString()}</div>
+              <div style={{ fontSize: 13, color: theme.textMuted }}>+ GST (15%): ${gstAmount.toLocaleString()} — Total: ${totalAmount.toLocaleString()}</div>
             )}
           </div>
         </Card>
@@ -4146,7 +4145,7 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
         <Card style={{ gridColumn: "1 / -1" }}>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Button onClick={() => setShowPreview(true)} variant="secondary"><Search size={16} /> Preview Invoice</Button>
-            <Button onClick={saveAsDraft} variant="secondary" disabled={sending}><FileText size={16} /> Save as Draft</Button>
+            <Button onClick={saveAsDraft} variant="secondary" disabled={sending}><FileText size={16} /> {isEditing ? "Save Changes" : "Save as Draft"}</Button>
             <Button onClick={sendInvoice} disabled={sending}><Send size={16} /> {sending ? "Sending..." : "Send Invoice"}</Button>
           </div>
         </Card>
@@ -4209,16 +4208,26 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
   };
 
   const resendInvoice = async () => {
-    if (!window.confirm("Resend this invoice to " + invoice.customer_email + "?")) return;
+    const isDraft = invoice.status === "draft";
+    const msg = isDraft ? "Send this invoice to " + invoice.customer_email + "?" : "Resend this invoice to " + invoice.customer_email + "?";
+    if (!window.confirm(msg)) return;
     setSending(true);
     try {
+      // If draft, update status to sent first
+      if (isDraft) {
+        const updates = { status: "sent", sent_at: new Date().toISOString() };
+        const { error } = await db("invoices").eq("id", invoice.id).update(updates);
+        if (error) throw new Error("Failed to update invoice");
+        dispatch({ type: "UPDATE_INVOICE", payload: { id: invoice.id, ...updates } });
+      }
+
       await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-invoice", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ invoice_id: invoice.id }),
       });
-      dispatch({ type: "NOTIFY", payload: { message: "Invoice resent!", type: "success" } });
+      dispatch({ type: "NOTIFY", payload: { message: isDraft ? "Invoice sent!" : "Invoice resent!", type: "success" } });
     } catch (err) {
-      dispatch({ type: "NOTIFY", payload: { message: "Failed to resend invoice", type: "error" } });
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to send invoice", type: "error" } });
     }
     setSending(false);
   };
@@ -4253,11 +4262,11 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Invoice Details</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
-              <div style={{ fontSize: 12, color: theme.textMuted }}>Amount</div>
-              <div style={{ fontSize: 28, color: theme.accent, fontWeight: 700, fontFamily: theme.fontDisplay }}>${parseFloat(invoice.amount || 0).toLocaleString()}</div>
+              <div style={{ fontSize: 12, color: theme.textMuted }}>{invoice.gst_amount > 0 ? "Total (incl. GST)" : "Amount"}</div>
+              <div style={{ fontSize: 28, color: theme.accent, fontWeight: 700, fontFamily: theme.fontDisplay }}>${(parseFloat(invoice.amount || 0) + parseFloat(invoice.gst_amount || 0)).toLocaleString()}</div>
             </div>
             {invoice.gst_amount > 0 && (
-              <div style={{ fontSize: 13, color: theme.textMuted }}>Includes GST: ${parseFloat(invoice.gst_amount).toLocaleString()}</div>
+              <div style={{ fontSize: 13, color: theme.textMuted }}>Subtotal: ${parseFloat(invoice.amount).toLocaleString()} + GST: ${parseFloat(invoice.gst_amount).toLocaleString()}</div>
             )}
             {invoice.is_deposit && (
               <div style={{ padding: 12, borderRadius: 8, background: theme.accentSoft, border: `1px solid ${theme.accent}33` }}>
@@ -4350,6 +4359,7 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
           <Card style={{ gridColumn: "1 / -1" }}>
             <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Actions</h3>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "editInvoice:" + invoice.id })} variant="secondary"><FileText size={16} /> Edit Invoice</Button>
               <Button onClick={resendInvoice} disabled={sending}><Send size={16} /> Send Invoice</Button>
             </div>
           </Card>
@@ -5723,6 +5733,7 @@ export default function WynflowApp() {
       case "quoteDetail": return <QuoteDetail quoteId={detailId} quotes={quotes} sequences={sequences} dispatch={dispatch} business={business} invoices={invoices} />;
       case "invoices": return <InvoicesList invoices={invoices} dispatch={dispatch} />;
       case "createInvoice": return <CreateInvoiceForm dispatch={dispatch} business={business} quotes={quotes} sequences={sequences} invoices={invoices} quoteId={detailId} />;
+      case "editInvoice": return <CreateInvoiceForm dispatch={dispatch} business={business} quotes={quotes} sequences={sequences} invoices={invoices} editInvoice={invoices.find(i => i.id === detailId)} />;
       case "invoiceDetail": return <InvoiceDetail invoiceId={detailId} invoices={invoices} business={business} dispatch={dispatch} sequences={sequences} quotes={quotes} />;
       case "help": return <HelpCentre />;
       case "settings": return <Settings business={business} dispatch={dispatch} />;
