@@ -3925,12 +3925,16 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
     setSending(false);
   };
 
-  // Invoice Preview Modal
-  const InvoicePreviewModal = () => (
+  // Invoice Preview Modal — matches QuotePreview layout
+  const InvoicePreviewModal = () => {
+    const hasBreakdown = !form.isDeposit && form.showBreakdown && breakdown;
+    const dueDateFormatted = new Date(dueDate).toLocaleDateString("en-NZ", { day: "numeric", month: "long", year: "numeric" });
+
+    return (
     <div onClick={() => setShowPreview(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(4px)" }}>
       <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 620, maxHeight: "90vh", overflowY: "auto", borderRadius: 12, background: "#fff", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
         <div style={{ padding: "32px 40px" }}>
-          {/* Header */}
+          {/* Header — business info left, invoice info right */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
             <div>
               <div style={{ fontSize: 28, fontWeight: 800, color: "#0A0E17", fontFamily: theme.fontDisplay }}>{business.business_name}</div>
@@ -3948,12 +3952,12 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
               <div style={{ fontSize: 11, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1 }}>Invoice</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginTop: 2 }}>{invoiceNumber}</div>
               <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>{new Date().toLocaleDateString("en-NZ", { day: "numeric", month: "long", year: "numeric" })}</div>
-              <div style={{ fontSize: 13, color: "#111827", fontWeight: 600, marginTop: 2 }}>Due: {new Date(dueDate).toLocaleDateString("en-NZ", { day: "numeric", month: "long", year: "numeric" })}</div>
+              <div style={{ fontSize: 13, color: "#111827", fontWeight: 600, marginTop: 2 }}>Due: {dueDateFormatted}</div>
             </div>
           </div>
           <div style={{ borderBottom: "3px solid #14B8A6", marginBottom: 24 }} />
 
-          {/* Customer */}
+          {/* Bill To */}
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Bill To</div>
             <div style={{ fontSize: 16, fontWeight: 600, color: "#111827" }}>{form.customerName}</div>
@@ -3967,23 +3971,31 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
             <div style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>{form.jobTitle}</div>
           </div>
 
-          {/* Description */}
+          {/* Scope of Work */}
           {form.description && (
             <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Description</div>
+              <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Scope of Work</div>
               <div style={{ fontSize: 14, color: "#374151", lineHeight: 1.7, whiteSpace: "pre-line" }}>{form.description}</div>
             </div>
           )}
 
-          {/* Pricing */}
+          {/* Materials list from breakdown */}
+          {hasBreakdown && breakdown.materials && (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Materials</div>
+              <div style={{ fontSize: 14, color: "#374151", lineHeight: 1.8, whiteSpace: "pre-line" }}>{breakdown.materials}</div>
+            </div>
+          )}
+
+          {/* Pricing breakdown */}
           <div style={{ background: "#f9fafb", borderRadius: 10, padding: 20, marginBottom: 24 }}>
             {form.isDeposit && (
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                <span style={{ fontSize: 14, color: "#6b7280" }}>Deposit ({form.depositPercentage}%)</span>
+                <span style={{ fontSize: 14, color: "#6b7280" }}>Deposit ({form.depositPercentage}% of ${parseFloat(linkedQuote?.amount || 0).toLocaleString()})</span>
                 <span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${invoiceAmount.toLocaleString()}</span>
               </div>
             )}
-            {!form.isDeposit && form.showBreakdown && breakdown && (<>
+            {hasBreakdown && (<>
               {breakdown.lineItems?.filter(i => i.description?.trim()).map((item, idx) => (
                 <div key={idx} style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
                   <span style={{ fontSize: 14, color: "#6b7280" }}>{item.description}</span>
@@ -3994,6 +4006,12 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
               {breakdown.labourHours && breakdown.labourRate && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Labour ({breakdown.labourHours} hrs @ ${breakdown.labourRate}/hr)</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${(parseFloat(breakdown.labourHours) * parseFloat(breakdown.labourRate)).toLocaleString()}</span></div>}
               {breakdown.includeCallout && parseFloat(breakdown.calloutFee) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Callout Fee</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${parseFloat(breakdown.calloutFee).toLocaleString()}</span></div>}
             </>)}
+            {!form.isDeposit && !hasBreakdown && (
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <span style={{ fontSize: 14, color: "#6b7280" }}>Amount</span>
+                <span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${invoiceAmount.toLocaleString()}</span>
+              </div>
+            )}
             {gstAmount > 0 && (
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, paddingTop: 8, borderTop: "1px solid #e5e7eb" }}>
                 <span style={{ fontSize: 14, color: "#6b7280" }}>GST (15%)</span>
@@ -4013,20 +4031,28 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
           </div>
 
           {/* Payment terms */}
-          <div style={{ marginBottom: 24, padding: "14px 16px", borderRadius: 8, background: "#f9fafb", border: "1px solid #e5e7eb" }}>
-            <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 8 }}>Payment Terms</div>
-            <div style={{ fontSize: 14, color: "#374151", marginBottom: 4 }}><strong>Due:</strong> {new Date(dueDate).toLocaleDateString("en-NZ", { day: "numeric", month: "long", year: "numeric" })}</div>
-            <div style={{ fontSize: 14, color: "#374151" }}><strong>Terms:</strong> {form.paymentTerms}</div>
+          <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 10, background: "#f9fafb", border: "1px solid #e5e7eb" }}>
+            <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 10 }}>Payment Terms</div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+              <span style={{ fontSize: 14, color: "#6b7280" }}>Due Date</span>
+              <span style={{ fontSize: 14, color: "#111827", fontWeight: 600 }}>{dueDateFormatted}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 14, color: "#6b7280" }}>Terms</span>
+              <span style={{ fontSize: 14, color: "#111827" }}>{form.paymentTerms}</span>
+            </div>
           </div>
 
           {/* Bank details */}
           {(business.bank_name || business.bank_account_number) && (
-            <div style={{ marginBottom: 24, padding: "14px 16px", borderRadius: 8, background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
-              <div style={{ fontSize: 12, color: "#16a34a", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 8 }}>Bank Details</div>
-              {business.bank_name && <div style={{ fontSize: 14, color: "#374151" }}><strong>Bank:</strong> {business.bank_name}</div>}
-              {business.bank_account_name && <div style={{ fontSize: 14, color: "#374151" }}><strong>Account:</strong> {business.bank_account_name}</div>}
-              {business.bank_account_number && <div style={{ fontSize: 14, color: "#374151" }}><strong>Number:</strong> {business.bank_account_number}</div>}
-              <div style={{ fontSize: 13, color: "#6b7280", marginTop: 8, fontStyle: "italic" }}>Please use {invoiceNumber} as your payment reference</div>
+            <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 10, background: "#f0fdfa", border: "1px solid #ccfbf1" }}>
+              <div style={{ fontSize: 12, color: "#0d9488", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 10 }}>Payment Details</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {business.bank_name && <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 14, color: "#6b7280" }}>Bank</span><span style={{ fontSize: 14, color: "#111827" }}>{business.bank_name}</span></div>}
+                {business.bank_account_name && <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 14, color: "#6b7280" }}>Account Name</span><span style={{ fontSize: 14, color: "#111827" }}>{business.bank_account_name}</span></div>}
+                {business.bank_account_number && <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 14, color: "#6b7280" }}>Account Number</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 600 }}>{business.bank_account_number}</span></div>}
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 14, color: "#6b7280" }}>Reference</span><span style={{ fontSize: 14, color: "#111827" }}>{invoiceNumber}</span></div>
+              </div>
             </div>
           )}
 
@@ -4038,9 +4064,17 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
             </div>
           )}
 
+          {/* Quote footer from settings */}
+          {business.quote_footer && (
+            <div style={{ marginBottom: 24, padding: "14px 16px", borderRadius: 8, background: "#f9fafb", border: "1px solid #e5e7eb" }}>
+              <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-line" }}>{business.quote_footer}</div>
+            </div>
+          )}
+
           {/* Footer */}
           <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontSize: 11, color: "#9ca3af" }}>Powered by <span style={{ color: "#14B8A6", fontWeight: 600 }}>Wynflow</span></div>
+            <div style={{ fontSize: 11, color: "#9ca3af" }}>Payment due {dueDateFormatted}</div>
           </div>
         </div>
         <div style={{ padding: "16px 40px 24px", background: "#f9fafb", borderTop: "1px solid #e5e7eb", display: "flex", gap: 12, justifyContent: "flex-end" }}>
@@ -4049,7 +4083,7 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
         </div>
       </div>
     </div>
-  );
+  );};
 
   return (
     <div>
