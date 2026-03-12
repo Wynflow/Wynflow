@@ -60,7 +60,12 @@ const supabase = {
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
-    if (data.error) throw new Error(data.error.message || data.msg || "Signup failed");
+    if (data.error) {
+      const msg = (data.error.message || data.msg || "").toLowerCase();
+      if (msg.includes("already") || msg.includes("registered") || msg.includes("exists") || msg.includes("unique"))
+        throw new Error("An account with this email already exists. Try signing in instead.");
+      throw new Error(data.error.message || data.msg || "Signup failed — please try again");
+    }
     if (data.access_token) {
       this.token = data.access_token;
       this.user = data.user;
