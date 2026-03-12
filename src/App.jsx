@@ -1,6 +1,6 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
 import { jsPDF } from "jspdf";
-import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History, Image, ChevronDown } from "lucide-react";
+import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History } from "lucide-react";
 
 // ─── SEO Helper ───
 const SEO_CONFIG = {
@@ -5905,7 +5905,7 @@ const HelpCentre = () => {
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {filtered.map((cat) => (
           <Card key={cat.category}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.accent, margin: "0 0 12px", textTransform: "uppercase", letterSpacing: 0.5, fontSize: 12 }}>{cat.category}</h3>
+            <h3 style={{ fontSize: 12, fontWeight: 600, color: theme.accent, margin: "0 0 12px", textTransform: "uppercase", letterSpacing: 0.5 }}>{cat.category}</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
               {cat.items.map((item, i) => {
                 const itemKey = cat.category + i;
