@@ -1586,8 +1586,8 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         setCookie("wynflow_business", bizRecord, 43200);
         dispatch({ type: "NOTIFY", payload: { message: "Account created! Redirecting to payment...", type: "success" } });
         // Redirect to Stripe after account creation
-        const stripeUrl = STRIPE_LINKS.starter;
-        window.open(stripeUrl + "?prefilled_email=" + encodeURIComponent(email), "_blank");
+        const stripeUrl = STRIPE_LINKS[plan] || STRIPE_LINKS.starter;
+        window.location.href = stripeUrl + "?prefilled_email=" + encodeURIComponent(email);
         fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, trade, hourly_rate: hourlyRate, callout_fee: calloutFee }),
@@ -6395,25 +6395,27 @@ export default function WynflowApp() {
     );
   }
 
+  if (screen === "resetPassword") {
+    return (
+      <>
+        <style>{globalStyles}</style>
+        {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
+        <ResetPasswordScreen dispatch={dispatch} />
+      </>
+    );
+  }
+
+  if (screen === "login" || activeScreen === "signup") {
+    return (
+      <>
+        <style>{globalStyles}</style>
+        {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
+        <AuthScreen dispatch={dispatch} isSignup={activeScreen === "signup"} plan={detailId || "starter"} />
+      </>
+    );
+  }
+
   if (!business) {
-    if (screen === "resetPassword") {
-      return (
-        <>
-          <style>{globalStyles}</style>
-          {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
-          <ResetPasswordScreen dispatch={dispatch} />
-        </>
-      );
-    }
-    if (screen === "login" || activeScreen === "signup") {
-      return (
-        <>
-          <style>{globalStyles}</style>
-          {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
-          <AuthScreen dispatch={dispatch} isSignup={activeScreen === "signup"} plan={detailId || "starter"} />
-        </>
-      );
-    }
     return (
       <>
         <style>{globalStyles}</style>
