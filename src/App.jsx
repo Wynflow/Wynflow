@@ -1781,6 +1781,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
   const [error, setError] = useState("");
   const [resetMode, setResetMode] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleReset = async () => {
     if (!email) { setError("Please enter your email address"); return; }
@@ -1810,7 +1811,25 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
       if (isSignup) {
         const authData = await supabase.auth_signUp(email, password);
         if (!authData.user) throw new Error("Signup failed — please try again");
-        if (!authData.access_token) throw new Error("An account with this email already exists. Try signing in instead.");
+        // With email confirmation enabled, Supabase returns user but no token until confirmed
+        // If user already exists, identities array will be empty
+        if (!authData.access_token && authData.user.identities && authData.user.identities.length === 0) {
+          throw new Error("An account with this email already exists. Try signing in instead.");
+        }
+        // If we have a token, user confirmed instantly (e.g. confirmation disabled) — proceed normally
+        // If no token but user exists with identities, email confirmation is pending
+        if (!authData.access_token) {
+          // Store signup details temporarily so we can create business after email confirmation
+          try { localStorage.setItem("wynflow_pending_signup", JSON.stringify({ businessName, contactName, email, trade, hourlyRate, calloutFee, plan })); } catch(e) {}
+          setEmailSent(true);
+          setLoading(false);
+          // Notify N8N about new signup
+          fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, trade, hourly_rate: hourlyRate, callout_fee: calloutFee }),
+          }).catch(() => {});
+          return;
+        }
         const { data: biz, error: bizErr } = await db("businesses").insert({
           user_id: authData.user.id,
           business_name: businessName,
@@ -1914,7 +1933,24 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
           </div>
         </div>
         <Card style={{ padding: 32 }}>
-          {resetMode ? (
+          {emailSent ? (
+            <div style={{ textAlign: "center", padding: "20px 0" }}>
+              <Mail size={48} color={theme.accent} style={{ marginBottom: 16 }} />
+              <h3 style={{ fontSize: 18, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Verify Your Email</h3>
+              <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, margin: "0 0 8px" }}>
+                We've sent a verification link to <strong style={{ color: theme.text }}>{email}</strong>.
+              </p>
+              <p style={{ fontSize: 13, color: theme.textDim, lineHeight: 1.6, margin: "0 0 24px" }}>
+                Click the link in your email to activate your account, then come back and sign in.
+              </p>
+              <Button onClick={() => { setEmailSent(false); dispatch({ type: "SET_SCREEN", payload: "login" }); }}
+                style={{ width: "100%", justifyContent: "center" }}>Go to Sign In</Button>
+              <div style={{ marginTop: 16 }}>
+                <span onClick={() => setEmailSent(false)}
+                  style={{ fontSize: 13, color: theme.textMuted, cursor: "pointer" }}>Didn't receive it? Try again</span>
+              </div>
+            </div>
+          ) : resetMode ? (
             resetSent ? (
               <div style={{ textAlign: "center", padding: "20px 0" }}>
                 <CheckCircle2 size={48} color={theme.green} style={{ marginBottom: 16 }} />
@@ -1997,6 +2033,178 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
             style={{ color: theme.textMuted, cursor: "pointer" }}>Back to home</span>
         </div>
       </div>
+    </div>
+  );
+};
+
+// ─── Trial Paywall & Banner ───
+const getTrialDaysRemaining = (business) => {
+  if (!business || !business.trial_ends_at) return null;
+  const now = new Date();
+  const end = new Date(business.trial_ends_at);
+  const diff = end - now;
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+};
+
+const isTrialExpired = (business) => {
+  if (!business) return false;
+  const status = business.subscription_status;
+  if (status === "expired" || status === "cancelled") return true;
+  if (status === "trialing" && business.trial_ends_at) {
+    return new Date(business.trial_ends_at) < new Date();
+  }
+  return false;
+};
+
+const TrialPaywall = ({ business, dispatch }) => {
+  const isMobile = useIsMobile();
+  const stripeUrl = STRIPE_LINKS.starter + "?prefilled_email=" + encodeURIComponent(business?.email || "");
+
+  const handleSignOut = async () => {
+    await supabase.auth_signOut();
+    supabase.token = null;
+    supabase.user = null;
+    clearCookies();
+    dispatch({ type: "LOGOUT" });
+    window.history.replaceState(null, "", "/");
+  };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 9999,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      background: "rgba(10, 14, 23, 0.92)",
+      backdropFilter: "blur(12px)",
+      fontFamily: theme.font,
+    }}>
+      <div style={{
+        width: isMobile ? "calc(100% - 32px)" : 440,
+        maxWidth: 440,
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 16,
+        padding: isMobile ? "32px 24px" : "40px 36px",
+        textAlign: "center",
+      }}>
+        {/* Icon */}
+        <div style={{
+          width: 56, height: 56, borderRadius: 14,
+          background: "rgba(239, 68, 68, 0.12)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          margin: "0 auto 20px",
+        }}>
+          <Lock size={24} color={theme.red} />
+        </div>
+
+        {/* Heading */}
+        <h2 style={{
+          fontSize: isMobile ? 22 : 26, fontWeight: 700,
+          color: theme.text, margin: "0 0 10px",
+          fontFamily: theme.fontDisplay,
+        }}>
+          Your free trial has ended
+        </h2>
+
+        {/* Message */}
+        <p style={{
+          fontSize: isMobile ? 14 : 15, color: theme.textMuted,
+          lineHeight: 1.6, margin: "0 0 28px",
+        }}>
+          Subscribe to keep sending quotes, tracking follow-ups, and growing your business with Wynflow.
+        </p>
+
+        {/* Price */}
+        <div style={{
+          display: "inline-flex", alignItems: "baseline", gap: 4,
+          margin: "0 0 24px",
+        }}>
+          <span style={{ fontSize: 36, fontWeight: 700, color: theme.text }}>$29</span>
+          <span style={{ fontSize: 15, color: theme.textMuted }}>/mo</span>
+        </div>
+
+        {/* Features */}
+        <div style={{
+          display: "flex", flexDirection: "column", gap: 8,
+          textAlign: "left", margin: "0 0 28px",
+          padding: "16px 20px",
+          background: "rgba(255,255,255,0.03)",
+          borderRadius: 10,
+          border: "1px solid rgba(255,255,255,0.06)",
+        }}>
+          {["Unlimited AI quotes", "Automated follow-up emails", "Full analytics dashboard"].map((f, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Check size={15} color={theme.accent} />
+              <span style={{ fontSize: 13, color: theme.textMuted }}>{f}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Subscribe button */}
+        <a href={stripeUrl} style={{
+          display: "block", width: "100%",
+          padding: "14px 24px", borderRadius: 10,
+          background: theme.accent, color: "#fff",
+          fontSize: 15, fontWeight: 600,
+          textDecoration: "none", textAlign: "center",
+          boxShadow: "0 0 24px rgba(20,184,166,0.3)",
+          transition: "background 0.15s",
+        }}>
+          Subscribe Now — $29/mo
+        </a>
+
+        {/* Divider */}
+        <div style={{
+          height: 1, margin: "20px 0",
+          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)",
+        }} />
+
+        {/* Sign out */}
+        <button onClick={handleSignOut} style={{
+          background: "none", border: "none", cursor: "pointer",
+          color: theme.textMuted, fontSize: 13, fontWeight: 500,
+          padding: "4px 8px",
+        }}>
+          Sign out
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const TrialBanner = ({ business }) => {
+  const isMobile = useIsMobile();
+  const daysLeft = getTrialDaysRemaining(business);
+  if (daysLeft === null || daysLeft > 3 || daysLeft < 0) return null;
+  if (business?.subscription_status !== "trialing") return null;
+
+  const stripeUrl = STRIPE_LINKS.starter + "?prefilled_email=" + encodeURIComponent(business?.email || "");
+  const urgent = daysLeft <= 1;
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      gap: 12, flexWrap: "wrap",
+      padding: isMobile ? "10px 14px" : "10px 20px",
+      marginBottom: isMobile ? 12 : 20,
+      borderRadius: 10,
+      background: urgent ? "rgba(239, 68, 68, 0.10)" : "rgba(245, 158, 11, 0.10)",
+      border: `1px solid ${urgent ? "rgba(239, 68, 68, 0.20)" : "rgba(245, 158, 11, 0.20)"}`,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        {urgent ? <AlertTriangle size={16} color={theme.red} /> : <Clock size={16} color="#F59E0B" />}
+        <span style={{ fontSize: isMobile ? 12 : 13, fontWeight: 600, color: theme.text }}>
+          {daysLeft <= 0 ? "Your trial ends today" : daysLeft === 1 ? "1 day left in your trial" : `${daysLeft} days left in your trial`}
+        </span>
+      </div>
+      <a href={stripeUrl} target="_blank" rel="noopener noreferrer" style={{
+        padding: isMobile ? "6px 14px" : "6px 16px",
+        borderRadius: 8, fontSize: 12, fontWeight: 600,
+        background: theme.accent, color: "#fff",
+        textDecoration: "none", whiteSpace: "nowrap",
+        flexShrink: 0,
+      }}>
+        Subscribe — $29/mo
+      </a>
     </div>
   );
 };
@@ -6530,6 +6738,77 @@ export default function WynflowApp() {
         return;
       }
     }
+    // Handle email confirmation callback — create business profile from stored signup data
+    if (hash && hash.includes("type=signup")) {
+      const params = new URLSearchParams(hash.replace("#", ""));
+      const accessToken = params.get("access_token");
+      const refreshToken = params.get("refresh_token");
+      if (accessToken) {
+        supabase.token = accessToken;
+        window.history.replaceState(null, "", "/");
+        (async () => {
+          try {
+            const user = await supabase.auth_getUser();
+            if (!user) return;
+            supabase.user = user;
+            // Check if business already exists
+            const { data: existingBiz } = await db("businesses").eq("user_id", user.id).single().select();
+            if (existingBiz) {
+              dispatch({ type: "SET_USER", payload: user });
+              dispatch({ type: "SET_BUSINESS", payload: existingBiz });
+              setCookie("wynflow_token", accessToken, 43200);
+              if (refreshToken) setCookie("wynflow_refresh", refreshToken, 43200);
+              setCookie("wynflow_user", user, 43200);
+              setCookie("wynflow_business", existingBiz, 43200);
+              dispatch({ type: "NOTIFY", payload: { message: "Email verified! Welcome to Wynflow.", type: "success" } });
+              return;
+            }
+            // Create business from pending signup data
+            let pending = {};
+            try { pending = JSON.parse(localStorage.getItem("wynflow_pending_signup") || "{}"); } catch(e) {}
+            const { data: biz } = await db("businesses").insert({
+              user_id: user.id,
+              business_name: pending.businessName || "My Business",
+              contact_name: pending.contactName || "",
+              email: user.email || pending.email || "",
+              trade: pending.trade || null,
+              trade_category: pending.trade || null,
+              hourly_rate: parseFloat(pending.hourlyRate) || 0,
+              callout_fee: parseFloat(pending.calloutFee) || 0,
+              subscription_status: "trialing",
+            });
+            const bizRecord = biz && biz[0];
+            if (bizRecord) {
+              // Create default follow-up sequence
+              const { data: seq } = await db("follow_up_sequences").insert({ business_id: bizRecord.id, name: "Standard Follow-Up", is_active: true, is_default: true });
+              if (seq && seq[0]) {
+                await db("sequence_steps").insert([
+                  { sequence_id: seq[0].id, step_order: 1, delay_days: 2, email_subject: "Following up on your quote", email_body: "Hi {name}, just checking in on the quote I sent through for {job}. Happy to answer any questions. Cheers, {business_name}" },
+                  { sequence_id: seq[0].id, step_order: 2, delay_days: 5, email_subject: "Any questions about your quote?", email_body: "Hey {name}, wanted to make sure you received the quote for {job}. Let me know if you'd like to go ahead or if anything needs adjusting. Cheers, {business_name}" },
+                  { sequence_id: seq[0].id, step_order: 3, delay_days: 10, email_subject: "Last chance — your quote for {job}", email_body: "Hi {name}, just a final follow-up on your quote for {job} (${amount}). This quote will expire in 5 days. Let me know either way! Cheers, {business_name}" },
+                ]);
+              }
+              dispatch({ type: "SET_USER", payload: user });
+              dispatch({ type: "SET_BUSINESS", payload: bizRecord });
+              setCookie("wynflow_token", accessToken, 43200);
+              if (refreshToken) setCookie("wynflow_refresh", refreshToken, 43200);
+              setCookie("wynflow_user", user, 43200);
+              setCookie("wynflow_business", bizRecord, 43200);
+              try { localStorage.removeItem("wynflow_pending_signup"); } catch(e) {}
+              dispatch({ type: "NOTIFY", payload: { message: "Email verified! Welcome to Wynflow.", type: "success" } });
+              // Redirect to Stripe
+              const plan = pending.plan || "starter";
+              const stripeUrl = STRIPE_LINKS[plan] || STRIPE_LINKS.starter;
+              window.location.href = stripeUrl + "?prefilled_email=" + encodeURIComponent(user.email || pending.email || "");
+            }
+          } catch(err) {
+            dispatch({ type: "NOTIFY", payload: { message: "Email verified! Please sign in to continue.", type: "success" } });
+            dispatch({ type: "SET_SCREEN", payload: "login" });
+          }
+        })();
+        return;
+      }
+    }
 
     const path = window.location.pathname.replace(/^\//, "").toLowerCase();
     if (path.startsWith("request/")) {
@@ -6704,6 +6983,17 @@ export default function WynflowApp() {
     );
   }
 
+  // Trial paywall — block dashboard access when trial/subscription has expired
+  if (isTrialExpired(business)) {
+    return (
+      <>
+        <style>{globalStyles}</style>
+        {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
+        <TrialPaywall business={business} dispatch={dispatch} />
+      </>
+    );
+  }
+
   const renderContent = () => {
     if (loading) return <Spinner />;
     switch (activeScreen) {
@@ -6733,6 +7023,7 @@ export default function WynflowApp() {
       <div style={{ display: "flex", height: "100vh", fontFamily: theme.font, color: "#F1F3F7", background: theme.bg, overflow: "hidden", flexDirection: isMobile ? "column" : "row" }}>
         <Sidebar screen={activeScreen} dispatch={dispatch} business={business} />
         <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "16px 14px 90px" : "28px 36px", WebkitOverflowScrolling: "touch" }}>
+          <TrialBanner business={business} />
           {renderContent()}
         </div>
       </div>
