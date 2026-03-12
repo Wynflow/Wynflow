@@ -853,10 +853,10 @@ const ProductDemo = () => {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
         {[
-          { caption: "Bathroom — water damage under vanity", img: "https://images.unsplash.com/photo-1585128792020-803d29415281?w=400&h=300&fit=crop" },
-          { caption: "Exposed pipework behind wall", img: "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=400&h=300&fit=crop" },
-          { caption: "Customer wants mixer tap replaced", img: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop" },
-          { caption: "Access panel (tight space)", img: "https://images.unsplash.com/photo-1523413363574-c30aa1c2a516?w=400&h=300&fit=crop" },
+          { caption: "Bathroom — tiled, no vanity yet", img: "/demo-photo-1.jpg" },
+          { caption: "Exposed pipework — hot & cold roughed in", img: "/demo-photo-2.jpg" },
+          { caption: "Bath surround — tiling complete", img: "/demo-photo-3.jpg" },
+          { caption: "Ceiling & walls — gibbed, ready for paint", img: "/demo-photo-4.jpg" },
         ].map((photo, i) => (
           <div key={i} style={{ borderRadius: 10, overflow: "hidden", position: "relative" }}>
             <img src={photo.img} alt={photo.caption} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block" }} loading="lazy" />
