@@ -341,6 +341,20 @@ const invoiceStatusConfig = {
   paid: { label: "Paid", color: theme.green, bg: theme.greenSoft },
 };
 
+// ─── Invoice Settings Validation ───
+const isInvoiceSettingsComplete = (business) => {
+  if (!business) return { complete: false, missing: ["Business profile"] };
+  const missing = [];
+  if (!business.business_name?.trim()) missing.push("Business name");
+  if (!business.email?.trim()) missing.push("Email");
+  if (!business.phone?.trim()) missing.push("Phone");
+  if (!business.address?.trim()) missing.push("Business address");
+  if (!business.bank_name?.trim()) missing.push("Bank name");
+  if (!business.bank_account_name?.trim()) missing.push("Bank account name");
+  if (!business.bank_account_number?.trim()) missing.push("Bank account number");
+  return { complete: missing.length === 0, missing };
+};
+
 // ─── Invoice PDF Generator (NZ-compliant) ───
 const fmtNZD = (n) => "$" + parseFloat(n || 0).toLocaleString("en-NZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = (d) => new Date(d).toLocaleDateString("en-NZ", { day: "numeric", month: "long", year: "numeric" });
@@ -434,7 +448,12 @@ const generateInvoicePDF = ({ business, invoice, breakdown }) => {
   };
 
   // Parse breakdown
-  const bd = breakdown ? (typeof breakdown === "string" ? JSON.parse(breakdown) : breakdown) : null;
+  let bd = null;
+  if (breakdown) {
+    if (typeof breakdown === "string") {
+      try { bd = JSON.parse(breakdown); } catch { bd = null; }
+    } else { bd = breakdown; }
+  }
   let hasRows = false;
 
   if (bd && bd.lineItems) {
@@ -679,7 +698,7 @@ const Navbar = ({ dispatch, transparent }) => {
       ) : (
         <div style={{ display:"flex",alignItems:"center",gap:28 }}>
           {[["home","Home"],["about","About"],["pricing","Pricing"]].map(([id,label]) => (
-            <span key={id} onClick={() => dispatch({ type:"SET_SCREEN",payload:id })} style={{ fontSize:13,fontWeight:500,color:theme.textMuted,cursor:"pointer",transition:"color 0.2s",letterSpacing:"0.01em" }} onMouseEnter={e=>e.target.style.color=theme.text} onMouseLeave={e=>e.target.style.color=theme.textMuted}>{label}</span>
+            <span key={id} onClick={() => dispatch({ type:"SET_SCREEN",payload:id })} style={{ fontSize:13,fontWeight:500,color:theme.textMuted,cursor:"pointer",transition:"color 0.2s",letterSpacing:"0.01em" }} onMouseEnter={e=>e.currentTarget.style.color=theme.text} onMouseLeave={e=>e.currentTarget.style.color=theme.textMuted}>{label}</span>
           ))}
           <span onClick={() => dispatch({ type:"SET_SCREEN",payload:"login" })} style={{ fontSize:13,fontWeight:500,color:theme.textMuted,cursor:"pointer",transition:"color 0.2s" }} onMouseEnter={e=>e.target.style.color=theme.text} onMouseLeave={e=>e.target.style.color=theme.textMuted}>Log In</span>
           <button onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })} style={{ fontFamily:theme.font,fontSize:13,fontWeight:600,padding:"8px 20px",borderRadius:8,background:theme.accent,color:"#000",border:"none",cursor:"pointer",transition:"all 0.2s",letterSpacing:"0.01em" }}
@@ -707,12 +726,12 @@ const Footer = ({ dispatch }) => {
       </div>
       <div>
         <h4 style={{ fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.3)",marginBottom:16,textTransform:"uppercase",letterSpacing:"0.1em" }}>Product</h4>
-        {["home","pricing","about"].map(p => <div key={p} onClick={() => dispatch({ type:"SET_SCREEN",payload:p })} style={{ fontSize:14,color:"rgba(255,255,255,0.5)",cursor:"pointer",marginBottom:10,textTransform:"capitalize",transition:"color 0.2s" }} onMouseEnter={e=>e.target.style.color="#fff"} onMouseLeave={e=>e.target.style.color="rgba(255,255,255,0.5)"}>{p}</div>)}
+        {["home","pricing","about"].map(p => <div key={p} onClick={() => dispatch({ type:"SET_SCREEN",payload:p })} style={{ fontSize:14,color:"rgba(255,255,255,0.5)",cursor:"pointer",marginBottom:10,textTransform:"capitalize",transition:"color 0.2s" }} onMouseEnter={e=>e.currentTarget.style.color="#fff"} onMouseLeave={e=>e.currentTarget.style.color="rgba(255,255,255,0.5)"}>{p}</div>)}
       </div>
       <div>
         <h4 style={{ fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.3)",marginBottom:16,textTransform:"uppercase",letterSpacing:"0.1em" }}>Company</h4>
         <div style={{ fontSize:14,color:"rgba(255,255,255,0.5)",marginBottom:10 }}>Auckland, New Zealand</div>
-        <div style={{ fontSize:14,color:theme.accent,transition:"opacity 0.2s",cursor:"pointer" }} onMouseEnter={e=>e.target.style.opacity="0.8"} onMouseLeave={e=>e.target.style.opacity="1"}>jesse@wynflow.co.nz</div>
+        <div style={{ fontSize:14,color:theme.accent,transition:"opacity 0.2s",cursor:"pointer" }} onMouseEnter={e=>e.currentTarget.style.opacity="0.8"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>jesse@wynflow.co.nz</div>
       </div>
     </div>
     <div style={{ maxWidth:1100,margin:"48px auto 0",paddingTop:24,borderTop:"1px solid rgba(255,255,255,0.06)",textAlign:"center",fontSize:12,color:"rgba(255,255,255,0.25)",letterSpacing:"0.02em" }}>2026 Wynflow. All rights reserved.</div>
@@ -1267,7 +1286,7 @@ const PricingPage = ({ dispatch }) => {
   const isMobile = useIsMobile();
   const plans = [
     {name:"Starter",price:"29",desc:"AI quoting & automated follow-ups to win more jobs",features:["AI photo quote generator","Unlimited quotes","1 automated follow-up sequence","Customer quote request page","One-click Accept / Decline","File attachments","Quote dashboard & analytics","Email support"],highlighted:true,active:true,link:"https://buy.stripe.com/bJecN5cNf6gD70L1A973G00"},
-    {name:"Pro",price:"49",desc:"The full AI-powered toolkit for serious tradies",features:[],highlighted:false,active:false,comingSoon:true,link:"https://buy.stripe.com/9B6cN500t6gD2Kv92B73G01"},
+    {name:"Pro",price:"49",desc:"The full AI-powered toolkit for serious tradies",features:[],highlighted:false,active:false,comingSoon:true,link:"https://buy.stripe.com/9B6cN500t6gD2Kv52B73G01"},
   ];
   const faqs = [{q:"How does the AI quote generator work?",a:"Take photos on the job site, add a few details about the work, and Wynflow's AI analyses everything — your trade, your rates, the scope of work — to generate an itemised quote with materials, labour, and pricing. Review it, tweak if needed, and send."},{q:"Is there really a free trial?",a:"Yep. 14 days, full access including AI quoting, no credit card needed. Send real quotes from day one."},{q:"Can I cancel anytime?",a:"Absolutely. No lock-in contracts, no cancellation fees. But most tradies stay."},{q:"Do my customers know it's automated?",a:"Nope. Emails come from Wynflow on behalf of your business name. They look professional and personal — your customers just think you're on the ball."},{q:"What if I already use Xero / Tradify / Fergus?",a:"Keep using them for your invoicing. Wynflow is specifically for AI-powered quoting and automated follow-ups — it fills the gap most trade software misses."},{q:"How long does it take to set up?",a:"About 30 seconds. Sign up, enter your business details, and generate your first AI quote. The default follow-up sequence is ready to go."}];
   return (
@@ -1635,7 +1654,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
                     {TRADE_CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
-                <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 10 : 12 }}>
                   <div style={{ flex: 1 }}><Input label="Hourly Rate ($)" value={hourlyRate} onChange={setHourlyRate} type="number" placeholder="e.g. 85" /></div>
                   <div style={{ flex: 1 }}><Input label="Callout Fee ($)" value={calloutFee} onChange={setCalloutFee} type="number" placeholder="e.g. 50" /></div>
                 </div>
@@ -2370,7 +2389,7 @@ const Analytics = ({ quotes, invoices = [] }) => {
   const responded = won + declined;
   const winRate = responded > 0 ? Math.round((won / responded) * 100) : 0;
   const totalRevenue = quotes.filter(q => q.status === "accepted" || q.status === "booked").reduce((sum, q) => sum + parseFloat(q.amount || 0), 0);
-  const avgQuoteValue = total > 0 ? Math.round(totalRevenue / Math.max(won, 1)) : 0;
+  const avgQuoteValue = won > 0 ? Math.round(totalRevenue / won) : 0;
 
   // Follow-up effectiveness: which step did they accept on?
   const acceptedQuotes = quotes.filter(q => q.status === "accepted" || q.status === "booked");
@@ -2815,7 +2834,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         sequence_id: seqId, next_follow_up_at: nextFollowUp, current_step: 0, follow_up_paused: false,
         ai_estimate: parseFloat(editForm.amount), ai_estimate_notes: JSON.stringify(breakdown),
       });
-      if (quoteErr) throw new Error("Failed to create quote");
+      if (quoteErr || !newQuote?.[0]) throw new Error("Failed to create quote");
       await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quote_id: newQuote[0].id, breakdown }),
@@ -3108,7 +3127,7 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
         sequence_id: form.sequenceId || null,
         next_follow_up_at: nextFollowUp,
       });
-      if (quoteErr) throw new Error("Failed to create quote");
+      if (quoteErr || !newQuote?.[0]) throw new Error("Failed to create quote");
       await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quote_id: newQuote[0].id }),
@@ -3386,7 +3405,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
         showBusinessDetails: editForm.showBusinessDetails,
         notes: editForm.notes,
       };
-      await db("quotes").eq("id", quote.id).update({
+      const quoteUpdates = {
         amount: parseFloat(editForm.amount),
         description: editForm.scope + (materialsText ? "\n\nMaterials:\n" + materialsText : "") + (editForm.notes ? "\n\nNotes:\n" + editForm.notes : ""),
         status: "sent",
@@ -3396,12 +3415,14 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
         current_step: 0,
         follow_up_paused: false,
         ai_estimate: parseFloat(editForm.amount), ai_estimate_notes: JSON.stringify(breakdown),
-      });
+      };
+      const { error: updateErr } = await db("quotes").eq("id", quote.id).update(quoteUpdates);
+      if (updateErr) throw new Error("Failed to update quote");
       await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quote_id: quote.id, breakdown }),
       });
-      dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, amount: parseFloat(editForm.amount), status: "sent", sent_at: new Date().toISOString() } });
+      dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, ...quoteUpdates } });
       dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${quote.customer_name}! Follow-ups scheduled.`, type: "success" } });
       dispatch({ type: "GO_BACK" });
     } catch (err) {
@@ -3586,7 +3607,13 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
     }
   };
 
+  const linkedInvoices = invoices.filter(inv => inv.quote_id === quote.id);
+
   const deleteQuote = async () => {
+    if (linkedInvoices.length > 0) {
+      dispatch({ type: "NOTIFY", payload: { message: "Can't delete — this quote has a linked invoice. Delete the invoice first.", type: "error" } });
+      return;
+    }
     if (!window.confirm("Are you sure you want to delete this quote? This cannot be undone.")) return;
     const { error } = await db("quotes").eq("id", quote.id).delete();
     if (error) {
@@ -3640,7 +3667,7 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
                   })()}
                 </div>
                 <div style={{ fontSize: 22, color: "#14B8A6", fontWeight: 700 }}>
-                  ${quote.ai_estimate_range_low?.toLocaleString()} — ${quote.ai_estimate_range_high?.toLocaleString()}
+                  ${(quote.ai_estimate_range_low || 0).toLocaleString()} — ${(quote.ai_estimate_range_high || 0).toLocaleString()}
                 </div>
                 {quote.ai_estimate_notes && <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 8, lineHeight: 1.5 }}>{quote.ai_estimate_notes.replace(/^(HIGH|MEDIUM|LOW) CONFIDENCE: /i, "")}</div>}
               </div>
@@ -3731,7 +3758,11 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Button onClick={() => updateStatus("booked")} style={{ background: theme.green, color: "#fff", display: "inline-flex", alignItems: "center", gap: 6 }}><Check size={16} /> Mark as Booked</Button>
-            <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "createInvoice:" + quote.id })} style={{ background: theme.accentSoft, color: theme.accent, display: "inline-flex", alignItems: "center", gap: 6 }}><Receipt size={16} /> Create Invoice</Button>
+            {linkedInvoices.length > 0 ? (
+              <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "invoiceDetail:" + linkedInvoices[0].id })} style={{ background: theme.accentSoft, color: theme.accent, display: "inline-flex", alignItems: "center", gap: 6 }}><Receipt size={16} /> View Invoice</Button>
+            ) : (
+              <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "createInvoice:" + quote.id })} style={{ background: theme.accentSoft, color: theme.accent, display: "inline-flex", alignItems: "center", gap: 6 }}><Receipt size={16} /> Generate Invoice</Button>
+            )}
             <Button onClick={() => updateStatus("declined")} variant="danger" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><XCircle size={16} /> Actually Declined</Button>
           </div>
         </Card>
@@ -3747,7 +3778,11 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
               </p>
             </div>
           </div>
-          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "createInvoice:" + quote.id })} style={{ marginTop: 16, background: theme.accentSoft, color: theme.accent, display: "inline-flex", alignItems: "center", gap: 6 }}><Receipt size={16} /> Create Invoice</Button>
+          {linkedInvoices.length > 0 ? (
+            <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "invoiceDetail:" + linkedInvoices[0].id })} style={{ marginTop: 16, background: theme.accentSoft, color: theme.accent, display: "inline-flex", alignItems: "center", gap: 6 }}><Receipt size={16} /> View Invoice</Button>
+          ) : (
+            <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "createInvoice:" + quote.id })} style={{ marginTop: 16, background: theme.accentSoft, color: theme.accent, display: "inline-flex", alignItems: "center", gap: 6 }}><Receipt size={16} /> Generate Invoice</Button>
+          )}
         </Card>
         )}
         {quote.status === "declined" && (
@@ -3836,10 +3871,11 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
 };
 
 // ─── Invoices List ───
-const InvoicesList = ({ invoices, dispatch }) => {
+const InvoicesList = ({ invoices, dispatch, quotes = [], business }) => {
   const isMobile = useIsMobile();
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [showFromQuote, setShowFromQuote] = useState(false);
 
   const isOverdue = (inv) => (inv.status === "sent" || inv.status === "viewed") && inv.due_date && new Date(inv.due_date) < new Date();
 
@@ -3881,7 +3917,36 @@ const InvoicesList = ({ invoices, dispatch }) => {
           <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Invoices</h1>
           <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>{invoices.length} total invoice{invoices.length !== 1 ? "s" : ""}</p>
         </div>
-        <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "createInvoice" })} size={isMobile ? "sm" : "md"} style={{ background: "rgba(20,184,166,0.12)", color: "#14B8A6" }}><Plus size={14} /> New Invoice</Button>
+        <div style={{ display: "flex", gap: 8, position: "relative" }}>
+          {(() => {
+            const invoiceable = quotes.filter(q => (q.status === "accepted" || q.status === "booked") && !invoices.some(inv => inv.quote_id === q.id));
+            return invoiceable.length > 0 && (
+              <div style={{ position: "relative" }}>
+                <Button onClick={() => setShowFromQuote(!showFromQuote)} size={isMobile ? "sm" : "md"} variant="secondary">
+                  <FileText size={14} /> From Quote
+                </Button>
+                {showFromQuote && (
+                  <>
+                    <div onClick={() => setShowFromQuote(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 98 }} />
+                    <div style={{ position: "absolute", top: "100%", right: 0, marginTop: 4, minWidth: 280, maxHeight: 300, overflowY: "auto", borderRadius: 10, background: "rgba(17,24,39,0.98)", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)", zIndex: 99, padding: 6 }}>
+                      <div style={{ fontSize: 11, color: theme.textDim, padding: "6px 10px", textTransform: "uppercase", fontWeight: 600, letterSpacing: 0.5 }}>Accepted quotes without invoices</div>
+                      {invoiceable.map(q => (
+                        <div key={q.id} onClick={() => { setShowFromQuote(false); dispatch({ type: "SET_SCREEN", payload: "createInvoice:" + q.id }); }}
+                          style={{ padding: "10px 12px", borderRadius: 6, cursor: "pointer", transition: "background 0.1s" }}
+                          onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+                          onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>{q.customer_name}</div>
+                          <div style={{ fontSize: 12, color: theme.textMuted }}>{q.job_title} — ${parseFloat(q.amount || 0).toLocaleString()}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
+          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "createInvoice" })} size={isMobile ? "sm" : "md"} style={{ background: "rgba(20,184,166,0.12)", color: "#14B8A6" }}><Plus size={14} /> New Invoice</Button>
+        </div>
       </div>
 
       {/* Filter tabs */}
@@ -3965,11 +4030,74 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
   const [sending, setSending] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
+  // Check invoice settings are complete
+  const { complete: settingsComplete, missing: settingsMissing } = isInvoiceSettingsComplete(business);
+
+  // Block if settings incomplete (unless editing existing)
+  if (!settingsComplete && !editInvoice) {
+    return (
+      <div>
+        <div style={{ marginBottom: isMobile ? 16 : 32 }}>
+          <span onClick={() => dispatch({ type: "GO_BACK" })}
+            style={{ fontSize: 13, color: theme.textMuted, cursor: "pointer", display: "block", marginBottom: 6 }}>← Back</span>
+          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>New Invoice</h1>
+        </div>
+        <Card style={{ maxWidth: 520 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <AlertTriangle size={24} color="#F59E0B" />
+            <h3 style={{ fontSize: 18, fontWeight: 600, color: "#F59E0B", margin: 0 }}>Complete Invoice Settings First</h3>
+          </div>
+          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, margin: "0 0 16px" }}>
+            Before you can create invoices, you need to fill in your business and payment details. These appear on every invoice you send.
+          </p>
+          <div style={{ padding: "12px 16px", borderRadius: 8, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)", marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 6 }}>Missing:</div>
+            {settingsMissing.map((item, i) => (
+              <div key={i} style={{ fontSize: 13, color: theme.textMuted, paddingLeft: 12, marginBottom: 2 }}>• {item}</div>
+            ))}
+          </div>
+          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "settings" })} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <SettingsIcon size={16} /> Go to Settings
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   // Editing an existing draft or creating new
   const isEditing = !!editInvoice;
 
   // Find linked quote if creating from a quote
   const linkedQuote = quoteId ? quotes?.find(q => q.id === quoteId) : null;
+
+  // Duplicate prevention — check if this quote already has an invoice
+  const existingInvoice = linkedQuote ? (invoices || []).find(inv => inv.quote_id === linkedQuote.id) : null;
+  if (existingInvoice && !isEditing) {
+    return (
+      <div>
+        <div style={{ marginBottom: isMobile ? 16 : 32 }}>
+          <span onClick={() => dispatch({ type: "GO_BACK" })}
+            style={{ fontSize: 13, color: theme.textMuted, cursor: "pointer", display: "block", marginBottom: 6 }}>← Back</span>
+          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Invoice Already Exists</h1>
+        </div>
+        <Card style={{ maxWidth: 520 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <Receipt size={24} color={theme.accent} />
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: 0 }}>Invoice #{existingInvoice.invoice_number}</h3>
+              <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>An invoice has already been created for this quote.</p>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "invoiceDetail:" + existingInvoice.id })}>
+              View Invoice
+            </Button>
+            <Button variant="secondary" onClick={() => dispatch({ type: "GO_BACK" })}>Go Back</Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   // Parse breakdown from quote's ai_estimate_notes if available
   const parseBreakdown = (quote) => {
@@ -4039,6 +4167,7 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
   const buildInvoiceData = (status) => ({
     business_id: business.id,
     quote_id: linkedQuote?.id || editInvoice?.quote_id || null,
+    generated_from_quote: !!(linkedQuote?.id),
     invoice_number: invoiceNumber,
     customer_name: form.customerName,
     customer_email: form.customerEmail,
@@ -4080,6 +4209,11 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
         await db("businesses").eq("id", business.id).update({ next_invoice_number: nextNum + 1 });
         dispatch({ type: "ADD_INVOICE", payload: newInvoice[0] });
         dispatch({ type: "SET_BUSINESS", payload: { ...business, next_invoice_number: nextNum + 1 } });
+        // Link quote to invoice (bidirectional)
+        if (linkedQuote) {
+          await db("quotes").eq("id", linkedQuote.id).update({ invoice_generated: true, generated_invoice_id: invoiceId });
+          dispatch({ type: "UPDATE_QUOTE", payload: { id: linkedQuote.id, invoice_generated: true, generated_invoice_id: invoiceId } });
+        }
       }
 
       // Generate PDF and upload to Supabase storage
@@ -4125,6 +4259,12 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
         await db("businesses").eq("id", business.id).update({ next_invoice_number: nextNum + 1 });
         dispatch({ type: "ADD_INVOICE", payload: newInvoice[0] });
         dispatch({ type: "SET_BUSINESS", payload: { ...business, next_invoice_number: nextNum + 1 } });
+        // Link quote to invoice (bidirectional)
+        if (linkedQuote) {
+          const draftInvoiceId = newInvoice[0].id;
+          await db("quotes").eq("id", linkedQuote.id).update({ invoice_generated: true, generated_invoice_id: draftInvoiceId });
+          dispatch({ type: "UPDATE_QUOTE", payload: { id: linkedQuote.id, invoice_generated: true, generated_invoice_id: draftInvoiceId } });
+        }
       }
 
       dispatch({ type: "NOTIFY", payload: { message: isEditing ? "Invoice updated" : "Invoice saved as draft", type: "success" } });
@@ -4158,7 +4298,7 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
               )}
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 11, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1 }}>Invoice</div>
+              <div style={{ fontSize: 11, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1 }}>{business?.gst_number ? "Tax Invoice" : "Invoice"}</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginTop: 2 }}>{invoiceNumber}</div>
               <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>{new Date().toLocaleDateString("en-NZ", { day: "numeric", month: "long", year: "numeric" })}</div>
               <div style={{ fontSize: 13, color: "#111827", fontWeight: 600, marginTop: 2 }}>Due: {dueDateFormatted}</div>
@@ -4370,19 +4510,18 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
         </Card>
 
         {/* Bank details (read-only) */}
-        {(business?.bank_name || business?.bank_account_number) && (
-          <Card style={{ gridColumn: "1 / -1" }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Bank Details (from Settings)</h3>
+        <Card style={{ gridColumn: "1 / -1" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Bank Details (from Settings)</h3>
+          {(business?.bank_name || business?.bank_account_number) ? (
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap", fontSize: 14, color: theme.textMuted }}>
               {business.bank_name && <div><strong style={{ color: theme.text }}>Bank:</strong> {business.bank_name}</div>}
               {business.bank_account_name && <div><strong style={{ color: theme.text }}>Account:</strong> {business.bank_account_name}</div>}
               {business.bank_account_number && <div><strong style={{ color: theme.text }}>Number:</strong> {business.bank_account_number}</div>}
             </div>
-            {!business.bank_account_number && (
-              <p style={{ fontSize: 13, color: theme.red, marginTop: 8 }}>Add your bank details in Settings so customers know where to pay</p>
-            )}
-          </Card>
-        )}
+          ) : (
+            <p style={{ fontSize: 13, color: theme.red, margin: 0 }}>Add your bank details in Settings so customers know where to pay</p>
+          )}
+        </Card>
 
         {/* Actions */}
         <Card style={{ gridColumn: "1 / -1" }}>
@@ -5467,7 +5606,7 @@ const Settings = ({ business, dispatch }) => {
           <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Pricing & AI Estimates</h3>
           <p style={{ fontSize: 12, color: theme.textMuted, margin: "0 0 12px" }}>Set your rates so AI can estimate quotes from photos.</p>
           <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 10 : 14 }}>
-            <div style={{ display: "flex", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 10 : 12 }}>
               <div style={{ flex: 1 }}><Input label="Hourly Rate ($)" value={hourlyRate} onChange={setHourlyRate} type="number" /></div>
               <div style={{ flex: 1 }}><Input label="Callout Fee ($)" value={calloutFee} onChange={setCalloutFee} type="number" /></div>
             </div>
@@ -5531,12 +5670,37 @@ const Settings = ({ business, dispatch }) => {
           </div>
         </Card>
         <Card style={isMobile ? { padding: 16 } : {}}>
-          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Deposit & Bank Details</h3>
-          <p style={{ fontSize: 12, color: theme.textMuted, margin: "0 0 12px" }}>Show bank details on acceptance page so customers can pay a deposit.</p>
+          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Invoice & Payment Settings</h3>
+          {(() => {
+            const { complete, missing } = isInvoiceSettingsComplete({ business_name: businessName, email, phone, address, bank_name: bankName, bank_account_name: bankAccountName, bank_account_number: bankAccountNumber });
+            return !complete ? (
+              <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)", marginBottom: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#F59E0B", marginBottom: 4 }}>Complete these to enable invoicing:</div>
+                <div style={{ fontSize: 12, color: theme.textMuted }}>{missing.join(", ")}</div>
+              </div>
+            ) : (
+              <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.15)", marginBottom: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: theme.green, display: "flex", alignItems: "center", gap: 6 }}><Check size={14} /> Invoicing ready</div>
+              </div>
+            );
+          })()}
           <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 10 : 14 }}>
+            <Input label="Bank Name *" value={bankName} onChange={setBankName} placeholder="e.g. ANZ, ASB, BNZ, Westpac" />
+            <Input label="Account Name *" value={bankAccountName} onChange={setBankAccountName} placeholder="e.g. Smith's Plumbing Ltd" />
+            <Input label="Account Number *" value={bankAccountNumber} onChange={setBankAccountNumber} placeholder="e.g. 01-0123-0123456-00" />
+            <div>
+              <label style={{ fontSize: 13, color: theme.textMuted, display: "block", marginBottom: 6 }}>Default Payment Terms</label>
+              <select value={defaultPaymentTerms} onChange={e => setDefaultPaymentTerms(e.target.value)}
+                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, fontSize: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontFamily: theme.font, outline: "none" }}>
+                <option value="7 days">7 days</option>
+                <option value="14 days">14 days</option>
+                <option value="20th of month">20th of month</option>
+                <option value="On receipt">On receipt</option>
+              </select>
+            </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: isMobile ? "10px 12px" : "12px 16px", borderRadius: 10, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 500, color: theme.text }}>Require deposit</div>
+                <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 500, color: theme.text }}>Require deposit on quotes</div>
                 <div style={{ fontSize: 11, color: theme.textDim }}>Show bank details when quote is accepted</div>
               </div>
               <div onClick={() => setRequireDeposit(!requireDeposit)} style={{ width: 44, height: 24, borderRadius: 12, background: requireDeposit ? theme.accent : theme.border, cursor: "pointer", position: "relative", transition: "background 0.2s" }}>
@@ -5544,30 +5708,11 @@ const Settings = ({ business, dispatch }) => {
               </div>
             </div>
             {requireDeposit && (
-              <>
-                <Input label="Bank Name" value={bankName} onChange={setBankName} placeholder="e.g. ANZ, ASB, BNZ, Westpac" />
-                <Input label="Account Name" value={bankAccountName} onChange={setBankAccountName} placeholder="e.g. Smith's Plumbing Ltd" />
-                <Input label="Account Number" value={bankAccountNumber} onChange={setBankAccountNumber} placeholder="e.g. 01-0123-0123456-00" />
-                <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
-                  <div style={{ flex: 1 }}><Input label="Deposit %" value={depositPercentage} onChange={setDepositPercentage} type="number" /></div>
-                  <div style={{ fontSize: 13, color: theme.textDim, paddingBottom: 12 }}>of quote total</div>
-                </div>
-              </>
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+                <div style={{ flex: 1 }}><Input label="Deposit %" value={depositPercentage} onChange={setDepositPercentage} type="number" /></div>
+                <div style={{ fontSize: 13, color: theme.textDim, paddingBottom: 12 }}>of quote total</div>
+              </div>
             )}
-          </div>
-        </Card>
-        <Card style={isMobile ? { padding: 16 } : {}}>
-          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Invoice Settings</h3>
-          <p style={{ fontSize: 12, color: theme.textMuted, margin: "0 0 12px" }}>Default payment terms for new invoices.</p>
-          <div>
-            <label style={{ fontSize: 13, color: theme.textMuted, display: "block", marginBottom: 6 }}>Default Payment Terms</label>
-            <select value={defaultPaymentTerms} onChange={e => setDefaultPaymentTerms(e.target.value)}
-              style={{ width: "100%", padding: "10px 14px", borderRadius: 10, fontSize: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontFamily: theme.font, outline: "none" }}>
-              <option value="7 days">7 days</option>
-              <option value="14 days">14 days</option>
-              <option value="20th of month">20th of month</option>
-              <option value="On receipt">On receipt</option>
-            </select>
           </div>
         </Card>
         <Card style={isMobile ? { padding: 16 } : {}}>
@@ -6005,7 +6150,7 @@ export default function WynflowApp() {
       dispatch({ type: "SET_BUSINESS", payload: savedBusiness });
       // Validate token is still valid, refresh cookie expiry on success
       supabase.auth_getUser().then(res => {
-        if (res.error || !res.data) {
+        if (!res) {
           supabase.token = null;
           supabase.user = null;
           clearCookies();
@@ -6145,7 +6290,7 @@ export default function WynflowApp() {
       case "aiQuote": return <AIQuoteForm dispatch={dispatch} business={business} sequences={sequences} quotes={quotes} />;
       case "sequences": return <SequencesManager sequences={sequences} business={business} dispatch={dispatch} />;
       case "quoteDetail": return <QuoteDetail quoteId={detailId} quotes={quotes} sequences={sequences} dispatch={dispatch} business={business} invoices={invoices} />;
-      case "invoices": return <InvoicesList invoices={invoices} dispatch={dispatch} />;
+      case "invoices": return <InvoicesList invoices={invoices} dispatch={dispatch} quotes={quotes} business={business} />;
       case "createInvoice": return <CreateInvoiceForm dispatch={dispatch} business={business} quotes={quotes} sequences={sequences} invoices={invoices} quoteId={detailId} />;
       case "editInvoice": return <CreateInvoiceForm dispatch={dispatch} business={business} quotes={quotes} sequences={sequences} invoices={invoices} editInvoice={invoices.find(i => i.id === detailId)} />;
       case "invoiceDetail": return <InvoiceDetail invoiceId={detailId} invoices={invoices} business={business} dispatch={dispatch} sequences={sequences} quotes={quotes} />;
