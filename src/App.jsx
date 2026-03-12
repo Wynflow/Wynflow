@@ -695,6 +695,7 @@ const Toast = ({ message, type, onClose }) => {
 const Navbar = ({ dispatch, transparent }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [hoveredLink, setHoveredLink] = useState(null);
   const isMobile = useIsMobile();
   useEffect(() => {
     if (!transparent) return;
@@ -702,36 +703,69 @@ const Navbar = ({ dispatch, transparent }) => {
     window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
   }, [transparent]);
-  const navBg = transparent ? (scrolled ? "rgba(10,14,23,0.85)" : "transparent") : theme.surface;
-  const navBorder = transparent ? (scrolled ? `1px solid ${theme.border}` : "none") : `1px solid ${theme.border}`;
+
+  // Press feedback handlers (matches HomePage pattern)
+  const pressDown = (e) => { e.currentTarget.style.transform = "scale(0.97)"; };
+  const pressUp = (e) => { e.currentTarget.style.transform = "scale(1)"; };
+
+  const navBg = transparent ? (scrolled ? "rgba(10,14,23,0.92)" : "transparent") : theme.surface;
+  const navBorder = transparent ? (scrolled ? "1px solid rgba(255,255,255,0.06)" : "1px solid transparent") : "1px solid rgba(255,255,255,0.06)";
+  const navLinks = [["home","Home"],["about","About"],["pricing","Pricing"]];
+
   return (
-    <nav style={{ position:transparent?"fixed":"relative",top:0,left:0,right:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",padding:isMobile?"14px 20px":"16px 48px",background:navBg,borderBottom:navBorder,fontFamily:theme.font,backdropFilter:transparent&&scrolled?"blur(16px) saturate(180%)":"none",WebkitBackdropFilter:transparent&&scrolled?"blur(16px) saturate(180%)":"none",transition:"all 0.3s ease" }}>
-      <div style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer" }} onClick={() => dispatch({ type:"SET_SCREEN",payload:"home" })}>
-        <div style={{ width:32,height:32,borderRadius:8,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><WynflowLogo size={32} /></div>
-        <span style={{ fontSize:20,fontWeight:700,color:theme.text,fontFamily:theme.font,letterSpacing:"-0.02em" }}>Wynflow</span>
+    <nav style={{ position: transparent ? "fixed" : "relative", top: 0, left: 0, right: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMobile ? "16px 24px" : "16px 48px", background: navBg, borderBottom: navBorder, fontFamily: theme.font, backdropFilter: transparent && scrolled ? "blur(20px) saturate(180%)" : "none", WebkitBackdropFilter: transparent && scrolled ? "blur(20px) saturate(180%)" : "none", transition: "all 0.35s cubic-bezier(0.16,1,0.3,1)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", transition: "opacity 0.2s ease-out" }} onClick={() => dispatch({ type: "SET_SCREEN", payload: "home" })} onMouseEnter={e => e.currentTarget.style.opacity = "0.8"} onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+        <div style={{ width: 32, height: 32, borderRadius: 8, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><WynflowLogo size={32} /></div>
+        <span style={{ fontSize: 20, fontWeight: 700, color: theme.text, fontFamily: theme.font, letterSpacing: "-0.02em" }}>Wynflow</span>
       </div>
       {isMobile ? (
         <>
-          <div onClick={() => setMenuOpen(!menuOpen)} style={{ color:theme.text,cursor:"pointer",padding:8 }}>{menuOpen ? <X size={22} /> : <Menu size={22} />}</div>
+          <div onClick={() => setMenuOpen(!menuOpen)} style={{ color: theme.text, cursor: "pointer", padding: 8, borderRadius: 8, background: menuOpen ? "rgba(255,255,255,0.06)" : "transparent", transition: "all 0.2s ease-out" }}>
+            {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          </div>
           {menuOpen && (
-            <div style={{ position:"absolute",top:"100%",left:0,right:0,background:"rgba(10,14,23,0.98)",borderBottom:`1px solid ${theme.border}`,padding:"20px 20px",display:"flex",flexDirection:"column",gap:16,zIndex:200,backdropFilter:"blur(16px)" }}>
-              {[["home","Home"],["about","About"],["pricing","Pricing"]].map(([id,label]) => (
-                <span key={id} onClick={() => { dispatch({ type:"SET_SCREEN",payload:id }); setMenuOpen(false); }} style={{ fontSize:15,fontWeight:500,color:theme.textMuted,cursor:"pointer" }}>{label}</span>
+            <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "rgba(10,14,23,0.98)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "24px 24px", display: "flex", flexDirection: "column", gap: 8, zIndex: 200, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
+              {navLinks.map(([id, label], i) => (
+                <span key={id} onClick={() => { dispatch({ type: "SET_SCREEN", payload: id }); setMenuOpen(false); }} style={{ fontSize: 16, fontWeight: 500, color: "rgba(255,255,255,0.6)", cursor: "pointer", padding: "12px 16px", borderRadius: 10, transition: "all 0.2s ease-out", opacity: 1, transform: "translateX(0)", animation: `navSlideIn 0.25s ease-out ${i * 0.06}s both` }}
+                  onMouseEnter={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.6)"; e.currentTarget.style.background = "transparent"; }}>{label}</span>
               ))}
-              <Button size="sm" variant="secondary" onClick={() => { dispatch({ type:"SET_SCREEN",payload:"login" }); setMenuOpen(false); }}>Log In</Button>
-              <Button size="sm" onClick={() => { dispatch({ type:"SET_SCREEN",payload:"signup" }); setMenuOpen(false); }}>Get Started Free</Button>
+              <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)", margin: "8px 0" }} />
+              <span onClick={() => { dispatch({ type: "SET_SCREEN", payload: "login" }); setMenuOpen(false); }} style={{ fontSize: 16, fontWeight: 500, color: "rgba(255,255,255,0.6)", cursor: "pointer", padding: "12px 16px", borderRadius: 10, transition: "all 0.2s ease-out", animation: `navSlideIn 0.25s ease-out ${navLinks.length * 0.06}s both` }}
+                onMouseEnter={e => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.6)"; e.currentTarget.style.background = "transparent"; }}>Log In</span>
+              <button onClick={() => { dispatch({ type: "SET_SCREEN", payload: "signup" }); setMenuOpen(false); }}
+                onMouseDown={pressDown} onMouseUp={pressUp}
+                style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 600, padding: "16px 24px", borderRadius: 10, background: theme.accent, color: "#000", border: "none", cursor: "pointer", transition: "all 0.2s ease-out", letterSpacing: "0.01em", marginTop: 8, boxShadow: "0 0 20px rgba(20,184,166,0.2)", animation: `navSlideIn 0.25s ease-out ${(navLinks.length + 1) * 0.06}s both` }}>
+                Get Started Free
+              </button>
+              <style>{`@keyframes navSlideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }`}</style>
             </div>
           )}
         </>
       ) : (
-        <div style={{ display:"flex",alignItems:"center",gap:28 }}>
-          {[["home","Home"],["about","About"],["pricing","Pricing"]].map(([id,label]) => (
-            <span key={id} onClick={() => dispatch({ type:"SET_SCREEN",payload:id })} style={{ fontSize:13,fontWeight:500,color:theme.textMuted,cursor:"pointer",transition:"color 0.2s",letterSpacing:"0.01em" }} onMouseEnter={e=>e.currentTarget.style.color=theme.text} onMouseLeave={e=>e.currentTarget.style.color=theme.textMuted}>{label}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+          {navLinks.map(([id, label]) => (
+            <span key={id} onClick={() => dispatch({ type: "SET_SCREEN", payload: id })}
+              onMouseEnter={() => setHoveredLink(id)}
+              onMouseLeave={() => setHoveredLink(null)}
+              style={{ fontSize: 13, fontWeight: 500, color: hoveredLink === id ? theme.text : theme.textMuted, cursor: "pointer", transition: "color 0.2s ease-out", letterSpacing: "0.01em", position: "relative", paddingBottom: 4 }}>
+              {label}
+              <span style={{ position: "absolute", bottom: 0, left: "50%", transform: hoveredLink === id ? "translateX(-50%) scaleX(1)" : "translateX(-50%) scaleX(0)", width: "100%", height: 1.5, background: `linear-gradient(90deg, transparent, ${theme.accent}, transparent)`, transition: "transform 0.2s ease-out", transformOrigin: "center" }} />
+            </span>
           ))}
-          <span onClick={() => dispatch({ type:"SET_SCREEN",payload:"login" })} style={{ fontSize:13,fontWeight:500,color:theme.textMuted,cursor:"pointer",transition:"color 0.2s" }} onMouseEnter={e=>e.target.style.color=theme.text} onMouseLeave={e=>e.target.style.color=theme.textMuted}>Log In</span>
-          <button onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })} style={{ fontFamily:theme.font,fontSize:13,fontWeight:600,padding:"8px 20px",borderRadius:8,background:theme.accent,color:"#000",border:"none",cursor:"pointer",transition:"all 0.2s",letterSpacing:"0.01em" }}
-            onMouseEnter={e=>{e.currentTarget.style.background=theme.accentHover;e.currentTarget.style.transform="translateY(-1px)";}}
-            onMouseLeave={e=>{e.currentTarget.style.background=theme.accent;e.currentTarget.style.transform="translateY(0)";}}>
+          <span onClick={() => dispatch({ type: "SET_SCREEN", payload: "login" })}
+            onMouseEnter={(e) => { setHoveredLink("login"); e.currentTarget.style.color = theme.text; }}
+            onMouseLeave={(e) => { setHoveredLink(null); e.currentTarget.style.color = theme.textMuted; }}
+            style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, cursor: "pointer", transition: "color 0.2s ease-out", position: "relative", paddingBottom: 4 }}>
+            Log In
+            <span style={{ position: "absolute", bottom: 0, left: "50%", transform: hoveredLink === "login" ? "translateX(-50%) scaleX(1)" : "translateX(-50%) scaleX(0)", width: "100%", height: 1.5, background: `linear-gradient(90deg, transparent, ${theme.accent}, transparent)`, transition: "transform 0.2s ease-out", transformOrigin: "center" }} />
+          </span>
+          <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })}
+            onMouseDown={pressDown} onMouseUp={pressUp}
+            onMouseEnter={e => { e.currentTarget.style.background = "#5EEAD4"; e.currentTarget.style.boxShadow = "0 4px 24px rgba(20,184,166,0.35)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 0 20px rgba(20,184,166,0.2)"; }}
+            style={{ fontFamily: theme.font, fontSize: 13, fontWeight: 600, padding: "8px 24px", borderRadius: 10, background: theme.accent, color: "#000", border: "none", cursor: "pointer", transition: "all 0.2s ease-out", letterSpacing: "0.01em", boxShadow: "0 0 20px rgba(20,184,166,0.2)" }}>
             Get Started Free
           </button>
         </div>
@@ -743,26 +777,54 @@ const Navbar = ({ dispatch, transparent }) => {
 const Footer = ({ dispatch }) => {
   const isMobile = useIsMobile();
   return (
-  <footer style={{ padding:isMobile?"40px 20px 24px":"64px 48px 32px",background:theme.bg,borderTop:`1px solid rgba(255,255,255,0.06)`,fontFamily:theme.font }}>
-    <div style={{ display:"flex",justifyContent:"space-between",maxWidth:1100,margin:"0 auto",flexWrap:"wrap",gap:isMobile?32:48,flexDirection:isMobile?"column":"row" }}>
-      <div style={{ maxWidth:300 }}>
-        <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
-          <div style={{ width:28,height:28,borderRadius:7,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><WynflowLogo size={28} /></div>
-          <span style={{ fontSize:17,fontWeight:700,color:theme.text,fontFamily:theme.font,letterSpacing:"-0.02em" }}>Wynflow</span>
+  <footer style={{ padding: isMobile ? "48px 24px 32px" : "80px 48px 40px", background: theme.bg, borderTop: "1px solid rgba(255,255,255,0.06)", fontFamily: theme.font, position: "relative", overflow: "hidden" }}>
+    {/* Subtle gradient orb in background */}
+    <div style={{ position: "absolute", bottom: "-30%", left: "50%", transform: "translateX(-50%)", width: "60%", height: "60%", background: "radial-gradient(circle, rgba(20,184,166,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+    <div style={{ display: "flex", justifyContent: "space-between", maxWidth: 1100, margin: "0 auto", flexWrap: "wrap", gap: isMobile ? 32 : 56, flexDirection: isMobile ? "column" : "row", position: "relative", zIndex: 1 }}>
+      <div style={{ maxWidth: 320 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><WynflowLogo size={28} /></div>
+          <span style={{ fontSize: 17, fontWeight: 700, color: theme.text, fontFamily: theme.font, letterSpacing: "-0.02em" }}>Wynflow</span>
         </div>
-        <p style={{ fontSize:13,color:"rgba(255,255,255,0.4)",lineHeight:1.7 }}>AI-powered quoting and automated follow-ups for NZ tradies. Send quotes, chase customers, win more jobs — on autopilot.</p>
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.75, margin: "0 0 24px" }}>AI-powered quoting and automated follow-ups for NZ tradies. Send quotes, chase customers, win more jobs — on autopilot.</p>
+        {/* Trade-themed decorative element */}
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 100, background: "rgba(20,184,166,0.06)", border: "1px solid rgba(20,184,166,0.1)" }}>
+          <Wrench size={13} color={theme.accent} strokeWidth={1.5} />
+          <span style={{ fontSize: 11, fontWeight: 500, color: "rgba(20,184,166,0.7)", letterSpacing: "0.04em" }}>Built for NZ tradies</span>
+        </div>
       </div>
       <div>
-        <h4 style={{ fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.3)",marginBottom:16,textTransform:"uppercase",letterSpacing:"0.1em" }}>Product</h4>
-        {["home","pricing","about"].map(p => <div key={p} onClick={() => dispatch({ type:"SET_SCREEN",payload:p })} style={{ fontSize:14,color:"rgba(255,255,255,0.5)",cursor:"pointer",marginBottom:10,textTransform:"capitalize",transition:"color 0.2s" }} onMouseEnter={e=>e.currentTarget.style.color="#fff"} onMouseLeave={e=>e.currentTarget.style.color="rgba(255,255,255,0.5)"}>{p}</div>)}
+        <h4 style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.3)", marginBottom: 16, textTransform: "uppercase", letterSpacing: "0.12em" }}>Product</h4>
+        {["home", "pricing", "about"].map(p => (
+          <div key={p} onClick={() => dispatch({ type: "SET_SCREEN", payload: p })}
+            style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", cursor: "pointer", marginBottom: 16, textTransform: "capitalize", transition: "all 0.2s ease-out", paddingLeft: 0 }}
+            onMouseEnter={e => { e.currentTarget.style.color = theme.accent; e.currentTarget.style.paddingLeft = "4px"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.45)"; e.currentTarget.style.paddingLeft = "0px"; }}>{p}</div>
+        ))}
       </div>
       <div>
-        <h4 style={{ fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.3)",marginBottom:16,textTransform:"uppercase",letterSpacing:"0.1em" }}>Company</h4>
-        <div style={{ fontSize:14,color:"rgba(255,255,255,0.5)",marginBottom:10 }}>Auckland, New Zealand</div>
-        <div style={{ fontSize:14,color:theme.accent,transition:"opacity 0.2s",cursor:"pointer" }} onMouseEnter={e=>e.currentTarget.style.opacity="0.8"} onMouseLeave={e=>e.currentTarget.style.opacity="1"}>jesse@wynflow.co.nz</div>
+        <h4 style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.3)", marginBottom: 16, textTransform: "uppercase", letterSpacing: "0.12em" }}>Company</h4>
+        <div style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+          <Globe size={13} color="rgba(255,255,255,0.3)" strokeWidth={1.5} />
+          Auckland, New Zealand
+        </div>
+        <div style={{ fontSize: 14, color: theme.accent, transition: "all 0.2s ease-out", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
+          onMouseEnter={e => { e.currentTarget.style.color = "#5EEAD4"; e.currentTarget.style.paddingLeft = "4px"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = theme.accent; e.currentTarget.style.paddingLeft = "0px"; }}>
+          <Mail size={13} strokeWidth={1.5} />
+          jesse@wynflow.co.nz
+        </div>
       </div>
     </div>
-    <div style={{ maxWidth:1100,margin:"48px auto 0",paddingTop:24,borderTop:"1px solid rgba(255,255,255,0.06)",textAlign:"center",fontSize:12,color:"rgba(255,255,255,0.25)",letterSpacing:"0.02em" }}>2026 Wynflow. All rights reserved.</div>
+
+    {/* Bottom bar with gradient divider */}
+    <div style={{ maxWidth: 1100, margin: "48px auto 0", position: "relative", zIndex: 1 }}>
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(20,184,166,0.2), rgba(255,255,255,0.06), rgba(20,184,166,0.2), transparent)" }} />
+      <div style={{ paddingTop: 24, textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.2)", letterSpacing: "0.03em" }}>
+        2026 Wynflow. All rights reserved.
+      </div>
+    </div>
   </footer>
   );
 };
@@ -770,17 +832,17 @@ const Footer = ({ dispatch }) => {
 const EmailPreviewModal = ({ onClose }) => {
   const isMobile = useIsMobile();
   return (
-    <div onClick={onClose} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(4px)" }}>
+    <div onClick={onClose} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(4px)" }}>
       <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto", borderRadius: 16, boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
         <div style={{ background: "#ffffff", borderRadius: 16, overflow: "hidden" }}>
-          <div style={{ background: "#ffffff", padding: "28px 32px", textAlign: "center", borderBottom: "3px solid #14B8A6" }}>
-            <img src="https://www.wynflow.co.nz/logo.png" alt="Wynflow" style={{ width: 44, height: "auto", marginBottom: 10 }} />
+          <div style={{ background: "#ffffff", padding: "32px 32px", textAlign: "center", borderBottom: "3px solid #14B8A6" }}>
+            <img src="https://www.wynflow.co.nz/logo.png" alt="Wynflow" style={{ width: 44, height: "auto", marginBottom: 8 }} />
             <h1 style={{ color: "#0A0E17", margin: 0, fontSize: 22, fontWeight: 700 }}>Quote from Smith's Plumbing</h1>
           </div>
           <div style={{ padding: 32 }}>
             <p style={{ fontSize: 16, color: "#374151", margin: "0 0 8px" }}>Hi Sarah,</p>
             <p style={{ fontSize: 15, color: "#6b7280", lineHeight: 1.6, margin: "0 0 24px" }}>Please find attached our quote for <strong>Bathroom Renovation</strong>.</p>
-            <div style={{ background: "#f9fafb", borderRadius: 10, padding: 20, margin: "0 0 24px" }}>
+            <div style={{ background: "#f9fafb", borderRadius: 10, padding: 24, margin: "0 0 24px" }}>
               <table style={{ width: "100%" }}><tbody>
                 <tr><td style={{ color: "#6b7280", fontSize: 14, padding: "4px 0" }}>Job:</td><td style={{ color: "#111827", fontSize: 14, fontWeight: 600, textAlign: "right" }}>Bathroom Renovation</td></tr>
                 <tr><td style={{ color: "#6b7280", fontSize: 14, padding: "4px 0" }}>Amount:</td><td style={{ color: "#14B8A6", fontSize: 20, fontWeight: 700, textAlign: "right" }}>$4,500</td></tr>
@@ -852,11 +914,11 @@ const ProductDemo = () => {
   const screens = [
     // Step 1: Snap Photos
     <div key="photos" style={{ padding: isMobile ? 16 : 24 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22C55E" }} />
         <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 1 — On Site</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
         {[
           { caption: "Bathroom — tiled, no vanity yet", img: "/demo-photo-1.jpg" },
           { caption: "Exposed pipework — hot & cold roughed in", img: "/demo-photo-2.jpg" },
@@ -865,19 +927,19 @@ const ProductDemo = () => {
         ].map((photo, i) => (
           <div key={i} style={{ borderRadius: 10, overflow: "hidden", position: "relative" }}>
             <img src={photo.img} alt={photo.caption} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block" }} loading="lazy" />
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "6px 8px", background: "linear-gradient(transparent, rgba(0,0,0,0.7))", fontSize: 10, color: "rgba(255,255,255,0.7)" }}>{photo.caption}</div>
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "8px 8px", background: "linear-gradient(transparent, rgba(0,0,0,0.7))", fontSize: 10, color: "rgba(255,255,255,0.7)" }}>{photo.caption}</div>
           </div>
         ))}
       </div>
       <div style={{ padding: 12, borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 6, fontWeight: 500 }}>Job Notes</div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 8, fontWeight: 500 }}>Job Notes</div>
         <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>Bathroom reno — replace vanity, fix water damage to subfloor, install new mixer tap. Tight access behind wall panel. Customer wants it done within 2 weeks.</div>
       </div>
     </div>,
 
     // Step 2: AI Quote
     <div key="quote" style={{ padding: isMobile ? 16 : 24 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#8B5CF6" }} />
         <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 2 — AI generates your quote</span>
       </div>
@@ -895,7 +957,7 @@ const ProductDemo = () => {
         { item: "Supply & install mixer tap", qty: "1", price: "$380" },
         { item: "Labour — plumbing & fitout", qty: "6 hrs", price: "$510" },
       ].map((row, i) => (
-        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>{row.item}</div>
           </div>
@@ -903,7 +965,7 @@ const ProductDemo = () => {
           <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", width: 70, textAlign: "right" }}>{row.price}</div>
         </div>
       ))}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", marginTop: 4, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0", marginTop: 8, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
         <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>Total (incl. GST)</span>
         <span style={{ fontSize: 20, fontWeight: 700, color: "#14B8A6" }}>$3,340.00</span>
       </div>
@@ -911,23 +973,23 @@ const ProductDemo = () => {
 
     // Step 3: Send Email
     <div key="email" style={{ padding: isMobile ? 16 : 24 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#3B82F6" }} />
         <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 3 — Customer receives email</span>
       </div>
       <div style={{ borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", overflow: "hidden" }}>
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ padding: "16px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
           <Mail size={14} color="rgba(255,255,255,0.3)" />
           <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>From: <span style={{ color: "rgba(255,255,255,0.6)" }}>quotes@wynflow.co.nz</span></span>
         </div>
         <div style={{ padding: 16 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 12 }}>Your quote for Bathroom Renovation</div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, marginBottom: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 16 }}>Your quote for Bathroom Renovation</div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, marginBottom: 24 }}>
             Hi Sarah,<br /><br />
             Thanks for having me out to take a look at the bathroom. I've put together a detailed quote for the work we discussed — vanity replacement, subfloor repair, and new mixer tap.<br /><br />
             <strong style={{ color: "rgba(255,255,255,0.7)" }}>Total: $3,340.00 (incl. GST)</strong>
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 8 }}>
             <div style={{ flex: 1, padding: "12px 16px", borderRadius: 8, background: "#22C55E", textAlign: "center", fontSize: 14, fontWeight: 600, color: "#fff", cursor: "default" }}>Accept Quote</div>
             <div style={{ flex: 1, padding: "12px 16px", borderRadius: 8, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.2)", textAlign: "center", fontSize: 14, fontWeight: 600, color: "#EF4444", cursor: "default" }}>Decline</div>
           </div>
@@ -937,7 +999,7 @@ const ProductDemo = () => {
 
     // Step 4: Auto Follow-up
     <div key="followup" style={{ padding: isMobile ? 16 : 24 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B" }} />
         <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 4 — Wynflow chases for you</span>
       </div>
@@ -950,7 +1012,7 @@ const ProductDemo = () => {
           { day: "Day 6", title: "Follow-up #2 sent", desc: "\"Any questions about the bathroom quote?\"", status: "auto", color: "#F59E0B" },
           { day: "Day 7", title: "Quote accepted!", desc: "Sarah clicked Accept — time to book the job", status: "won", color: "#22C55E" },
         ].map((event, i) => (
-          <div key={i} style={{ display: "flex", gap: 14, marginBottom: i < 4 ? 20 : 0, position: "relative" }}>
+          <div key={i} style={{ display: "flex", gap: 16, marginBottom: i < 4 ? 24 : 0, position: "relative" }}>
             <div style={{ width: 16, height: 16, borderRadius: "50%", background: event.color, border: "3px solid #0A0E17", position: "absolute", left: -24, top: 2, display: "flex", alignItems: "center", justifyContent: "center" }}>
               {event.status === "won" && <Check size={8} color="#fff" strokeWidth={3} />}
             </div>
@@ -969,7 +1031,7 @@ const ProductDemo = () => {
 
     // Step 5: Get Paid
     <div key="invoice" style={{ padding: isMobile ? 16 : 24 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22C55E" }} />
         <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 5 — Job done, get paid</span>
       </div>
@@ -982,8 +1044,8 @@ const ProductDemo = () => {
           </div>
           <div style={{ padding: "4px 12px", borderRadius: 20, background: "rgba(34,197,94,0.12)", color: "#22C55E", fontSize: 11, fontWeight: 600 }}>Paid</div>
         </div>
-        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 0 12px" }} />
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 0 16px" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
           <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Subtotal</span>
           <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>$2,904.35</span>
         </div>
@@ -995,7 +1057,7 @@ const ProductDemo = () => {
           <span style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>Total Paid</span>
           <span style={{ fontSize: 20, fontWeight: 700, color: "#22C55E" }}>$3,340.00</span>
         </div>
-        <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.1)", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ marginTop: 16, padding: "8px 16px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.1)", display: "flex", alignItems: "center", gap: 8 }}>
           <CheckCircle2 size={14} color="#22C55E" />
           <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Payment received via bank transfer • 20 March 2026</span>
         </div>
@@ -1004,24 +1066,24 @@ const ProductDemo = () => {
   ];
 
   return (
-    <div style={{ padding: isMobile ? "80px 20px" : "120px 48px", position: "relative" }}>
+    <div style={{ padding: isMobile ? "80px 24px" : "120px 48px", position: "relative" }}>
       <div style={{ position: "absolute", top: "30%", left: "-10%", width: "40%", height: "50%", background: `radial-gradient(circle, ${demoSteps[active].accent}11 0%, transparent 70%)`, pointerEvents: "none", transition: "background 0.6s ease" }} />
       <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative", zIndex: 1 }}>
         <FadeIn>
-          <div style={{ textAlign: "center", marginBottom: isMobile ? 36 : 56 }}>
+          <div style={{ textAlign: "center", marginBottom: isMobile ? 40 : 56 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: theme.accent, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 16 }}>See it in action</p>
             <h2 style={{ fontSize: isMobile ? 28 : 44, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>From photos to payment<br />in five steps</h2>
           </div>
         </FadeIn>
 
         {/* Step tabs */}
-        <div style={{ display: "flex", gap: isMobile ? 4 : 8, marginBottom: isMobile ? 20 : 32, justifyContent: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: isMobile ? 4 : 8, marginBottom: isMobile ? 24 : 32, justifyContent: "center", flexWrap: "wrap" }}>
           {demoSteps.map((step, i) => {
             const Icon = step.icon;
             const isActive = i === active;
             return (
               <button key={i} onClick={() => handleStepClick(i)}
-                style={{ display: "flex", alignItems: "center", gap: 6, padding: isMobile ? "8px 12px" : "10px 18px", borderRadius: 10,
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: isMobile ? "8px 16px" : "8px 16px", borderRadius: 10,
                   background: isActive ? `${step.accent}18` : "rgba(255,255,255,0.03)",
                   border: `1px solid ${isActive ? `${step.accent}40` : "rgba(255,255,255,0.06)"}`,
                   color: isActive ? step.accent : "rgba(255,255,255,0.4)",
@@ -1051,9 +1113,9 @@ const ProductDemo = () => {
             transition: "border-color 0.6s ease, box-shadow 0.6s ease",
           }}>
             {/* Title bar */}
-            <div style={{ padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ padding: "8px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ display: "flex", gap: 5 }}>
+                <div style={{ display: "flex", gap: 4 }}>
                   <div style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                   <div style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                   <div style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
@@ -1091,66 +1153,120 @@ const ProductDemo = () => {
 const HomePage = ({ dispatch }) => {
   const isMobile = useIsMobile();
 
+  // Animated counter hook — counts from 0 to target over ~2s when visible
+  const useCounter = (target, suffix = "", duration = 2000) => {
+    const [ref, isVisible] = useInView(0.3);
+    const [count, setCount] = useState(0);
+    const [hasRun, setHasRun] = useState(false);
+    useEffect(() => {
+      if (!isVisible || hasRun) return;
+      setHasRun(true);
+      const startTime = Date.now();
+      const tick = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // ease-out cubic
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setCount(Math.round(eased * target));
+        if (progress < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }, [isVisible, hasRun, target, duration]);
+    return [ref, count, suffix];
+  };
+
+  // Bento grid features — 4 cards in asymmetric layout
   const features = [
-    { Icon: Globe, title: "Live Quote Request Link", desc: "Share your personal link on social media, Google Business, or your website — customers request quotes directly." },
-    { Icon: Cpu, title: "AI Quote Generation", desc: "Generate a professional quote in seconds using AI, right from your dashboard." },
-    { Icon: RefreshCw, title: "Automated Follow-ups", desc: "Automatically follow up with customers who haven't responded." },
-    { Icon: BarChart3, title: "Analytics Dashboard", desc: "Track your quotes, conversion rates, and revenue in one place." },
-    { Icon: Mail, title: "Professional Emails", desc: "Customers receive branded emails with one-click Accept or Decline buttons built in." },
-    { Icon: MessageSquare, title: "Feedback Capture", desc: "When customers decline, they tell you why — so you can adjust your pricing and win more next time." },
+    { Icon: Cpu, title: "AI Quote Generation", desc: "Snap photos on site, add your notes, and get an accurate itemised quote in seconds. Materials, labour, scope — all handled by AI trained on your trade.", large: true, stat: "< 30 sec", statLabel: "avg quote time" },
+    { Icon: RefreshCw, title: "Automated Follow-ups", desc: "Wynflow chases your customers on autopilot — day 2, day 5, day 10. Personalised emails that sound like you.", large: false },
+    { Icon: Globe, title: "Live Quote Request Link", desc: "Share your personal link on socials, Google Business, or your website. Customers request quotes directly — no phone tag.", large: false },
+    { Icon: BarChart3, title: "Analytics & Feedback", desc: "Track conversion rates, revenue, and response times. When customers decline, they tell you why — so you can adjust pricing and win more next time.", large: true, stat: "2x", statLabel: "more jobs won" },
   ];
 
   const steps = [
-    { num: "01", Icon: Cpu, title: "Snap Photos, Add Notes, Get a Quote", desc: "Take photos on site and add your notes — access issues, customer preferences, anything relevant. Wynflow's AI analyses your photos, notes, rates, and trade to generate an accurate, itemised quote with materials, labour, and pricing." },
+    { num: "01", Icon: Camera, title: "Snap Photos & Add Notes", desc: "Take photos on site and add your notes — access issues, customer preferences, anything relevant. Wynflow's AI analyses everything to generate an accurate, itemised quote." },
     { num: "02", Icon: Send, title: "Review & Send", desc: "Check the AI-generated quote, tweak anything you want, and hit send. Your customer gets a professional email with one-click Accept or Decline buttons." },
-    { num: "03", Icon: Bot, title: "Automated Follow-Ups", desc: "If they don't respond, Wynflow chases automatically — day 2, day 5, day 10. Personalised emails that sound like you, not a robot. You're on the tools, not on your phone." },
+    { num: "03", Icon: Bot, title: "Auto Follow-Ups", desc: "If they don't respond, Wynflow chases automatically. Personalised emails that sound like you, not a robot. You're on the tools, not on your phone." },
   ];
+
+  // Stats strip data
+  const [statRef1, count1] = useCounter(100000, "+");
+  const [statRef2, count2] = useCounter(73, "%");
+  const [statRef3, count3] = useCounter(2, "x");
+
+  // Button press handlers
+  const pressDown = (e) => { e.currentTarget.style.transform = "scale(0.97)"; };
+  const pressUp = (e) => { e.currentTarget.style.transform = "scale(1)"; };
 
   return (
   <div style={{ background: theme.bg, overflowX: "hidden" }}>
 
+    {/* ── Keyframe animations ── */}
+    <style>{`
+      @keyframes spin-slow { to { transform: rotate(360deg) } }
+      @keyframes float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
+      @keyframes float-delayed { 0%,100% { transform: translateY(-5px) } 50% { transform: translateY(5px) } }
+      @keyframes pulse-glow { 0%,100% { opacity: 0.6 } 50% { opacity: 1 } }
+      @keyframes timeline-dot { 0%,100% { box-shadow: 0 0 0 0 rgba(20,184,166,0.4) } 50% { box-shadow: 0 0 0 8px rgba(20,184,166,0) } }
+    `}</style>
+
     {/* ── Hero ── */}
-    <div style={{ position: "relative", minHeight: isMobile ? "auto" : "100vh", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: isMobile ? "120px 20px 80px" : "160px 48px 120px" }}>
+    <div style={{ position: "relative", minHeight: isMobile ? "auto" : "100vh", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: isMobile ? "120px 24px 80px" : "160px 48px 120px" }}>
       {/* Gradient orbs */}
       <div style={{ position: "absolute", top: "-20%", left: "-10%", width: "60%", height: "60%", background: "radial-gradient(circle, rgba(20,184,166,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: "-10%", right: "-10%", width: "50%", height: "50%", background: "radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
-      {/* Grid pattern overlay */}
-      <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)", backgroundSize: "64px 64px", pointerEvents: "none", maskImage: "radial-gradient(ellipse at center, black 30%, transparent 70%)", WebkitMaskImage: "radial-gradient(ellipse at center, black 30%, transparent 70%)" }} />
+
+      {/* Floating trade tool icons */}
+      {!isMobile && <>
+        <div style={{ position: "absolute", top: "18%", left: "8%", animation: "float 6s ease-in-out infinite", pointerEvents: "none", opacity: 0.12 }}>
+          <Wrench size={48} color={theme.accent} strokeWidth={1} />
+        </div>
+        <div style={{ position: "absolute", top: "30%", right: "10%", animation: "float-delayed 7s ease-in-out infinite", pointerEvents: "none", opacity: 0.08 }}>
+          <Camera size={40} color={theme.accent} strokeWidth={1} />
+        </div>
+        <div style={{ position: "absolute", bottom: "25%", left: "12%", animation: "float 8s ease-in-out infinite 1s", pointerEvents: "none", opacity: 0.06 }}>
+          <Zap size={36} color="#5EEAD4" strokeWidth={1} />
+        </div>
+      </>}
 
       <div style={{ maxWidth: 720, position: "relative", zIndex: 1 }}>
         <FadeIn>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 100, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", marginBottom: isMobile ? 24 : 32 }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: theme.accent, boxShadow: `0 0 8px ${theme.accent}` }} />
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 100, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", marginBottom: isMobile ? 24 : 32 }}>
+            <Wrench size={14} color={theme.accent} style={{ animation: "spin-slow 8s linear infinite" }} />
             <span style={{ fontSize: 13, fontWeight: 500, color: theme.accent, letterSpacing: "0.02em" }}>AI-Powered Quoting for NZ Tradies</span>
           </div>
         </FadeIn>
         <FadeIn delay={0.08}>
-          <h1 style={{ fontSize: isMobile ? 40 : 72, fontWeight: 700, color: "#FFFFFF", lineHeight: 1.05, marginBottom: isMobile ? 20 : 28, fontFamily: theme.font, letterSpacing: "-0.03em" }}>
+          <h1 style={{ fontSize: isMobile ? 40 : 72, fontWeight: 700, color: "#FFFFFF", lineHeight: 1.05, marginBottom: isMobile ? 24 : 32, fontFamily: theme.font, letterSpacing: "-0.03em" }}>
             Quote Faster. Chase Smarter.<br /><span style={{ background: `linear-gradient(135deg, ${theme.accent}, #5EEAD4)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Win More Jobs.</span>
           </h1>
         </FadeIn>
         <FadeIn delay={0.16}>
-          <p style={{ fontSize: isMobile ? 16 : 19, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, maxWidth: 560, margin: "0 auto 44px", fontWeight: 400, letterSpacing: "0.01em" }}>Wynflow's AI generates accurate quotes from your job site photos and notes — scope, materials, labour, the lot. Then automated follow-ups chase your customers until they say yes. You stay on the tools, we handle the paperwork.</p>
+          <p style={{ fontSize: isMobile ? 16 : 19, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, maxWidth: 560, margin: "0 auto 48px", fontWeight: 400, letterSpacing: "0.01em" }}>Wynflow's AI generates accurate quotes from your job site photos and notes — scope, materials, labour, the lot. Then automated follow-ups chase your customers until they say yes. You stay on the tools, we handle the paperwork.</p>
         </FadeIn>
         <FadeIn delay={0.24}>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexDirection: isMobile ? "column" : "row", alignItems: "center" }}>
-            <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })} style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 600, padding: isMobile ? "14px 32px" : "14px 36px", borderRadius: 10, background: theme.accent, color: "#000", border: "none", cursor: "pointer", transition: "all 0.2s", boxShadow: `0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)`, letterSpacing: "0.01em", width: isMobile ? "100%" : "auto" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#5EEAD4"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 32px rgba(20,184,166,0.4), 0 0 80px rgba(20,184,166,0.15)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)"; }}>
+          <div style={{ display: "flex", gap: 16, justifyContent: "center", flexDirection: isMobile ? "column" : "row", alignItems: "center" }}>
+            <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })}
+              onMouseDown={pressDown} onMouseUp={pressUp}
+              onMouseEnter={e => { e.currentTarget.style.background = "#5EEAD4"; e.currentTarget.style.boxShadow = "0 4px 32px rgba(20,184,166,0.4), 0 0 80px rgba(20,184,166,0.15)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)"; }}
+              style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 600, padding: isMobile ? "16px 32px" : "16px 40px", borderRadius: 10, background: theme.accent, color: "#000", border: "none", cursor: "pointer", transition: "all 0.2s ease-out", boxShadow: "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)", letterSpacing: "0.01em", width: isMobile ? "100%" : "auto" }}>
               Start Free Trial
               <ArrowRight size={16} style={{ display: "inline", verticalAlign: "middle", marginLeft: 8 }} />
             </button>
-            <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "pricing" })} style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 500, padding: isMobile ? "14px 32px" : "14px 36px", borderRadius: 10, background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", transition: "all 0.2s", letterSpacing: "0.01em", width: isMobile ? "100%" : "auto" }}
+            <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "pricing" })}
+              onMouseDown={pressDown} onMouseUp={pressUp}
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "rgba(255,255,255,0.7)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}>
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "rgba(255,255,255,0.7)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "scale(1)"; }}
+              style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 500, padding: isMobile ? "16px 32px" : "16px 40px", borderRadius: 10, background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", transition: "all 0.2s ease-out", letterSpacing: "0.01em", width: isMobile ? "100%" : "auto" }}>
               View Pricing
             </button>
           </div>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", marginTop: 20, letterSpacing: "0.04em" }}>No credit card required  ·  14-day free trial  ·  Cancel anytime</p>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", marginTop: 24, letterSpacing: "0.04em" }}>No credit card required  ·  14-day free trial  ·  Cancel anytime</p>
         </FadeIn>
       </div>
 
-      {/* Bottom gradient fade to features */}
+      {/* Bottom gradient fade */}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 120, background: "linear-gradient(to bottom, transparent, #0A0E17)", pointerEvents: "none" }} />
     </div>
 
@@ -1167,8 +1283,8 @@ const HomePage = ({ dispatch }) => {
       <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
     </div>
 
-    {/* ── Features Grid ── */}
-    <div style={{ padding: isMobile ? "80px 20px" : "120px 48px", position: "relative" }}>
+    {/* ── Features Bento Grid ── */}
+    <div style={{ padding: isMobile ? "80px 24px" : "120px 48px", position: "relative" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         <FadeIn>
           <div style={{ textAlign: "center", marginBottom: isMobile ? 48 : 72 }}>
@@ -1177,19 +1293,54 @@ const HomePage = ({ dispatch }) => {
             <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", maxWidth: 480, margin: "0 auto", lineHeight: 1.6 }}>AI smarts meets tradie simplicity. No complicated setup, no fluff.</p>
           </div>
         </FadeIn>
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: isMobile ? 12 : 16 }}>
-          {features.map((f, i) => {
+
+        {/* Top row: large left, small right */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: isMobile ? 16 : 24, marginBottom: isMobile ? 16 : 24 }}>
+          {features.slice(0, 2).map((f, i) => {
             const FIcon = f.Icon;
             return (
-              <FadeIn key={i} delay={0.06 * i}>
-                <div style={{ padding: isMobile ? 24 : 28, borderRadius: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", transition: "all 0.35s cubic-bezier(0.16,1,0.3,1)", height: "100%", cursor: "default" }}
+              <FadeIn key={i} delay={0.05 * i}>
+                <div style={{ padding: isMobile ? 24 : 32, borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", transition: "all 0.2s ease-out", height: "100%", cursor: "default", position: "relative", overflow: "hidden" }}
                   onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(20,184,166,0.25)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                    <FIcon size={20} color={theme.accent} strokeWidth={1.5} />
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+                    <FIcon size={22} color={theme.accent} strokeWidth={1.5} />
                   </div>
-                  <h3 style={{ fontSize: 15, fontWeight: 600, color: "#FFFFFF", marginBottom: 6, fontFamily: theme.font, letterSpacing: "-0.01em" }}>{f.title}</h3>
-                  <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.6, margin: 0 }}>{f.desc}</p>
+                  <h3 style={{ fontSize: isMobile ? 17 : 19, fontWeight: 600, color: "#FFFFFF", marginBottom: 8, fontFamily: theme.font, letterSpacing: "-0.01em" }}>{f.title}</h3>
+                  <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.65, margin: 0, maxWidth: f.large ? 440 : 320 }}>{f.desc}</p>
+                  {/* Large card extra visual: stat badge */}
+                  {f.large && f.stat && (
+                    <div style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 16, padding: "16px 24px", borderRadius: 12, background: "rgba(20,184,166,0.06)", border: "1px solid rgba(20,184,166,0.12)" }}>
+                      <span style={{ fontSize: 28, fontWeight: 700, color: theme.accent, fontFamily: theme.font, letterSpacing: "-0.02em" }}>{f.stat}</span>
+                      <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.3 }}>{f.statLabel}</span>
+                    </div>
+                  )}
+                </div>
+              </FadeIn>
+            );
+          })}
+        </div>
+
+        {/* Bottom row: small left, large right */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 2fr", gap: isMobile ? 16 : 24 }}>
+          {features.slice(2, 4).map((f, i) => {
+            const FIcon = f.Icon;
+            return (
+              <FadeIn key={i + 2} delay={0.05 * (i + 2)}>
+                <div style={{ padding: isMobile ? 24 : 32, borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", transition: "all 0.2s ease-out", height: "100%", cursor: "default", position: "relative", overflow: "hidden" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(20,184,166,0.25)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+                    <FIcon size={22} color={theme.accent} strokeWidth={1.5} />
+                  </div>
+                  <h3 style={{ fontSize: isMobile ? 17 : 19, fontWeight: 600, color: "#FFFFFF", marginBottom: 8, fontFamily: theme.font, letterSpacing: "-0.01em" }}>{f.title}</h3>
+                  <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.65, margin: 0, maxWidth: f.large ? 440 : 320 }}>{f.desc}</p>
+                  {f.large && f.stat && (
+                    <div style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 16, padding: "16px 24px", borderRadius: 12, background: "rgba(20,184,166,0.06)", border: "1px solid rgba(20,184,166,0.12)" }}>
+                      <span style={{ fontSize: 28, fontWeight: 700, color: theme.accent, fontFamily: theme.font, letterSpacing: "-0.02em" }}>{f.stat}</span>
+                      <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.3 }}>{f.statLabel}</span>
+                    </div>
+                  )}
                 </div>
               </FadeIn>
             );
@@ -1203,8 +1354,52 @@ const HomePage = ({ dispatch }) => {
       <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
     </div>
 
-    {/* ── How It Works ── */}
-    <div style={{ padding: isMobile ? "80px 20px" : "120px 48px", position: "relative" }}>
+    {/* ── Social Proof / Stats Strip ── */}
+    <div style={{ padding: isMobile ? "64px 24px" : "80px 48px", position: "relative" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: isMobile ? 32 : 48, textAlign: "center" }}>
+          {/* Stat 1 */}
+          <FadeIn delay={0}>
+            <div ref={statRef1}>
+              <div style={{ fontSize: isMobile ? 40 : 52, fontWeight: 700, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1 }}>
+                {count1.toLocaleString()}+
+              </div>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", marginTop: 8, lineHeight: 1.5 }}>Businesses need<br />better quoting</p>
+            </div>
+          </FadeIn>
+
+          {/* Stat 2 */}
+          <FadeIn delay={0.05}>
+            <div ref={statRef2} style={{ position: "relative" }}>
+              {!isMobile && <div style={{ position: "absolute", left: 0, top: "10%", bottom: "10%", width: 1, background: "linear-gradient(180deg, transparent, rgba(255,255,255,0.08), transparent)" }} />}
+              <div style={{ fontSize: isMobile ? 40 : 52, fontWeight: 700, color: theme.accent, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1 }}>
+                {count2}%
+              </div>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", marginTop: 8, lineHeight: 1.5 }}>of quotes go unfollowed<br />— jobs lost to silence</p>
+              {!isMobile && <div style={{ position: "absolute", right: 0, top: "10%", bottom: "10%", width: 1, background: "linear-gradient(180deg, transparent, rgba(255,255,255,0.08), transparent)" }} />}
+            </div>
+          </FadeIn>
+
+          {/* Stat 3 */}
+          <FadeIn delay={0.1}>
+            <div ref={statRef3}>
+              <div style={{ fontSize: isMobile ? 40 : 52, fontWeight: 700, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1 }}>
+                {count3}x
+              </div>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", marginTop: 8, lineHeight: 1.5 }}>more jobs won<br />with automated follow-ups</p>
+            </div>
+          </FadeIn>
+        </div>
+      </div>
+    </div>
+
+    {/* ── Divider ── */}
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
+    </div>
+
+    {/* ── How It Works — Horizontal Timeline ── */}
+    <div style={{ padding: isMobile ? "80px 24px" : "120px 48px", position: "relative" }}>
       {/* Subtle gradient orb */}
       <div style={{ position: "absolute", top: "20%", right: "-5%", width: "40%", height: "60%", background: "radial-gradient(circle, rgba(20,184,166,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
 
@@ -1216,45 +1411,86 @@ const HomePage = ({ dispatch }) => {
           </div>
         </FadeIn>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 16 : 0 }}>
-          {steps.map((step, i) => {
-            const StepIcon = step.Icon;
-            return (
-              <FadeIn key={i} delay={0.1 * i}>
-                <div style={{ display: isMobile ? "block" : "flex", alignItems: "flex-start", gap: 40, padding: isMobile ? 24 : "48px 0", borderBottom: i < steps.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none", ...(isMobile ? { borderRadius: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" } : {}) }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: isMobile ? 16 : 0, minWidth: isMobile ? "auto" : 80 }}>
-                    <span style={{ fontSize: isMobile ? 36 : 56, fontWeight: 700, color: "rgba(20,184,166,0.15)", fontFamily: theme.font, letterSpacing: "-0.04em", lineHeight: 1 }}>{step.num}</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flex: 1 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
-                      <StepIcon size={20} color={theme.accent} strokeWidth={1.5} />
+        {isMobile ? (
+          /* Mobile: vertical timeline */
+          <div style={{ position: "relative", paddingLeft: 32 }}>
+            {/* Vertical line */}
+            <div style={{ position: "absolute", left: 11, top: 0, bottom: 0, width: 2, background: "linear-gradient(180deg, rgba(20,184,166,0.3), rgba(20,184,166,0.05))" }} />
+            {steps.map((step, i) => {
+              const StepIcon = step.Icon;
+              return (
+                <FadeIn key={i} delay={0.1 * i}>
+                  <div style={{ position: "relative", marginBottom: i < steps.length - 1 ? 32 : 0 }}>
+                    {/* Timeline dot */}
+                    <div style={{ position: "absolute", left: -32, top: 0, width: 24, height: 24, borderRadius: "50%", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid rgba(20,184,166,0.4)", animation: "timeline-dot 3s ease-in-out infinite", animationDelay: `${i * 0.5}s` }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: theme.accent }} />
                     </div>
-                    <div>
-                      <h3 style={{ fontSize: isMobile ? 18 : 20, fontWeight: 600, color: "#FFFFFF", marginBottom: 8, fontFamily: theme.font, letterSpacing: "-0.01em" }}>{step.title}</h3>
-                      <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", lineHeight: 1.7, margin: 0, maxWidth: 600 }}>{step.desc}</p>
+                    <div style={{ padding: 24, borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: theme.accent, fontFamily: theme.font }}>{step.num}</span>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <StepIcon size={18} color={theme.accent} strokeWidth={1.5} />
+                        </div>
+                      </div>
+                      <h3 style={{ fontSize: 18, fontWeight: 600, color: "#FFFFFF", marginBottom: 8, fontFamily: theme.font, letterSpacing: "-0.01em" }}>{step.title}</h3>
+                      <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.7, margin: 0 }}>{step.desc}</p>
                     </div>
                   </div>
-                </div>
-              </FadeIn>
-            );
-          })}
-        </div>
+                </FadeIn>
+              );
+            })}
+          </div>
+        ) : (
+          /* Desktop: horizontal timeline */
+          <div style={{ position: "relative" }}>
+            {/* Horizontal connecting line */}
+            <div style={{ position: "absolute", top: 36, left: "8%", right: "8%", height: 2, background: "linear-gradient(90deg, rgba(20,184,166,0.05), rgba(20,184,166,0.3), rgba(20,184,166,0.3), rgba(20,184,166,0.05))", zIndex: 0 }} />
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 32, position: "relative", zIndex: 1 }}>
+              {steps.map((step, i) => {
+                const StepIcon = step.Icon;
+                return (
+                  <FadeIn key={i} delay={0.12 * i}>
+                    <div style={{ textAlign: "center" }}>
+                      {/* Number badge with animated dot */}
+                      <div style={{ width: 72, height: 72, borderRadius: "50%", background: "rgba(10,14,23,0.95)", border: "2px solid rgba(20,184,166,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 32px", position: "relative", animation: "timeline-dot 3s ease-in-out infinite", animationDelay: `${i * 0.6}s` }}>
+                        <span style={{ fontSize: 22, fontWeight: 700, color: theme.accent, fontFamily: theme.font }}>{step.num}</span>
+                      </div>
+                      <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.12)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
+                        <StepIcon size={22} color={theme.accent} strokeWidth={1.5} />
+                      </div>
+                      <h3 style={{ fontSize: 20, fontWeight: 600, color: "#FFFFFF", marginBottom: 8, fontFamily: theme.font, letterSpacing: "-0.01em" }}>{step.title}</h3>
+                      <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", lineHeight: 1.7, margin: 0, maxWidth: 300, marginLeft: "auto", marginRight: "auto" }}>{step.desc}</p>
+                    </div>
+                  </FadeIn>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
 
     {/* ── CTA ── */}
-    <div style={{ padding: isMobile ? "80px 20px" : "120px 48px", textAlign: "center", position: "relative" }}>
+    <div style={{ padding: isMobile ? "80px 24px" : "120px 48px", textAlign: "center", position: "relative" }}>
       {/* Glow behind CTA */}
       <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "80%", height: "80%", background: "radial-gradient(circle, rgba(20,184,166,0.08) 0%, transparent 60%)", pointerEvents: "none" }} />
 
       <div style={{ position: "relative", zIndex: 1, maxWidth: 700, margin: "0 auto" }}>
         <FadeIn>
           <div style={{ padding: isMobile ? "48px 24px" : "72px 64px", borderRadius: 20, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            {/* Pulsing wrench icon */}
+            <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 56, height: 56, borderRadius: 16, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", marginBottom: 24, animation: "pulse-glow 3s ease-in-out infinite" }}>
+              <Wrench size={26} color={theme.accent} strokeWidth={1.5} style={{ animation: "spin-slow 10s linear infinite" }} />
+            </div>
             <h2 style={{ fontSize: isMobile ? 28 : 40, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Snap a Photo. Get a Quote.<br />Win the Job.</h2>
-            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", marginBottom: 36, lineHeight: 1.6 }}>Join NZ tradies using AI to turn job site photos and notes into accurate quotes in minutes — then close more jobs on autopilot.</p>
-            <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })} style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 600, padding: "14px 40px", borderRadius: 10, background: theme.accent, color: "#000", border: "none", cursor: "pointer", transition: "all 0.2s", boxShadow: `0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)`, letterSpacing: "0.01em" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#5EEAD4"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 32px rgba(20,184,166,0.4), 0 0 80px rgba(20,184,166,0.15)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)"; }}>
+            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", marginBottom: 16, lineHeight: 1.6 }}>Join NZ tradies using AI to turn job site photos and notes into accurate quotes in minutes — then close more jobs on autopilot.</p>
+            <p style={{ fontSize: 13, color: "rgba(20,184,166,0.6)", marginBottom: 32, fontWeight: 500 }}>Built for tradies, by a Kiwi who gets it.</p>
+            <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })}
+              onMouseDown={pressDown} onMouseUp={pressUp}
+              onMouseEnter={e => { e.currentTarget.style.background = "#5EEAD4"; e.currentTarget.style.boxShadow = "0 4px 32px rgba(20,184,166,0.4), 0 0 80px rgba(20,184,166,0.15)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)"; }}
+              style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 600, padding: "16px 40px", borderRadius: 10, background: theme.accent, color: "#000", border: "none", cursor: "pointer", transition: "all 0.2s ease-out", boxShadow: "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)", letterSpacing: "0.01em" }}>
               Start Your Free Trial
               <ArrowRight size={16} style={{ display: "inline", verticalAlign: "middle", marginLeft: 8 }} />
             </button>
@@ -1379,7 +1615,7 @@ const RequestQuotePage = ({ businessId }) => {
         <div style={{ width: "100%", maxWidth: 480, background: theme.surface, borderRadius: 20, overflow: "hidden", border: `1px solid ${theme.border}`, textAlign: "center" }}>
           <div style={{ padding: "40px 32px", background: `linear-gradient(135deg, ${theme.bg}, ${theme.surfaceLight})` }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, color: theme.text, margin: "0 0 12px", fontFamily: theme.fontDisplay }}>Request Sent!</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: theme.text, margin: "0 0 16px", fontFamily: theme.fontDisplay }}>Request Sent!</h1>
             <p style={{ fontSize: 15, color: theme.textMuted, lineHeight: 1.6 }}>
               Thanks {form.name.split(" ")[0]}! <strong style={{ color: theme.text }}>{businessName}</strong> has received your request and will be in touch soon.
             </p>
@@ -1392,14 +1628,14 @@ const RequestQuotePage = ({ businessId }) => {
   return (
     <div style={{ minHeight: "100vh", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <div style={{ width: "100%", maxWidth: 500, background: theme.surface, borderRadius: 20, overflow: "hidden", border: `1px solid ${theme.border}` }}>
-        <div style={{ padding: "28px 32px", textAlign: "center", borderBottom: `3px solid ${theme.accent}` }}>
+        <div style={{ padding: "32px 32px", textAlign: "center", borderBottom: `3px solid ${theme.accent}` }}>
           <WynflowLogo size={36} />
-          {businessName && <h1 style={{ fontSize: 20, fontWeight: 700, color: theme.text, margin: "12px 0 0", fontFamily: theme.fontDisplay }}>Request a Quote from {businessName}</h1>}
+          {businessName && <h1 style={{ fontSize: 20, fontWeight: 700, color: theme.text, margin: "16px 0 0", fontFamily: theme.fontDisplay }}>Request a Quote from {businessName}</h1>}
           <p style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>Fill in your details, add photos if you can, and we'll get back to you</p>
         </div>
         <div style={{ padding: isMobile ? 24 : 32 }}>
-          {error && error !== "Business not found" && <div style={{ padding: "10px 14px", borderRadius: 8, background: theme.redSoft, color: theme.red, fontSize: 13, marginBottom: 16 }}>{error}</div>}
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {error && error !== "Business not found" && <div style={{ padding: "8px 16px", borderRadius: 8, background: theme.redSoft, color: theme.red, fontSize: 13, marginBottom: 16 }}>{error}</div>}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <Input label="Your Name *" value={form.name} onChange={v => setForm({ ...form, name: v })} placeholder="e.g. Kim Smith" />
             <Input label="Email *" value={form.email} onChange={v => setForm({ ...form, email: v })} type="email" placeholder="e.g. kim@email.com" />
             <Input label="Phone *" value={form.phone} onChange={v => setForm({ ...form, phone: v })} placeholder="e.g. 021 123 4567" />
@@ -1407,9 +1643,9 @@ const RequestQuotePage = ({ businessId }) => {
             <Input label="Extra details *" value={form.description} onChange={v => setForm({ ...form, description: v })} textarea placeholder="e.g. Size of area, urgency, specific requirements..." />
             <div>
               <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 8 }}>Photos (optional, up to 5)</div>
-              <p style={{ fontSize: 12, color: theme.textDim, margin: "0 0 10px" }}>Photos help us scope the job and get you a more accurate quote faster</p>
+              <p style={{ fontSize: 12, color: theme.textDim, margin: "0 0 8px" }}>Photos help us scope the job and get you a more accurate quote faster</p>
               {photoPreviews.length > 0 && (
-                <div style={{ display: "grid", gridTemplateColumns: photoPreviews.length === 1 ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: photoPreviews.length === 1 ? "1fr" : "1fr 1fr", gap: 8, marginBottom: 16 }}>
                   {photoPreviews.map((src, i) => (
                     <div key={i} style={{ position: "relative", borderRadius: 12, overflow: "hidden", border: `1px solid ${theme.border}`, aspectRatio: "4/3" }}>
                       <img src={src} alt={`Photo ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -1419,7 +1655,7 @@ const RequestQuotePage = ({ businessId }) => {
                 </div>
               )}
               {photos.length < 5 && (
-                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "16px 20px", borderRadius: 12, border: `2px dashed ${theme.border}`, cursor: "pointer", color: theme.textMuted, fontSize: 14, transition: "border-color 0.2s" }}
+                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "16px 24px", borderRadius: 12, border: `2px dashed ${theme.border}`, cursor: "pointer", color: theme.textMuted, fontSize: 14, transition: "border-color 0.2s" }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = theme.accent}
                   onMouseLeave={e => e.currentTarget.style.borderColor = theme.border}>
                   <Upload size={18} /> {photos.length > 0 ? "Add More Photos" : "Add Photos"}
@@ -1427,7 +1663,7 @@ const RequestQuotePage = ({ businessId }) => {
                 </label>
               )}
             </div>
-            <Button onClick={handleSubmit} disabled={loading} style={{ width: "100%", justifyContent: "center", padding: "14px 24px", marginTop: 4 }}>
+            <Button onClick={handleSubmit} disabled={loading} style={{ width: "100%", justifyContent: "center", padding: "16px 24px", marginTop: 8 }}>
               {loading ? "Submitting & analysing..." : "Request Quote →"}
             </Button>
           </div>
@@ -1444,137 +1680,376 @@ const RequestQuotePage = ({ businessId }) => {
 
 const AboutPage = ({ dispatch }) => {
   const isMobile = useIsMobile();
+
+  // Animated counter hook — counts from 0 to target over ~2s when visible
+  const useCounter = (target, suffix = "", duration = 2000) => {
+    const [ref, isVisible] = useInView(0.3);
+    const [count, setCount] = useState(0);
+    const [hasRun, setHasRun] = useState(false);
+    useEffect(() => {
+      if (!isVisible || hasRun) return;
+      setHasRun(true);
+      const startTime = Date.now();
+      const tick = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setCount(Math.round(eased * target));
+        if (progress < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }, [isVisible, hasRun, target, duration]);
+    return [ref, count, suffix];
+  };
+
+  // Button press handlers
+  const pressDown = (e) => { e.currentTarget.style.transform = "scale(0.97)"; };
+  const pressUp = (e) => { e.currentTarget.style.transform = "scale(1)"; };
+
+  // Animated counters for stats
+  const [statRef1, count1] = useCounter(2, "%");
+  const [statRef2, count2] = useCounter(80, "%");
+  const [statRef3, count3] = useCounter(44, "%");
+  const [statRef4, count4] = useCounter(50, "%");
+  const [statRef5, count5] = useCounter(70, "%");
+
   const stats = [
-    { value: "2%", label: "of sales happen on first contact", color: theme.red },
-    { value: "80%", label: "of deals need 5+ follow-ups to close", color: theme.accent },
-    { value: "44%", label: "of salespeople give up after just one follow-up", color: theme.red },
-    { value: "50%", label: "boost in replies from just one follow-up email", color: theme.green },
+    { value: count1, suffix: "%", label: "of sales happen on first contact", color: theme.red, ref: statRef1 },
+    { value: count2, suffix: "%", label: "of deals need 5+ follow-ups to close", color: theme.accent, ref: statRef2 },
+    { value: count3, suffix: "%", label: "of salespeople give up after just one follow-up", color: theme.red, ref: statRef3 },
+    { value: count4, suffix: "%", label: "boost in replies from just one follow-up email", color: theme.green, ref: statRef4 },
   ];
+
   return (
-  <div style={{ background: theme.bg }}>
-    <div style={{ padding:isMobile?"120px 20px 80px":"160px 48px 100px",textAlign:"center",position:"relative" }}>
-      <div style={{ position:"absolute",top:"-20%",left:"-10%",width:"50%",height:"60%",background:"radial-gradient(circle, rgba(20,184,166,0.06) 0%, transparent 70%)",pointerEvents:"none" }} />
-      <FadeIn>
-        <p style={{ fontSize:13,fontWeight:600,color:theme.accent,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:16 }}>Our Story</p>
-        <h1 style={{ fontSize:isMobile?36:56,fontWeight:700,color:"#FFFFFF",marginBottom:20,fontFamily:theme.font,letterSpacing:"-0.03em" }}>The Story Behind Wynflow</h1>
-        <p style={{ fontSize:isMobile?16:18,color:"rgba(255,255,255,0.45)",maxWidth:560,margin:"0 auto",lineHeight:1.7 }}>Built from a real problem, by someone who watched it happen every day.</p>
-      </FadeIn>
+  <div style={{ background: theme.bg, overflowX: "hidden" }}>
+
+    {/* Keyframe animations */}
+    <style>{`
+      @keyframes about-spin-slow { to { transform: rotate(360deg) } }
+      @keyframes about-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
+      @keyframes about-float-delayed { 0%,100% { transform: translateY(-5px) } 50% { transform: translateY(5px) } }
+      @keyframes about-pulse-glow { 0%,100% { opacity: 0.6 } 50% { opacity: 1 } }
+    `}</style>
+
+    {/* Hero */}
+    <div style={{ position: "relative", minHeight: isMobile ? "auto" : "70vh", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: isMobile ? "120px 24px 80px" : "160px 48px 120px" }}>
+      {/* Gradient orbs */}
+      <div style={{ position: "absolute", top: "-20%", left: "-10%", width: "60%", height: "60%", background: "radial-gradient(circle, rgba(20,184,166,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: "-10%", right: "-10%", width: "50%", height: "50%", background: "radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+      {/* Floating trade tool icons */}
+      {!isMobile && <>
+        <div style={{ position: "absolute", top: "18%", left: "8%", animation: "about-float 6s ease-in-out infinite", pointerEvents: "none", opacity: 0.12 }}>
+          <Wrench size={48} color={theme.accent} strokeWidth={1} />
+        </div>
+        <div style={{ position: "absolute", top: "30%", right: "10%", animation: "about-float-delayed 7s ease-in-out infinite", pointerEvents: "none", opacity: 0.08 }}>
+          <Camera size={40} color={theme.accent} strokeWidth={1} />
+        </div>
+        <div style={{ position: "absolute", bottom: "25%", left: "12%", animation: "about-float 8s ease-in-out infinite 1s", pointerEvents: "none", opacity: 0.06 }}>
+          <Zap size={36} color="#5EEAD4" strokeWidth={1} />
+        </div>
+        <div style={{ position: "absolute", bottom: "30%", right: "8%", animation: "about-float-delayed 9s ease-in-out infinite 0.5s", pointerEvents: "none", opacity: 0.07 }}>
+          <Mail size={32} color={theme.accent} strokeWidth={1} />
+        </div>
+      </>}
+
+      <div style={{ maxWidth: 720, position: "relative", zIndex: 1 }}>
+        <FadeIn>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 100, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", marginBottom: isMobile ? 24 : 32 }}>
+            <Wrench size={14} color={theme.accent} style={{ animation: "about-spin-slow 8s linear infinite" }} />
+            <span style={{ fontSize: 13, fontWeight: 500, color: theme.accent, letterSpacing: "0.02em" }}>Our Story</span>
+          </div>
+        </FadeIn>
+        <FadeIn delay={0.08}>
+          <h1 style={{ fontSize: isMobile ? 40 : 64, fontWeight: 700, color: "#FFFFFF", lineHeight: 1.05, marginBottom: isMobile ? 24 : 32, fontFamily: theme.font, letterSpacing: "-0.03em" }}>
+            The Story Behind<br /><span style={{ background: `linear-gradient(135deg, ${theme.accent}, #5EEAD4)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Wynflow</span>
+          </h1>
+        </FadeIn>
+        <FadeIn delay={0.16}>
+          <p style={{ fontSize: isMobile ? 16 : 19, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, maxWidth: 560, margin: "0 auto", fontWeight: 400, letterSpacing: "0.01em" }}>Built from a real problem, by someone who watched it happen every day.</p>
+        </FadeIn>
+      </div>
+
+      {/* Bottom gradient fade */}
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 120, background: "linear-gradient(to bottom, transparent, #0A0E17)", pointerEvents: "none" }} />
     </div>
-    <div style={{ maxWidth:1100,margin:"0 auto",padding:"0 48px" }}><div style={{ height:1,background:"linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} /></div>
-    <div style={{ padding:isMobile?"60px 20px":"100px 48px" }}>
-      <div style={{ maxWidth:720,margin:"0 auto" }}>
-        <FadeIn>
-          <div style={{ padding:isMobile?24:48,borderRadius:16,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",marginBottom:isMobile?32:64 }}>
-            <div style={{ width:48,height:48,borderRadius:12,overflow:"hidden",marginBottom:24,display:"flex",alignItems:"center",justifyContent:"center" }}><WynflowLogo size={48} /></div>
-            <h2 style={{ fontSize:isMobile?22:28,fontWeight:700,color:"#FFFFFF",marginBottom:20,fontFamily:theme.font,letterSpacing:"-0.02em",lineHeight:1.3 }}>It started with my dad's carpet shop.</h2>
-            <div style={{ display:"flex",flexDirection:"column",gap:20 }}>
-              <p style={{ fontSize:15,color:"rgba(255,255,255,0.45)",lineHeight:1.8,margin:0 }}>My dad ran a flooring business in Napier for years. Great at his trade, terrible at admin. I'd watch him spend his evenings at the kitchen table — measuring jobs, working out pricing, sending off quotes.</p>
-              <p style={{ fontSize:15,color:"rgba(255,255,255,0.45)",lineHeight:1.8,margin:0 }}>Then nothing. If the customer didn't respond straight away, the quote would just sit there. He'd get busy with the next job, the next measure, the next customer. By the time he thought about following up, he either couldn't find the quote or the customer had already gone with someone else.</p>
-              <p style={{ fontSize:15,color:"rgba(255,255,255,0.45)",lineHeight:1.8,margin:0 }}>One Christmas he told me: <span style={{ color:"#FFFFFF",fontWeight:500 }}>"If you want to get me something, get me a robot that does my quoting."</span> He was joking — but it stuck with me.</p>
-              <p style={{ fontSize:15,color:"rgba(255,255,255,0.45)",lineHeight:1.8,margin:0 }}>I started digging into it and realised it wasn't just him. Across every trade, every industry, the data tells the same story: businesses don't lose work because they're too expensive. They lose it because they're too slow to follow up.</p>
-              <p style={{ fontSize:15,color:"rgba(255,255,255,0.45)",lineHeight:1.8,margin:0 }}>That's where Wynflow came from — a system that sends your quotes, chases your customers automatically, and lets you track every single one from sent to booked.</p>
+
+    {/* Divider */}
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(20,184,166,0.3), transparent)" }} />
+    </div>
+
+    {/* Origin Story — Bento layout */}
+    <div style={{ padding: isMobile ? "64px 24px" : "96px 48px" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr 1fr", gap: isMobile ? 24 : 32 }}>
+
+          {/* Left: main story card (tall) */}
+          <FadeIn>
+            <div style={{ padding: isMobile ? 24 : 48, borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", height: "100%", transition: "all 0.2s ease-out" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.2)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, overflow: "hidden", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "center" }}><WynflowLogo size={48} /></div>
+              <h2 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: "#FFFFFF", marginBottom: 24, fontFamily: theme.font, letterSpacing: "-0.02em", lineHeight: 1.3 }}>It started with my dad's carpet shop.</h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.8, margin: 0 }}>My dad ran a flooring business in Napier for years. Great at his trade, terrible at admin. I'd watch him spend his evenings at the kitchen table — measuring jobs, working out pricing, sending off quotes.</p>
+                <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.8, margin: 0 }}>Then nothing. If the customer didn't respond straight away, the quote would just sit there. He'd get busy with the next job, the next measure, the next customer. By the time he thought about following up, he either couldn't find the quote or the customer had already gone with someone else.</p>
+                <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.8, margin: 0 }}>One Christmas he told me: <span style={{ color: "#FFFFFF", fontWeight: 500 }}>"If you want to get me something, get me a robot that does my quoting."</span> He was joking — but it stuck with me.</p>
+              </div>
             </div>
+          </FadeIn>
+
+          {/* Right: stacked cards */}
+          <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 24 : 32 }}>
+            <FadeIn delay={0.1}>
+              <div style={{ padding: isMobile ? 24 : 32, borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", transition: "all 0.2s ease-out" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.2)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <Search size={18} color={theme.accent} strokeWidth={1.5} />
+                </div>
+                <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.8, margin: 0 }}>I started digging into it and realised it wasn't just him. Across every trade, every industry, the data tells the same story: businesses don't lose work because they're too expensive. They lose it because they're too slow to follow up.</p>
+              </div>
+            </FadeIn>
+            <FadeIn delay={0.2}>
+              <div style={{ padding: isMobile ? 24 : 32, borderRadius: 16, background: "rgba(20,184,166,0.04)", border: "1px solid rgba(20,184,166,0.12)", transition: "all 0.2s ease-out" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.12)"; }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <Zap size={18} color={theme.accent} strokeWidth={1.5} />
+                </div>
+                <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.8, margin: 0 }}>That's where Wynflow came from — a system that sends your quotes, chases your customers automatically, and lets you track every single one from sent to booked.</p>
+                <div style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 100, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)" }}>
+                  <Bot size={14} color={theme.accent} />
+                  <span style={{ fontSize: 13, fontWeight: 500, color: theme.accent }}>AI + Automation</span>
+                </div>
+              </div>
+            </FadeIn>
           </div>
-        </FadeIn>
+        </div>
+      </div>
+    </div>
+
+    {/* Divider */}
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
+    </div>
+
+    {/* Stats Section with animated counters */}
+    <div style={{ padding: isMobile ? "64px 24px" : "96px 48px" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         <FadeIn>
-          <div style={{ textAlign:"center",marginBottom:isMobile?32:48 }}>
-            <p style={{ fontSize:13,fontWeight:600,color:theme.accent,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:16 }}>The Data</p>
-            <h2 style={{ fontSize:isMobile?24:36,fontWeight:700,color:"#FFFFFF",marginBottom:12,fontFamily:theme.font,letterSpacing:"-0.02em" }}>The Data Doesn't Lie</h2>
-            <p style={{ fontSize:15,color:"rgba(255,255,255,0.4)",maxWidth:500,margin:"0 auto",lineHeight:1.6 }}>The research is clear: following up is the single biggest thing you can do to win more work.</p>
+          <div style={{ textAlign: "center", marginBottom: isMobile ? 48 : 72 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: theme.accent, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 16 }}>The Data</p>
+            <h2 style={{ fontSize: isMobile ? 30 : 44, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>The Data Doesn't Lie</h2>
+            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", maxWidth: 480, margin: "0 auto", lineHeight: 1.6 }}>The research is clear: following up is the single biggest thing you can do to win more work.</p>
           </div>
         </FadeIn>
-        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1fr 1fr 1fr",gap:isMobile?12:16,marginBottom:isMobile?32:64 }}>
-          {stats.map((s,i) => (
-            <FadeIn key={i} delay={0.06*i}>
-              <div style={{ padding:isMobile?16:24,borderRadius:14,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",textAlign:"center",height:"100%" }}>
-                <div style={{ fontSize:isMobile?28:40,fontWeight:700,color:s.color,fontFamily:theme.font,letterSpacing:"-0.03em",marginBottom:8 }}>{s.value}</div>
-                <div style={{ fontSize:12,color:"rgba(255,255,255,0.4)",lineHeight:1.5 }}>{s.label}</div>
+
+        {/* Animated stats grid */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr", gap: isMobile ? 16 : 24, marginBottom: isMobile ? 32 : 64 }}>
+          {stats.map((s, i) => (
+            <FadeIn key={i} delay={0.05 * i}>
+              <div ref={s.ref} style={{ padding: isMobile ? 24 : 32, borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center", height: "100%", transition: "all 0.2s ease-out", cursor: "default" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(20,184,166,0.25)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                <div style={{ fontSize: isMobile ? 32 : 44, fontWeight: 700, color: s.color, fontFamily: theme.font, letterSpacing: "-0.03em", marginBottom: 8, lineHeight: 1 }}>
+                  {s.value}{s.suffix}
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.5 }}>{s.label}</div>
               </div>
             </FadeIn>
           ))}
         </div>
+
+        {/* Hero stat — 70% with animated counter */}
+        <FadeIn delay={0.25}>
+          <div ref={statRef5} style={{ padding: isMobile ? 32 : 56, borderRadius: 20, background: "rgba(20,184,166,0.04)", border: "1px solid rgba(20,184,166,0.12)", textAlign: "center", position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "60%", height: "100%", background: "radial-gradient(circle, rgba(20,184,166,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <div style={{ fontSize: isMobile ? 64 : 96, fontWeight: 700, background: `linear-gradient(135deg, ${theme.accent}, #5EEAD4)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", fontFamily: theme.font, letterSpacing: "-0.04em", lineHeight: 1 }}>
+                {count5}%
+              </div>
+              <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.4)", marginTop: 16, maxWidth: 500, margin: "16px auto 0", lineHeight: 1.6 }}>increase in conversion rates just by making a few extra follow-up attempts. Most businesses leave this on the table.</p>
+            </div>
+          </div>
+        </FadeIn>
       </div>
     </div>
-    <div style={{ maxWidth:1100,margin:"0 auto",padding:"0 48px" }}><div style={{ height:1,background:"linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} /></div>
-    <div style={{ padding:isMobile?"60px 20px":"100px 48px" }}>
-      <div style={{ maxWidth:720,margin:"0 auto" }}>
-        <FadeIn>
-          <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?24:48,alignItems:"start",marginBottom:isMobile?40:64 }}>
-            <div>
-              <div style={{ width:40,height:40,borderRadius:10,background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.15)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16 }}><XCircle size={20} color={theme.red} strokeWidth={1.5} /></div>
-              <h3 style={{ fontSize:isMobile?20:24,fontWeight:700,color:"#FFFFFF",marginBottom:12,fontFamily:theme.font,letterSpacing:"-0.02em" }}>The Problem</h3>
-              <p style={{ fontSize:15,color:"rgba(255,255,255,0.4)",lineHeight:1.8 }}>Service businesses spend hours scoping jobs and writing quotes — only to let them die in someone's inbox. Research shows that 92% of people stop following up after just four attempts, even though most deals need five or more touchpoints. The first person to follow up wins the job 35-50% of the time.</p>
+
+    {/* Divider */}
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
+    </div>
+
+    {/* Problem / Solution — Bento asymmetric */}
+    <div style={{ padding: isMobile ? "64px 24px" : "96px 48px" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        {/* Top row: Problem (large) + Speed stat (small) */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: isMobile ? 16 : 24, marginBottom: isMobile ? 16 : 24 }}>
+          <FadeIn>
+            <div style={{ padding: isMobile ? 24 : 40, borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", height: "100%", transition: "all 0.2s ease-out" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.25)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+                <XCircle size={22} color={theme.red} strokeWidth={1.5} />
+              </div>
+              <h3 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.02em" }}>The Problem</h3>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", lineHeight: 1.8, margin: 0, maxWidth: 520 }}>Service businesses spend hours scoping jobs and writing quotes — only to let them die in someone's inbox. Research shows that 92% of people stop following up after just four attempts, even though most deals need five or more touchpoints. The first person to follow up wins the job 35-50% of the time.</p>
             </div>
-            <div>
-              <div style={{ width:40,height:40,borderRadius:10,background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.15)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16 }}><CheckCircle2 size={20} color={theme.green} strokeWidth={1.5} /></div>
-              <h3 style={{ fontSize:isMobile?20:24,fontWeight:700,color:"#FFFFFF",marginBottom:12,fontFamily:theme.font,letterSpacing:"-0.02em" }}>The Solution</h3>
-              <p style={{ fontSize:15,color:"rgba(255,255,255,0.4)",lineHeight:1.8 }}>Wynflow uses AI to generate quotes from job site photos — scope, materials, labour, all calculated from your rates and your trade. Then our automated system follows up at exactly the right intervals — professional, consistent, and hands-free. You get notified the moment a customer responds. No more lost jobs from slow quoting or forgotten follow-ups.</p>
+          </FadeIn>
+          <FadeIn delay={0.05}>
+            <div style={{ padding: isMobile ? 24 : 32, borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", transition: "all 0.2s ease-out" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(20,184,166,0.25)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                <Clock size={22} color={theme.accent} strokeWidth={1.5} />
+              </div>
+              <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 700, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.03em", marginBottom: 8 }}>5 mins</div>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.5 }}>Responding within 5 minutes makes you 9x more likely to convert a lead</p>
             </div>
-          </div>
-        </FadeIn>
-        <FadeIn>
-          <div style={{ padding:isMobile?32:56,borderRadius:16,background:"rgba(20,184,166,0.04)",border:"1px solid rgba(20,184,166,0.12)",textAlign:"center",marginBottom:isMobile?40:64 }}>
-            <div style={{ fontSize:isMobile?56:80,fontWeight:700,background:`linear-gradient(135deg, ${theme.accent}, #5EEAD4)`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",fontFamily:theme.font,letterSpacing:"-0.04em",lineHeight:1 }}>70%</div>
-            <p style={{ fontSize:isMobile?15:17,color:"rgba(255,255,255,0.4)",marginTop:16,maxWidth:500,margin:"16px auto 0",lineHeight:1.6 }}>increase in conversion rates just by making a few extra follow-up attempts. Most businesses leave this on the table.</p>
-          </div>
-        </FadeIn>
-        <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:isMobile?16:16,marginBottom:isMobile?40:64 }}>
-          {[
-            { icon: Clock, stat: "5 mins", desc: "Responding within 5 minutes makes you 9x more likely to convert a lead" },
-            { icon: Mail, stat: "3 emails", desc: "Three follow-up emails hit the sweet spot with a 9.2% reply rate" },
-            { icon: BarChart3, stat: "35-50%", desc: "of jobs go to the vendor who responds first — speed wins" },
-          ].map((item,i) => {
-            const ItemIcon = item.icon;
-            return (
-            <FadeIn key={i} delay={0.08*i}>
-              <div style={{ padding:isMobile?20:28,borderRadius:14,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",textAlign:"center",height:"100%" }}>
-                <div style={{ width:40,height:40,borderRadius:10,background:"rgba(20,184,166,0.1)",border:"1px solid rgba(20,184,166,0.15)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px" }}><ItemIcon size={18} color={theme.accent} strokeWidth={1.5} /></div>
-                <div style={{ fontSize:isMobile?24:32,fontWeight:700,color:"#FFFFFF",fontFamily:theme.font,letterSpacing:"-0.03em",marginBottom:8 }}>{item.stat}</div>
-                <p style={{ fontSize:13,color:"rgba(255,255,255,0.4)",lineHeight:1.5 }}>{item.desc}</p>
+          </FadeIn>
+        </div>
+
+        {/* Bottom row: Speed stats (small) + Solution (large) */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 2fr", gap: isMobile ? 16 : 24 }}>
+          <div style={{ display: "grid", gridTemplateRows: "1fr 1fr", gap: isMobile ? 16 : 24 }}>
+            <FadeIn delay={0.1}>
+              <div style={{ padding: isMobile ? 24 : 28, borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", transition: "all 0.2s ease-out" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(20,184,166,0.25)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <Mail size={18} color={theme.accent} strokeWidth={1.5} />
+                </div>
+                <div style={{ fontSize: isMobile ? 24 : 32, fontWeight: 700, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.03em", marginBottom: 8 }}>3 emails</div>
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.5, margin: 0 }}>Three follow-up emails hit the sweet spot with a 9.2% reply rate</p>
               </div>
             </FadeIn>
-            );
-          })}
+            <FadeIn delay={0.15}>
+              <div style={{ padding: isMobile ? 24 : 28, borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", transition: "all 0.2s ease-out" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(20,184,166,0.25)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <BarChart3 size={18} color={theme.accent} strokeWidth={1.5} />
+                </div>
+                <div style={{ fontSize: isMobile ? 24 : 32, fontWeight: 700, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.03em", marginBottom: 8 }}>35-50%</div>
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.5, margin: 0 }}>of jobs go to the vendor who responds first — speed wins</p>
+              </div>
+            </FadeIn>
+          </div>
+          <FadeIn delay={0.1}>
+            <div style={{ padding: isMobile ? 24 : 40, borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", height: "100%", transition: "all 0.2s ease-out" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(34,197,94,0.25)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+                <CheckCircle2 size={22} color={theme.green} strokeWidth={1.5} />
+              </div>
+              <h3 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.02em" }}>The Solution</h3>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", lineHeight: 1.8, margin: 0, maxWidth: 520 }}>Wynflow uses AI to generate quotes from job site photos — scope, materials, labour, all calculated from your rates and your trade. Then our automated system follows up at exactly the right intervals — professional, consistent, and hands-free. You get notified the moment a customer responds. No more lost jobs from slow quoting or forgotten follow-ups.</p>
+              <div style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 16, padding: "16px 24px", borderRadius: 12, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.12)" }}>
+                <span style={{ fontSize: 28, fontWeight: 700, color: theme.green, fontFamily: theme.font, letterSpacing: "-0.02em" }}>2x</span>
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.3 }}>more jobs won<br />with follow-ups</span>
+              </div>
+            </div>
+          </FadeIn>
         </div>
       </div>
     </div>
-    <div style={{ maxWidth:1100,margin:"0 auto",padding:"0 48px" }}><div style={{ height:1,background:"linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} /></div>
-    <div style={{ padding:isMobile?"60px 20px":"100px 48px" }}>
-      <div style={{ maxWidth:720,margin:"0 auto" }}>
+
+    {/* Divider */}
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
+    </div>
+
+    {/* Founder Bio — Side-by-side bento */}
+    <div style={{ padding: isMobile ? "64px 24px" : "96px 48px", position: "relative" }}>
+      <div style={{ position: "absolute", top: "20%", right: "-5%", width: "40%", height: "60%", background: "radial-gradient(circle, rgba(20,184,166,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+      <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative", zIndex: 1 }}>
         <FadeIn>
-          <div style={{ padding:isMobile?24:48,borderRadius:16,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",textAlign:"center" }}>
-            <h2 style={{ fontSize:isMobile?24:32,fontWeight:700,color:"#FFFFFF",marginBottom:16,fontFamily:theme.font,letterSpacing:"-0.02em" }}>Built by a Kiwi, for Kiwi Businesses</h2>
-            <p style={{ fontSize:15,color:"rgba(255,255,255,0.4)",lineHeight:1.8,maxWidth:560,margin:"0 auto 8px" }}>I'm Jesse — a young Kiwi based in Auckland. I built Wynflow because I saw firsthand how much time and money small businesses waste on things that should be automatic.</p>
-            <p style={{ fontSize:15,color:"rgba(255,255,255,0.4)",lineHeight:1.8,maxWidth:560,margin:"0 auto 24px" }}>Wynflow is built specifically for how NZ businesses actually work. No complicated setup, no enterprise pricing, no fluff. Snap photos, get an AI-generated quote, send it, and let automated follow-ups do the chasing. New Zealand has over 600,000 small businesses — 97% of all businesses in the country. Most of them are too busy doing the work to chase the paperwork. That's what Wynflow is for.</p>
-            <div style={{ display:"flex",gap:isMobile?16:32,justifyContent:"center",marginTop:32,flexWrap:"wrap" }}>
-              {[{icon:Globe,label:"100% NZ Built"},{icon:Cpu,label:"AI-Powered"},{icon:Wrench,label:"Made for Business"}].map((b,i) => {
-                const BIcon = b.icon;
-                return (
-                <div key={i} style={{ display:"flex",flexDirection:"column",alignItems:"center" }}>
-                  <div style={{ width:44,height:44,borderRadius:12,background:"rgba(20,184,166,0.1)",border:"1px solid rgba(20,184,166,0.15)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:8 }}><BIcon size={20} color={theme.accent} strokeWidth={1.5} /></div>
-                  <div style={{ fontSize:13,color:"rgba(255,255,255,0.4)" }}>{b.label}</div>
+          <div style={{ textAlign: "center", marginBottom: isMobile ? 40 : 64 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: theme.accent, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 16 }}>The Founder</p>
+            <h2 style={{ fontSize: isMobile ? 30 : 44, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Built by a Kiwi, for<br />Kiwi Businesses</h2>
+          </div>
+        </FadeIn>
+
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 16 : 24 }}>
+          {/* Left: Bio text card */}
+          <FadeIn delay={0.05}>
+            <div style={{ padding: isMobile ? 24 : 40, borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", height: "100%", transition: "all 0.2s ease-out" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.2)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
+                <div style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <UserCheck size={26} color={theme.accent} strokeWidth={1.5} />
                 </div>
-                );
-              })}
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: "#FFFFFF", fontFamily: theme.font }}>Jesse</div>
+                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>Founder, Auckland NZ</div>
+                </div>
+              </div>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.8, margin: "0 0 16px" }}>I'm Jesse — a young Kiwi based in Auckland. I built Wynflow because I saw firsthand how much time and money small businesses waste on things that should be automatic.</p>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.8, margin: 0 }}>Wynflow is built specifically for how NZ businesses actually work. No complicated setup, no enterprise pricing, no fluff. Snap photos, get an AI-generated quote, send it, and let automated follow-ups do the chasing.</p>
             </div>
+          </FadeIn>
+
+          {/* Right: NZ stats + badges stacked */}
+          <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 16 : 24 }}>
+            <FadeIn delay={0.1}>
+              <div style={{ padding: isMobile ? 24 : 32, borderRadius: 16, background: "rgba(20,184,166,0.04)", border: "1px solid rgba(20,184,166,0.12)", transition: "all 0.2s ease-out" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.12)"; }}>
+                <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.8, margin: 0 }}>New Zealand has over <span style={{ color: "#FFFFFF", fontWeight: 600 }}>600,000 small businesses</span> — 97% of all businesses in the country. Most of them are too busy doing the work to chase the paperwork. That's what Wynflow is for.</p>
+              </div>
+            </FadeIn>
+            <FadeIn delay={0.15}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: isMobile ? 16 : 16 }}>
+                {[{ icon: Globe, label: "100% NZ Built" }, { icon: Cpu, label: "AI-Powered" }, { icon: Wrench, label: "Made for Tradies" }].map((b, i) => {
+                  const BIcon = b.icon;
+                  return (
+                  <div key={i} style={{ padding: isMobile ? 16 : 20, borderRadius: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", transition: "all 0.2s ease-out" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(20,184,166,0.25)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+                      <BIcon size={20} color={theme.accent} strokeWidth={1.5} />
+                    </div>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500 }}>{b.label}</div>
+                  </div>
+                  );
+                })}
+              </div>
+            </FadeIn>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* CTA */}
+    <div style={{ padding: isMobile ? "80px 24px" : "120px 48px", textAlign: "center", position: "relative" }}>
+      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "80%", height: "80%", background: "radial-gradient(circle, rgba(20,184,166,0.08) 0%, transparent 60%)", pointerEvents: "none" }} />
+
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 700, margin: "0 auto" }}>
+        <FadeIn>
+          <div style={{ padding: isMobile ? "48px 24px" : "72px 64px", borderRadius: 20, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 56, height: 56, borderRadius: 16, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", marginBottom: 24, animation: "about-pulse-glow 3s ease-in-out infinite" }}>
+              <Wrench size={26} color={theme.accent} strokeWidth={1.5} style={{ animation: "about-spin-slow 10s linear infinite" }} />
+            </div>
+            <h2 style={{ fontSize: isMobile ? 28 : 40, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Quote Smarter. Chase Less.<br />Win More.</h2>
+            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", marginBottom: 16, lineHeight: 1.6 }}>Let AI handle the quoting and automated follow-ups handle the chasing — while you stay on the tools.</p>
+            <p style={{ fontSize: 13, color: "rgba(20,184,166,0.6)", marginBottom: 32, fontWeight: 500 }}>Built for tradies, by a Kiwi who gets it.</p>
+            <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })}
+              onMouseDown={pressDown} onMouseUp={pressUp}
+              onMouseEnter={e => { e.currentTarget.style.background = "#5EEAD4"; e.currentTarget.style.boxShadow = "0 4px 32px rgba(20,184,166,0.4), 0 0 80px rgba(20,184,166,0.15)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)"; }}
+              style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 600, padding: "16px 40px", borderRadius: 10, background: theme.accent, color: "#000", border: "none", cursor: "pointer", transition: "all 0.2s ease-out", boxShadow: "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)", letterSpacing: "0.01em" }}>
+              Start Your Free Trial
+              <ArrowRight size={16} style={{ display: "inline", verticalAlign: "middle", marginLeft: 8 }} />
+            </button>
           </div>
         </FadeIn>
       </div>
     </div>
-    <div style={{ padding:isMobile?"60px 20px":"100px 48px",textAlign:"center",position:"relative" }}>
-      <div style={{ position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:"60%",height:"80%",background:"radial-gradient(circle, rgba(20,184,166,0.06) 0%, transparent 60%)",pointerEvents:"none" }} />
-      <FadeIn>
-        <div style={{ position:"relative",zIndex:1,maxWidth:600,margin:"0 auto",padding:isMobile?"48px 24px":"64px 48px",borderRadius:20,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)" }}>
-          <h2 style={{ fontSize:isMobile?28:36,fontWeight:700,color:"#FFFFFF",marginBottom:16,fontFamily:theme.font,letterSpacing:"-0.03em" }}>Quote Smarter. Chase Less. Win More.</h2>
-          <p style={{ fontSize:16,color:"rgba(255,255,255,0.4)",marginBottom:32,lineHeight:1.6 }}>Let AI handle the quoting and automated follow-ups handle the chasing — while you stay on the tools.</p>
-          <button onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })} style={{ fontFamily:theme.font,fontSize:15,fontWeight:600,padding:"14px 40px",borderRadius:10,background:theme.accent,color:"#000",border:"none",cursor:"pointer",transition:"all 0.2s",boxShadow:`0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)` }}
-            onMouseEnter={e=>{e.currentTarget.style.background="#5EEAD4";e.currentTarget.style.transform="translateY(-2px)";}}
-            onMouseLeave={e=>{e.currentTarget.style.background=theme.accent;e.currentTarget.style.transform="translateY(0)";}}>
-            Start Your Free Trial <ArrowRight size={16} style={{ display:"inline",verticalAlign:"middle",marginLeft:8 }} />
-          </button>
-        </div>
-      </FadeIn>
-    </div>
+
     <Footer dispatch={dispatch} />
   </div>
   );
@@ -1582,50 +2057,172 @@ const AboutPage = ({ dispatch }) => {
 
 const PricingPage = ({ dispatch }) => {
   const isMobile = useIsMobile();
+  const [openFaq, setOpenFaq] = useState(null);
+
   const plans = [
     {name:"Starter",price:"29",desc:"AI quoting & automated follow-ups to win more jobs",features:["AI photo quote generator","Unlimited quotes","1 automated follow-up sequence","Customer quote request page","One-click Accept / Decline","File attachments","Quote dashboard & analytics","Email support"],highlighted:true,active:true,link:"https://buy.stripe.com/bJecN5cNf6gD70L1A973G00"},
     {name:"Pro",price:"49",desc:"The full AI-powered toolkit for serious tradies",features:[],highlighted:false,active:false,comingSoon:true,link:"https://buy.stripe.com/9B6cN500t6gD2Kv52B73G01"},
   ];
   const faqs = [{q:"How does the AI quote generator work?",a:"Take photos on the job site, add a few details about the work, and Wynflow's AI analyses everything — your trade, your rates, the scope of work — to generate an itemised quote with materials, labour, and pricing. Review it, tweak if needed, and send."},{q:"Is there really a free trial?",a:"Yep. 14 days, full access including AI quoting, no credit card needed. Send real quotes from day one."},{q:"Can I cancel anytime?",a:"Absolutely. No lock-in contracts, no cancellation fees. But most tradies stay."},{q:"Do my customers know it's automated?",a:"Nope. Emails come from Wynflow on behalf of your business name. They look professional and personal — your customers just think you're on the ball."},{q:"What if I already use Xero / Tradify / Fergus?",a:"Keep using them for your invoicing. Wynflow is specifically for AI-powered quoting and automated follow-ups — it fills the gap most trade software misses."},{q:"How long does it take to set up?",a:"About 30 seconds. Sign up, enter your business details, and generate your first AI quote. The default follow-up sequence is ready to go."}];
+
+  // Button press handlers (matching HomePage pattern)
+  const pressDown = (e) => { e.currentTarget.style.transform = "scale(0.97)"; };
+  const pressUp = (e) => { e.currentTarget.style.transform = "scale(1)"; };
+
   return (
-  <div style={{ background:theme.bg,minHeight:"100vh" }}>
-    <div style={{ padding:isMobile?"100px 20px 60px":"140px 48px 80px",textAlign:"center",position:"relative" }}>
-      <div style={{ position:"absolute",top:0,left:0,right:0,bottom:0,background:`radial-gradient(ellipse at 50% 20%,rgba(20,184,166,0.08) 0%,transparent 50%)`,pointerEvents:"none" }} />
-      <FadeIn>
-        <h1 style={{ fontSize:isMobile?36:56,fontWeight:700,color:"#FFFFFF",marginBottom:20,fontFamily:theme.font,letterSpacing:"-0.03em",position:"relative" }}>Simple, Honest Pricing</h1>
-        <p style={{ fontSize:isMobile?16:18,color:"rgba(255,255,255,0.4)",maxWidth:500,margin:"0 auto",lineHeight:1.7,position:"relative" }}>No hidden fees. No lock-in contracts. Less than the cost of one lost job.</p>
-      </FadeIn>
+  <div style={{ background: theme.bg, minHeight: "100vh", overflowX: "hidden" }}>
+
+    {/* Keyframe animations */}
+    <style>{`
+      @keyframes pricing-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
+      @keyframes pricing-float-delayed { 0%,100% { transform: translateY(-5px) } 50% { transform: translateY(5px) } }
+      @keyframes pricing-pulse-glow { 0%,100% { opacity: 0.6 } 50% { opacity: 1 } }
+      @keyframes pricing-badge-glow { 0%,100% { box-shadow: 0 0 8px rgba(20,184,166,0.3) } 50% { box-shadow: 0 0 20px rgba(20,184,166,0.5), 0 0 40px rgba(20,184,166,0.2) } }
+      @keyframes pricing-spin-slow { to { transform: rotate(360deg) } }
+    `}</style>
+
+    {/* Hero */}
+    <div style={{ position: "relative", padding: isMobile ? "120px 24px 80px" : "160px 48px 96px", textAlign: "center" }}>
+      {/* Gradient orbs */}
+      <div style={{ position: "absolute", top: "-20%", left: "-10%", width: "60%", height: "60%", background: "radial-gradient(circle, rgba(20,184,166,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: "-10%", right: "-10%", width: "50%", height: "50%", background: "radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+      {/* Floating trade tool icons */}
+      {!isMobile && <>
+        <div style={{ position: "absolute", top: "18%", left: "8%", animation: "pricing-float 6s ease-in-out infinite", pointerEvents: "none", opacity: 0.12 }}>
+          <DollarSign size={48} color={theme.accent} strokeWidth={1} />
+        </div>
+        <div style={{ position: "absolute", top: "28%", right: "10%", animation: "pricing-float-delayed 7s ease-in-out infinite", pointerEvents: "none", opacity: 0.08 }}>
+          <Camera size={40} color={theme.accent} strokeWidth={1} />
+        </div>
+        <div style={{ position: "absolute", bottom: "22%", left: "12%", animation: "pricing-float 8s ease-in-out infinite 1s", pointerEvents: "none", opacity: 0.06 }}>
+          <Zap size={36} color="#5EEAD4" strokeWidth={1} />
+        </div>
+        <div style={{ position: "absolute", top: "40%", right: "6%", animation: "pricing-float-delayed 9s ease-in-out infinite 0.5s", pointerEvents: "none", opacity: 0.07 }}>
+          <Wrench size={32} color="#5EEAD4" strokeWidth={1} />
+        </div>
+      </>}
+
+      <div style={{ maxWidth: 640, margin: "0 auto", position: "relative", zIndex: 1 }}>
+        <FadeIn>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 100, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", marginBottom: isMobile ? 24 : 32 }}>
+            <Wrench size={14} color={theme.accent} style={{ animation: "pricing-spin-slow 8s linear infinite" }} />
+            <span style={{ fontSize: 13, fontWeight: 500, color: theme.accent, letterSpacing: "0.02em" }}>Less than the cost of one lost job</span>
+          </div>
+        </FadeIn>
+        <FadeIn delay={0.08}>
+          <h1 style={{ fontSize: isMobile ? 38 : 64, fontWeight: 700, color: "#FFFFFF", marginBottom: isMobile ? 16 : 24, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.1 }}>
+            Simple, <span style={{ background: "linear-gradient(135deg, " + theme.accent + ", #5EEAD4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Honest</span> Pricing
+          </h1>
+        </FadeIn>
+        <FadeIn delay={0.16}>
+          <p style={{ fontSize: isMobile ? 16 : 19, color: "rgba(255,255,255,0.45)", maxWidth: 480, margin: "0 auto", lineHeight: 1.7, fontWeight: 400, letterSpacing: "0.01em" }}>No hidden fees. No lock-in contracts. Start free for 14 days, no credit card needed.</p>
+        </FadeIn>
+      </div>
+
+      {/* Bottom gradient fade */}
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 80, background: "linear-gradient(to bottom, transparent, " + theme.bg + ")", pointerEvents: "none" }} />
     </div>
-    <div style={{ height:1,background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 50%,transparent)" }} />
-    <div style={{ padding:isMobile?"40px 20px 60px":"60px 48px 100px" }}>
-      <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:isMobile?20:32,maxWidth:800,margin:"0 auto" }}>
-        {plans.map((plan,i) => (
-          <FadeIn key={i} delay={i * 0.15}>
-            <div style={{ padding:isMobile?28:40,borderRadius:20,background:plan.highlighted?"rgba(255,255,255,0.05)":"rgba(255,255,255,0.03)",border:`${plan.highlighted?"2px":"1px"} solid ${plan.highlighted?"rgba(20,184,166,0.3)":"rgba(255,255,255,0.06)"}`,position:"relative",transform:plan.highlighted && !isMobile?"scale(1.03)":"none",boxShadow:plan.highlighted?"0 0 60px rgba(20,184,166,0.12)":"none",transition:"all 0.3s ease",height:"100%" }}>
-              {plan.highlighted && <div style={{ position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",padding:"6px 20px",borderRadius:20,background:theme.accent,color:"#000",fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:1 }}>Most Popular</div>}
-              <h3 style={{ fontSize:22,fontWeight:700,color:"#FFFFFF",marginBottom:8,fontFamily:theme.font,letterSpacing:"-0.02em" }}>{plan.name}</h3>
-              <p style={{ fontSize:13,color:"rgba(255,255,255,0.4)",marginBottom:24,lineHeight:1.6 }}>{plan.desc}</p>
-              <div style={{ marginBottom:32 }}><span style={{ fontSize:52,fontWeight:800,color:"#FFFFFF",fontFamily:theme.font,letterSpacing:"-0.03em" }}>${plan.price}</span><span style={{ fontSize:16,color:"rgba(255,255,255,0.35)" }}>/month</span></div>
+
+    {/* Divider */}
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 48px" }}>
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(20,184,166,0.3), transparent)" }} />
+    </div>
+
+    {/* Pricing Cards */}
+    <div style={{ padding: isMobile ? "64px 24px 80px" : "80px 48px 120px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 24 : 32, maxWidth: 840, margin: "0 auto" }}>
+        {plans.map((plan, i) => (
+          <FadeIn key={i} delay={0.1 + i * 0.15}>
+            <div style={{
+              padding: isMobile ? 32 : 40,
+              borderRadius: 20,
+              background: plan.highlighted ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.03)",
+              border: (plan.highlighted ? "2px" : "1px") + " solid " + (plan.highlighted ? "rgba(20,184,166,0.3)" : "rgba(255,255,255,0.06)"),
+              position: "relative",
+              transform: plan.highlighted && !isMobile ? "scale(1.03)" : "none",
+              boxShadow: plan.highlighted ? "0 0 60px rgba(20,184,166,0.12)" : "none",
+              transition: "all 0.3s ease-out",
+              height: "100%",
+              overflow: "hidden"
+            }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = plan.highlighted && !isMobile ? "scale(1.05) translateY(-4px)" : "translateY(-4px)";
+                e.currentTarget.style.borderColor = plan.highlighted ? "rgba(20,184,166,0.5)" : "rgba(255,255,255,0.12)";
+                e.currentTarget.style.boxShadow = plan.highlighted ? "0 8px 80px rgba(20,184,166,0.2), 0 0 60px rgba(20,184,166,0.12)" : "0 8px 40px rgba(0,0,0,0.3)";
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = plan.highlighted && !isMobile ? "scale(1.03)" : "none";
+                e.currentTarget.style.borderColor = plan.highlighted ? "rgba(20,184,166,0.3)" : "rgba(255,255,255,0.06)";
+                e.currentTarget.style.boxShadow = plan.highlighted ? "0 0 60px rgba(20,184,166,0.12)" : "none";
+              }}>
+
+              {/* Corner glow for highlighted card */}
+              {plan.highlighted && <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, background: "radial-gradient(circle, rgba(20,184,166,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />}
+
+              {/* Most Popular badge — hidden for now */}
+
+              {/* Plan icon */}
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: plan.highlighted ? "rgba(20,184,166,0.1)" : "rgba(255,255,255,0.04)", border: "1px solid " + (plan.highlighted ? "rgba(20,184,166,0.15)" : "rgba(255,255,255,0.06)"), display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+                {plan.highlighted
+                  ? <Zap size={22} color={theme.accent} strokeWidth={1.5} />
+                  : <Sparkles size={22} color="rgba(255,255,255,0.4)" strokeWidth={1.5} />}
+              </div>
+
+              <h3 style={{ fontSize: 22, fontWeight: 700, color: "#FFFFFF", marginBottom: 8, fontFamily: theme.font, letterSpacing: "-0.02em" }}>{plan.name}</h3>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 24, lineHeight: 1.6 }}>{plan.desc}</p>
+
+              <div style={{ marginBottom: 32, display: "flex", alignItems: "baseline", gap: 4 }}>
+                <span style={{ fontSize: 52, fontWeight: 800, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.03em" }}>${plan.price}</span>
+                <span style={{ fontSize: 16, color: "rgba(255,255,255,0.35)" }}>/month</span>
+              </div>
+
               {plan.comingSoon ? (
-                <div style={{ textAlign:"center",padding:"20px 0" }}>
-                  <div style={{ display:"inline-block",padding:"6px 16px",borderRadius:20,background:"rgba(20,184,166,0.1)",color:theme.accent,fontSize:13,fontWeight:600,marginBottom:16,letterSpacing:"0.02em" }}>Coming Soon</div>
-                  <p style={{ fontSize:14,color:"rgba(255,255,255,0.35)",lineHeight:1.6 }}>We're building something special for tradies who want the full toolkit. Stay tuned.</p>
+                <div style={{ textAlign: "center", padding: "24px 0" }}>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 20, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.12)", color: theme.accent, fontSize: 13, fontWeight: 600, marginBottom: 16, letterSpacing: "0.02em" }}>
+                    <Clock size={13} /> Coming Soon
+                  </div>
+                  <p style={{ fontSize: 14, color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>We're building something special for tradies who want the full toolkit. Stay tuned.</p>
                 </div>
               ) : (
                 <>
                   {plan.active && (
-                    <button onClick={() => dispatch({ type:"SET_SCREEN", payload: plan.highlighted ? "signup:starter" : "signup:pro" })}
-                      style={{ width:"100%",padding:"14px 24px",marginBottom:32,borderRadius:10,fontSize:15,fontWeight:600,fontFamily:theme.font,cursor:"pointer",border:"none",transition:"all 0.2s",
-                        background:plan.highlighted?theme.accent:"rgba(255,255,255,0.06)",
-                        color:plan.highlighted?"#000":"#FFFFFF",
-                        boxShadow:plan.highlighted?"0 0 24px rgba(20,184,166,0.3)":"none",
+                    <button onClick={() => dispatch({ type: "SET_SCREEN", payload: plan.highlighted ? "signup:starter" : "signup:pro" })}
+                      onMouseDown={pressDown} onMouseUp={pressUp}
+                      onMouseEnter={e => {
+                        if (plan.highlighted) { e.currentTarget.style.background = "#5EEAD4"; e.currentTarget.style.boxShadow = "0 4px 32px rgba(20,184,166,0.4), 0 0 80px rgba(20,184,166,0.15)"; }
+                        else { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }
                       }}
-                      onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";if(plan.highlighted)e.currentTarget.style.background="#5EEAD4";else e.currentTarget.style.background="rgba(255,255,255,0.1)";}}
-                      onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";if(plan.highlighted)e.currentTarget.style.background=theme.accent;else e.currentTarget.style.background="rgba(255,255,255,0.06)";}}>
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = "scale(1)";
+                        if (plan.highlighted) { e.currentTarget.style.background = theme.accent; e.currentTarget.style.boxShadow = "0 0 24px rgba(20,184,166,0.3)"; }
+                        else { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }
+                      }}
+                      style={{
+                        width: "100%", padding: "16px 24px", marginBottom: 32, borderRadius: 10,
+                        fontSize: 15, fontWeight: 600, fontFamily: theme.font, cursor: "pointer",
+                        border: "none", transition: "all 0.2s ease-out", letterSpacing: "0.01em",
+                        background: plan.highlighted ? theme.accent : "rgba(255,255,255,0.06)",
+                        color: plan.highlighted ? "#000" : "#FFFFFF",
+                        boxShadow: plan.highlighted ? "0 0 24px rgba(20,184,166,0.3)" : "none",
+                      }}>
                       {plan.highlighted ? "Start Free Trial" : "Get Pro"}
+                      <ArrowRight size={15} style={{ display: "inline", verticalAlign: "middle", marginLeft: 8 }} />
                     </button>
                   )}
-                  <div style={{ display:"flex",flexDirection:"column",gap:12 }}>{plan.features.map((f,j) => <div key={j} style={{ display:"flex",alignItems:"center",gap:10,fontSize:14,color:"rgba(255,255,255,0.5)" }}><Check size={14} color={theme.accent} strokeWidth={2.5} /> {f}</div>)}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    {plan.features.map((f, j) => (
+                      <div key={j} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "rgba(255,255,255,0.5)" }}>
+                        <div style={{ width: 20, height: 20, borderRadius: 6, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <Check size={12} color={theme.accent} strokeWidth={2.5} />
+                        </div>
+                        {f}
+                      </div>
+                    ))}
+                  </div>
+                  {plan.active && (
+                    <p style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", marginTop: 24, textAlign: "center", letterSpacing: "0.04em" }}>No credit card required</p>
+                  )}
                 </>
               )}
             </div>
@@ -1633,35 +2230,94 @@ const PricingPage = ({ dispatch }) => {
         ))}
       </div>
     </div>
-    <div style={{ height:1,background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 50%,transparent)" }} />
-    <div style={{ padding:isMobile?"60px 20px":"80px 48px" }}>
-      <FadeIn>
-        <div style={{ maxWidth:700,margin:"0 auto" }}>
-          <h2 style={{ fontSize:isMobile?28:36,fontWeight:700,color:"#FFFFFF",marginBottom:48,textAlign:"center",fontFamily:theme.font,letterSpacing:"-0.03em" }}>Frequently Asked Questions</h2>
-          {faqs.map((faq,i) => (
-            <div key={i} style={{ padding:"24px 0",borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
-              <h3 style={{ fontSize:16,fontWeight:600,color:"#FFFFFF",marginBottom:8,letterSpacing:"-0.01em" }}>{faq.q}</h3>
-              <p style={{ fontSize:14,color:"rgba(255,255,255,0.4)",lineHeight:1.7 }}>{faq.a}</p>
+
+    {/* Divider */}
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 48px" }}>
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
+    </div>
+
+    {/* FAQ Section */}
+    <div style={{ padding: isMobile ? "80px 24px" : "96px 48px", position: "relative" }}>
+      {/* Subtle orb */}
+      <div style={{ position: "absolute", top: "30%", left: "-10%", width: "40%", height: "60%", background: "radial-gradient(circle, rgba(20,184,166,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+      <div style={{ maxWidth: 700, margin: "0 auto", position: "relative", zIndex: 1 }}>
+        <FadeIn>
+          <div style={{ textAlign: "center", marginBottom: isMobile ? 40 : 56 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: theme.accent, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 16 }}>FAQ</p>
+            <h2 style={{ fontSize: isMobile ? 28 : 40, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Frequently Asked Questions</h2>
+            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.4)", maxWidth: 440, margin: "0 auto", lineHeight: 1.6 }}>Everything you need to know before getting started.</p>
+          </div>
+        </FadeIn>
+
+        {faqs.map((faq, i) => (
+          <FadeIn key={i} delay={0.03 * i}>
+            <div style={{
+              marginBottom: 8, borderRadius: 16,
+              background: openFaq === i ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)",
+              border: "1px solid " + (openFaq === i ? "rgba(20,184,166,0.2)" : "rgba(255,255,255,0.06)"),
+              transition: "all 0.3s ease-out",
+              overflow: "hidden"
+            }}
+              onMouseEnter={e => { if (openFaq !== i) { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; } }}
+              onMouseLeave={e => { if (openFaq !== i) { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; } }}>
+              <button onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{
+                width: "100%", padding: "24px 24px", background: "none", border: "none", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, textAlign: "left"
+              }}>
+                <span style={{ fontSize: 15, fontWeight: 600, color: openFaq === i ? "#FFFFFF" : "rgba(255,255,255,0.8)", transition: "color 0.2s", letterSpacing: "-0.01em" }}>{faq.q}</span>
+                <ChevronRight size={16} color={openFaq === i ? theme.accent : "rgba(255,255,255,0.3)"} style={{
+                  transition: "all 0.3s ease-out", flexShrink: 0,
+                  transform: openFaq === i ? "rotate(90deg)" : "rotate(0deg)"
+                }} />
+              </button>
+              <div style={{
+                maxHeight: openFaq === i ? 200 : 0,
+                opacity: openFaq === i ? 1 : 0,
+                transition: "all 0.3s ease-out",
+                overflow: "hidden"
+              }}>
+                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", lineHeight: 1.7, padding: "0 24px 24px", margin: 0 }}>{faq.a}</p>
+              </div>
             </div>
-          ))}
-        </div>
-      </FadeIn>
+          </FadeIn>
+        ))}
+      </div>
     </div>
-    <div style={{ height:1,background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.06) 50%,transparent)" }} />
-    <div style={{ padding:isMobile?"60px 20px":"80px 48px",textAlign:"center",position:"relative" }}>
-      <div style={{ position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:"60%",height:"80%",background:"radial-gradient(circle, rgba(20,184,166,0.06) 0%, transparent 60%)",pointerEvents:"none" }} />
-      <FadeIn>
-        <div style={{ position:"relative",zIndex:1,maxWidth:600,margin:"0 auto",padding:isMobile?"48px 24px":"64px 48px",borderRadius:20,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)" }}>
-          <h2 style={{ fontSize:isMobile?28:36,fontWeight:700,color:"#FFFFFF",marginBottom:16,fontFamily:theme.font,letterSpacing:"-0.03em" }}>Still Not Sure?</h2>
-          <p style={{ fontSize:16,color:"rgba(255,255,255,0.4)",marginBottom:32,lineHeight:1.6 }}>Start your free trial — generate your first AI quote in under a minute.</p>
-          <button onClick={() => dispatch({ type:"SET_SCREEN",payload:"signup" })} style={{ fontFamily:theme.font,fontSize:15,fontWeight:600,padding:"14px 40px",borderRadius:10,background:theme.accent,color:"#000",border:"none",cursor:"pointer",transition:"all 0.2s",boxShadow:"0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)" }}
-            onMouseEnter={e=>{e.currentTarget.style.background="#5EEAD4";e.currentTarget.style.transform="translateY(-2px)";}}
-            onMouseLeave={e=>{e.currentTarget.style.background=theme.accent;e.currentTarget.style.transform="translateY(0)";}}>
-            Start Free Trial <ArrowRight size={16} style={{ display:"inline",verticalAlign:"middle",marginLeft:8 }} />
-          </button>
-        </div>
-      </FadeIn>
+
+    {/* Divider */}
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 48px" }}>
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
     </div>
+
+    {/* Bottom CTA */}
+    <div style={{ padding: isMobile ? "80px 24px" : "120px 48px", textAlign: "center", position: "relative" }}>
+      {/* Glow behind CTA */}
+      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "80%", height: "80%", background: "radial-gradient(circle, rgba(20,184,166,0.08) 0%, transparent 60%)", pointerEvents: "none" }} />
+
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 700, margin: "0 auto" }}>
+        <FadeIn>
+          <div style={{ padding: isMobile ? "48px 24px" : "72px 64px", borderRadius: 20, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            {/* Pulsing wrench icon */}
+            <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 56, height: 56, borderRadius: 16, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", marginBottom: 24, animation: "pricing-pulse-glow 3s ease-in-out infinite" }}>
+              <Wrench size={26} color={theme.accent} strokeWidth={1.5} style={{ animation: "pricing-spin-slow 10s linear infinite" }} />
+            </div>
+            <h2 style={{ fontSize: isMobile ? 28 : 40, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Still Not Sure?</h2>
+            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", marginBottom: 16, lineHeight: 1.6 }}>Start your free trial — generate your first AI quote in under a minute.</p>
+            <p style={{ fontSize: 13, color: "rgba(20,184,166,0.6)", marginBottom: 32, fontWeight: 500 }}>No credit card. No lock-in. Just smarter quoting.</p>
+            <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })}
+              onMouseDown={pressDown} onMouseUp={pressUp}
+              onMouseEnter={e => { e.currentTarget.style.background = "#5EEAD4"; e.currentTarget.style.boxShadow = "0 4px 32px rgba(20,184,166,0.4), 0 0 80px rgba(20,184,166,0.15)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)"; }}
+              style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 600, padding: "16px 40px", borderRadius: 10, background: theme.accent, color: "#000", border: "none", cursor: "pointer", transition: "all 0.2s ease-out", boxShadow: "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)", letterSpacing: "0.01em" }}>
+              Start Your Free Trial
+              <ArrowRight size={16} style={{ display: "inline", verticalAlign: "middle", marginLeft: 8 }} />
+            </button>
+          </div>
+        </FadeIn>
+      </div>
+    </div>
+
     <Footer dispatch={dispatch} />
   </div>
   );
