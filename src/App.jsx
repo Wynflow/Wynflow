@@ -1,6 +1,6 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
 import { jsPDF } from "jspdf";
-import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History } from "lucide-react";
+import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History, Image, ChevronDown } from "lucide-react";
 
 // ─── SEO Helper ───
 const SEO_CONFIG = {
@@ -821,6 +821,268 @@ const FadeIn = ({ children, delay = 0, style = {} }) => {
   );
 };
 
+// ─── Product Demo Walkthrough ───
+const ProductDemo = () => {
+  const isMobile = useIsMobile();
+  const [active, setActive] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+
+  const demoSteps = [
+    { label: "Snap Photos", icon: Camera, accent: "#14B8A6" },
+    { label: "AI Quote", icon: Sparkles, accent: "#8B5CF6" },
+    { label: "Send Email", icon: Send, accent: "#3B82F6" },
+    { label: "Follow-Up", icon: RefreshCw, accent: "#F59E0B" },
+    { label: "Get Paid", icon: Receipt, accent: "#22C55E" },
+  ];
+
+  useEffect(() => {
+    if (!isAutoPlaying) return;
+    const timer = setInterval(() => setActive(p => (p + 1) % 5), 4000);
+    return () => clearInterval(timer);
+  }, [isAutoPlaying]);
+
+  const handleStepClick = (i) => { setActive(i); setIsAutoPlaying(false); };
+
+  // Mock screen for each step
+  const screens = [
+    // Step 1: Snap Photos
+    <div key="photos" style={{ padding: isMobile ? 16 : 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22C55E" }} />
+        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 1 — On Site</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+        {[
+          { caption: "Bathroom — water damage under vanity", img: "https://images.unsplash.com/photo-1585128792020-803d29415281?w=400&h=300&fit=crop" },
+          { caption: "Exposed pipework behind wall", img: "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=400&h=300&fit=crop" },
+          { caption: "Customer wants mixer tap replaced", img: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&h=300&fit=crop" },
+          { caption: "Access panel (tight space)", img: "https://images.unsplash.com/photo-1523413363574-c30aa1c2a516?w=400&h=300&fit=crop" },
+        ].map((photo, i) => (
+          <div key={i} style={{ borderRadius: 10, overflow: "hidden", position: "relative" }}>
+            <img src={photo.img} alt={photo.caption} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block" }} loading="lazy" />
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "6px 8px", background: "linear-gradient(transparent, rgba(0,0,0,0.7))", fontSize: 10, color: "rgba(255,255,255,0.7)" }}>{photo.caption}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ padding: 12, borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 6, fontWeight: 500 }}>Job Notes</div>
+        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>Bathroom reno — replace vanity, fix water damage to subfloor, install new mixer tap. Tight access behind wall panel. Customer wants it done within 2 weeks.</div>
+      </div>
+    </div>,
+
+    // Step 2: AI Quote
+    <div key="quote" style={{ padding: isMobile ? 16 : 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#8B5CF6" }} />
+        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 2 — AI generates your quote</span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 2 }}>Quote #WF-0047</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "#fff" }}>Bathroom Renovation — Smith Residence</div>
+        </div>
+        <div style={{ padding: "4px 12px", borderRadius: 20, background: "rgba(139,92,246,0.15)", color: "#8B5CF6", fontSize: 11, fontWeight: 600 }}>AI Generated</div>
+      </div>
+      {[
+        { item: "Remove existing vanity & dispose", qty: "1", price: "$180" },
+        { item: "Repair water-damaged subfloor", qty: "1.5m\u00B2", price: "$420" },
+        { item: "Supply & install new vanity unit", qty: "1", price: "$1,850" },
+        { item: "Supply & install mixer tap", qty: "1", price: "$380" },
+        { item: "Labour — plumbing & fitout", qty: "6 hrs", price: "$510" },
+      ].map((row, i) => (
+        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>{row.item}</div>
+          </div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", width: 60, textAlign: "center" }}>{row.qty}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", width: 70, textAlign: "right" }}>{row.price}</div>
+        </div>
+      ))}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", marginTop: 4, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>Total (incl. GST)</span>
+        <span style={{ fontSize: 20, fontWeight: 700, color: "#14B8A6" }}>$3,340.00</span>
+      </div>
+    </div>,
+
+    // Step 3: Send Email
+    <div key="email" style={{ padding: isMobile ? 16 : 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#3B82F6" }} />
+        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 3 — Customer receives email</span>
+      </div>
+      <div style={{ borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", overflow: "hidden" }}>
+        <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
+          <Mail size={14} color="rgba(255,255,255,0.3)" />
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>From: <span style={{ color: "rgba(255,255,255,0.6)" }}>quotes@wynflow.co.nz</span></span>
+        </div>
+        <div style={{ padding: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 12 }}>Your quote for Bathroom Renovation</div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, marginBottom: 20 }}>
+            Hi Sarah,<br /><br />
+            Thanks for having me out to take a look at the bathroom. I've put together a detailed quote for the work we discussed — vanity replacement, subfloor repair, and new mixer tap.<br /><br />
+            <strong style={{ color: "rgba(255,255,255,0.7)" }}>Total: $3,340.00 (incl. GST)</strong>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ flex: 1, padding: "12px 16px", borderRadius: 8, background: "#22C55E", textAlign: "center", fontSize: 14, fontWeight: 600, color: "#fff", cursor: "default" }}>Accept Quote</div>
+            <div style={{ flex: 1, padding: "12px 16px", borderRadius: 8, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.2)", textAlign: "center", fontSize: 14, fontWeight: 600, color: "#EF4444", cursor: "default" }}>Decline</div>
+          </div>
+        </div>
+      </div>
+    </div>,
+
+    // Step 4: Auto Follow-up
+    <div key="followup" style={{ padding: isMobile ? 16 : 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B" }} />
+        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 4 — Wynflow chases for you</span>
+      </div>
+      <div style={{ position: "relative", paddingLeft: 24 }}>
+        <div style={{ position: "absolute", left: 7, top: 8, bottom: 8, width: 2, background: "linear-gradient(to bottom, rgba(245,158,11,0.4), rgba(245,158,11,0.05))" }} />
+        {[
+          { day: "Day 0", title: "Quote sent", desc: "Bathroom Renovation — $3,340", status: "sent", color: "#3B82F6" },
+          { day: "Day 1", title: "Email opened", desc: "Sarah opened your quote at 8:14am", status: "opened", color: "#8B5CF6" },
+          { day: "Day 3", title: "Follow-up #1 sent", desc: "\"Hi Sarah, just checking in on the quote I sent through...\"", status: "auto", color: "#F59E0B" },
+          { day: "Day 6", title: "Follow-up #2 sent", desc: "\"Any questions about the bathroom quote?\"", status: "auto", color: "#F59E0B" },
+          { day: "Day 7", title: "Quote accepted!", desc: "Sarah clicked Accept — time to book the job", status: "won", color: "#22C55E" },
+        ].map((event, i) => (
+          <div key={i} style={{ display: "flex", gap: 14, marginBottom: i < 4 ? 20 : 0, position: "relative" }}>
+            <div style={{ width: 16, height: 16, borderRadius: "50%", background: event.color, border: "3px solid #0A0E17", position: "absolute", left: -24, top: 2, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {event.status === "won" && <Check size={8} color="#fff" strokeWidth={3} />}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 600, minWidth: 40 }}>{event.day}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: event.status === "won" ? "#22C55E" : "#fff" }}>{event.title}</span>
+                {event.status === "auto" && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "rgba(245,158,11,0.12)", color: "#F59E0B", fontWeight: 600 }}>AUTO</span>}
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.5 }}>{event.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>,
+
+    // Step 5: Get Paid
+    <div key="invoice" style={{ padding: isMobile ? 16 : 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22C55E" }} />
+        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 5 — Job done, get paid</span>
+      </div>
+      <div style={{ borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", padding: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 2 }}>INVOICE #INV-0023</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "#fff" }}>Bathroom Renovation</div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>Sarah Smith • 14 March 2026</div>
+          </div>
+          <div style={{ padding: "4px 12px", borderRadius: 20, background: "rgba(34,197,94,0.12)", color: "#22C55E", fontSize: 11, fontWeight: 600 }}>Paid</div>
+        </div>
+        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 0 12px" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Subtotal</span>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>$2,904.35</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>GST (15%)</span>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>$435.65</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>Total Paid</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "#22C55E" }}>$3,340.00</span>
+        </div>
+        <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.1)", display: "flex", alignItems: "center", gap: 8 }}>
+          <CheckCircle2 size={14} color="#22C55E" />
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Payment received via bank transfer • 20 March 2026</span>
+        </div>
+      </div>
+    </div>,
+  ];
+
+  return (
+    <div style={{ padding: isMobile ? "80px 20px" : "120px 48px", position: "relative" }}>
+      <div style={{ position: "absolute", top: "30%", left: "-10%", width: "40%", height: "50%", background: `radial-gradient(circle, ${demoSteps[active].accent}11 0%, transparent 70%)`, pointerEvents: "none", transition: "background 0.6s ease" }} />
+      <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative", zIndex: 1 }}>
+        <FadeIn>
+          <div style={{ textAlign: "center", marginBottom: isMobile ? 36 : 56 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: theme.accent, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 16 }}>See it in action</p>
+            <h2 style={{ fontSize: isMobile ? 28 : 44, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>From photos to payment<br />in five steps</h2>
+          </div>
+        </FadeIn>
+
+        {/* Step tabs */}
+        <div style={{ display: "flex", gap: isMobile ? 4 : 8, marginBottom: isMobile ? 20 : 32, justifyContent: "center", flexWrap: "wrap" }}>
+          {demoSteps.map((step, i) => {
+            const Icon = step.icon;
+            const isActive = i === active;
+            return (
+              <button key={i} onClick={() => handleStepClick(i)}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: isMobile ? "8px 12px" : "10px 18px", borderRadius: 10,
+                  background: isActive ? `${step.accent}18` : "rgba(255,255,255,0.03)",
+                  border: `1px solid ${isActive ? `${step.accent}40` : "rgba(255,255,255,0.06)"}`,
+                  color: isActive ? step.accent : "rgba(255,255,255,0.4)",
+                  cursor: "pointer", transition: "all 0.3s ease", fontFamily: theme.font, fontSize: isMobile ? 11 : 13, fontWeight: 600,
+                  transform: isActive ? "translateY(-2px)" : "none",
+                  boxShadow: isActive ? `0 4px 20px ${step.accent}20` : "none",
+                }}>
+                <Icon size={isMobile ? 12 : 14} strokeWidth={2} />
+                {step.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ maxWidth: 600, margin: "0 auto 24px", height: 2, background: "rgba(255,255,255,0.04)", borderRadius: 1, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${((active + 1) / 5) * 100}%`, background: `linear-gradient(90deg, ${demoSteps[0].accent}, ${demoSteps[active].accent})`, borderRadius: 1, transition: "width 0.6s cubic-bezier(0.16,1,0.3,1)" }} />
+        </div>
+
+        {/* Mock device frame */}
+        <div style={{ maxWidth: 600, margin: "0 auto", position: "relative" }}>
+          <div style={{
+            borderRadius: 16, overflow: "hidden",
+            background: "rgba(255,255,255,0.02)",
+            border: `1px solid ${demoSteps[active].accent}25`,
+            boxShadow: `0 0 80px ${demoSteps[active].accent}08, 0 20px 60px rgba(0,0,0,0.3)`,
+            transition: "border-color 0.6s ease, box-shadow 0.6s ease",
+          }}>
+            {/* Title bar */}
+            <div style={{ padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ display: "flex", gap: 5 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                </div>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginLeft: 8 }}>wynflow.co.nz</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <WynflowLogo size={16} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.35)" }}>Wynflow</span>
+              </div>
+            </div>
+
+            {/* Screen content with transition */}
+            <div style={{ minHeight: isMobile ? 320 : 380, position: "relative" }}>
+              {screens.map((screen, i) => (
+                <div key={i} style={{
+                  position: i === active ? "relative" : "absolute",
+                  top: 0, left: 0, right: 0,
+                  opacity: i === active ? 1 : 0,
+                  transform: i === active ? "translateX(0)" : i < active ? "translateX(-20px)" : "translateX(20px)",
+                  transition: "opacity 0.4s ease, transform 0.4s ease",
+                  pointerEvents: i === active ? "auto" : "none",
+                }}>
+                  {screen}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const HomePage = ({ dispatch }) => {
   const isMobile = useIsMobile();
 
@@ -890,6 +1152,14 @@ const HomePage = ({ dispatch }) => {
     {/* ── Divider line ── */}
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
       <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(20,184,166,0.3), transparent)" }} />
+    </div>
+
+    {/* ── Product Demo ── */}
+    <ProductDemo />
+
+    {/* ── Divider ── */}
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
     </div>
 
     {/* ── Features Grid ── */}
@@ -1494,6 +1764,7 @@ const STRIPE_LINKS = {
 };
 
 const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
+  const isMobile = useIsMobile();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [businessName, setBusinessName] = useState("");
