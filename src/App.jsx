@@ -103,6 +103,21 @@ const supabase = {
     return data;
   },
 
+  async auth_refreshSession(refreshToken) {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.access_token) {
+      this.token = data.access_token;
+      this.user = data.user;
+    }
+    return data;
+  },
+
   async uploadFile(bucket, path, file) {
     const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`, {
       method: "POST",
@@ -550,15 +565,16 @@ const InvoiceBadge = ({ status, dueDate }) => {
 const fonts = `@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Playfair+Display:wght@700;800&display=swap');`;
 
 // ─── Utility Components ───
-const Badge = ({ status }) => {
+const Badge = ({ status, size = "md" }) => {
   const config = statusConfig[status] || statusConfig.pending;
+  const isSm = size === "sm";
   return (
     <span style={{
-      display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 12px",
-      borderRadius: 20, fontSize: 12, fontWeight: 600, letterSpacing: 0.3,
-      color: config.color, background: config.bg, textTransform: "uppercase",
+      display: "inline-flex", alignItems: "center", gap: isSm ? 4 : 5, padding: isSm ? "3px 8px" : "4px 10px",
+      borderRadius: 6, fontSize: isSm ? 10 : 11, fontWeight: 600, letterSpacing: 0.3,
+      color: config.color, background: config.bg, border: `1px solid ${config.color}15`,
     }}>
-      <span style={{ width: 6, height: 6, borderRadius: "50%", background: config.color }} />
+      <span style={{ width: 5, height: 5, borderRadius: "50%", background: config.color, flexShrink: 0 }} />
       {config.label}
     </span>
   );
@@ -567,44 +583,45 @@ const Badge = ({ status }) => {
 const Button = ({ children, variant = "primary", size = "md", onClick, style = {}, disabled }) => {
   const base = {
     fontFamily: theme.font, fontWeight: 600, border: "none", cursor: disabled ? "not-allowed" : "pointer",
-    borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 8,
-    transition: "all 0.2s ease", opacity: disabled ? 0.5 : 1,
-    fontSize: size === "sm" ? 13 : size === "lg" ? 16 : 14,
-    padding: size === "sm" ? "8px 16px" : size === "lg" ? "16px 32px" : "12px 24px",
+    borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 7,
+    transition: "all 0.15s ease", opacity: disabled ? 0.5 : 1, letterSpacing: "0.01em",
+    fontSize: size === "sm" ? 12 : size === "lg" ? 15 : 13,
+    padding: size === "sm" ? "7px 14px" : size === "lg" ? "14px 28px" : "10px 20px",
   };
   const variants = {
-    primary: { background: theme.accent, color: "#000", boxShadow: `0 0 20px ${theme.accentGlow}` },
-    secondary: { background: "rgba(255,255,255,0.06)", color: "#F1F3F7", border: "1px solid rgba(255,255,255,0.08)" },
+    primary: { background: theme.accent, color: "#000", boxShadow: `0 0 16px ${theme.accentGlow}` },
+    secondary: { background: "rgba(255,255,255,0.05)", color: "#F1F3F7", border: "1px solid rgba(255,255,255,0.08)" },
     ghost: { background: "transparent", color: theme.textMuted },
-    danger: { background: theme.redSoft, color: theme.red },
+    danger: { background: theme.redSoft, color: theme.red, border: `1px solid ${theme.red}15` },
   };
   return <button onClick={onClick} disabled={disabled}
-    onMouseEnter={e => { if (!disabled) { e.currentTarget.style.transform = "translateY(-1px)"; if (variant === "primary") e.currentTarget.style.boxShadow = `0 4px 24px ${theme.accentGlow}`; }}}
-    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; if (variant === "primary") e.currentTarget.style.boxShadow = `0 0 20px ${theme.accentGlow}`; }}
+    onMouseEnter={e => { if (!disabled) { e.currentTarget.style.transform = "translateY(-1px)"; if (variant === "primary") e.currentTarget.style.boxShadow = `0 4px 20px ${theme.accentGlow}`; if (variant === "secondary") e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}}
+    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; if (variant === "primary") e.currentTarget.style.boxShadow = `0 0 16px ${theme.accentGlow}`; if (variant === "secondary") e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
     style={{ ...base, ...variants[variant], ...style }}>{children}</button>;
 };
 
 const Input = ({ label, value, onChange, type = "text", placeholder, textarea, style = {}, accept, onFileChange }) => (
-  <div style={{ display: "flex", flexDirection: "column", gap: 6, ...style }}>
-    {label && <label style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.4)", letterSpacing: 0.3 }}>{label}</label>}
+  <div style={{ display: "flex", flexDirection: "column", gap: 5, ...style }}>
+    {label && <label style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.35)", letterSpacing: 0.3 }}>{label}</label>}
     {textarea ? (
       <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
         style={{
-          fontFamily: theme.font, fontSize: 14, padding: "12px 16px", borderRadius: 10,
-          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#F1F3F7",
-          outline: "none", resize: "vertical", minHeight: 100, transition: "border-color 0.2s ease",
+          fontFamily: theme.font, fontSize: 14, padding: "10px 14px", borderRadius: 8,
+          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "#F1F3F7",
+          outline: "none", resize: "vertical", minHeight: 100, transition: "border-color 0.15s ease",
         }} />
     ) : type === "file" ? (
       <input type="file" accept={accept} onChange={onFileChange}
         style={{
-          fontFamily: theme.font, fontSize: 14, padding: "12px 16px", borderRadius: 10,
-          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#F1F3F7", outline: "none",
+          fontFamily: theme.font, fontSize: 14, padding: "10px 14px", borderRadius: 8,
+          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "#F1F3F7", outline: "none",
         }} />
     ) : (
       <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
         style={{
-          fontFamily: theme.font, fontSize: 14, padding: "12px 16px", borderRadius: 10,
-          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#F1F3F7", outline: "none",
+          fontFamily: theme.font, fontSize: 14, padding: "10px 14px", borderRadius: 8,
+          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: "#F1F3F7", outline: "none",
+          transition: "border-color 0.15s ease",
         }} />
     )}
   </div>
@@ -612,26 +629,32 @@ const Input = ({ label, value, onChange, type = "text", placeholder, textarea, s
 
 const Card = ({ children, style = {}, onClick }) => (
   <div onClick={onClick} style={{
-    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16,
-    padding: 24, transition: "all 0.25s ease", cursor: onClick ? "pointer" : "default", ...style,
+    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12,
+    padding: 20, transition: "all 0.2s ease", cursor: onClick ? "pointer" : "default", ...style,
   }}
-  onMouseEnter={onClick ? (e) => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.2)"; } : undefined}
-  onMouseLeave={onClick ? (e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; } : undefined}>
+  onMouseEnter={onClick ? (e) => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.2)"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; } : undefined}
+  onMouseLeave={onClick ? (e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; } : undefined}>
     {children}
   </div>
 );
 
-const Stat = ({ label, value, accent, icon: Icon }) => (
-  <Card style={{ flex: 1, minWidth: 0, padding: typeof window !== "undefined" && window.innerWidth < 768 ? 14 : 24 }}>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 4, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</div>
-        <div style={{ fontSize: typeof window !== "undefined" && window.innerWidth < 768 ? 20 : 28, fontWeight: 700, color: accent || theme.text, fontFamily: theme.fontDisplay }}>{value}</div>
+const Stat = ({ label, value, accent, icon: Icon, sub }) => {
+  const mob = typeof window !== "undefined" && window.innerWidth < 768;
+  return (
+    <div style={{
+      flex: 1, minWidth: 0, padding: mob ? 14 : 18, borderRadius: 10,
+      background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)",
+      transition: "border-color 0.2s",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: mob ? 8 : 10 }}>
+        {Icon && <div style={{ width: 28, height: 28, borderRadius: 7, background: accent ? `${accent}12` : "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={14} color={accent || theme.textDim} /></div>}
+        <span style={{ fontSize: 11, color: theme.textMuted, fontWeight: 500, letterSpacing: "0.02em" }}>{label}</span>
       </div>
-      {Icon && <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={16} color={theme.textMuted} /></div>}
+      <div style={{ fontSize: mob ? 20 : 24, fontWeight: 700, color: accent || theme.text, fontFamily: "'DM Sans', sans-serif", letterSpacing: "-0.02em", lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: theme.textDim, marginTop: 4 }}>{sub}</div>}
     </div>
-  </Card>
-);
+  );
+};
 
 const Spinner = () => (
   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 48 }}>
@@ -1386,6 +1409,7 @@ const clearCookies = () => {
   document.cookie = "wynflow_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
   document.cookie = "wynflow_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
   document.cookie = "wynflow_business=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+  document.cookie = "wynflow_refresh=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 };
 
 const TRADE_CATEGORIES = [
@@ -1528,6 +1552,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
             dispatch({ type: "SET_USER", payload: authData.user });
             dispatch({ type: "SET_BUSINESS", payload: existingBiz });
             setCookie("wynflow_token", supabase.token, 43200);
+            setCookie("wynflow_refresh", authData.refresh_token, 43200);
             setCookie("wynflow_user", authData.user, 43200);
             setCookie("wynflow_business", existingBiz, 43200);
             dispatch({ type: "NOTIFY", payload: { message: "Welcome to Wynflow!", type: "success" } });
@@ -1556,6 +1581,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         dispatch({ type: "SET_USER", payload: authData.user });
         dispatch({ type: "SET_BUSINESS", payload: bizRecord });
         setCookie("wynflow_token", supabase.token, 43200);
+        setCookie("wynflow_refresh", authData.refresh_token, 43200);
         setCookie("wynflow_user", authData.user, 43200);
         setCookie("wynflow_business", bizRecord, 43200);
         dispatch({ type: "NOTIFY", payload: { message: "Account created! Redirecting to payment...", type: "success" } });
@@ -1581,6 +1607,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         if (!biz) throw new Error("No business profile found for this account. Please sign up instead.");
         dispatch({ type: "SET_BUSINESS", payload: biz });
         setCookie("wynflow_token", supabase.token, 43200);
+        setCookie("wynflow_refresh", authData.refresh_token, 43200);
         setCookie("wynflow_user", authData.user, 43200);
         setCookie("wynflow_business", biz, 43200);
         dispatch({ type: "NOTIFY", payload: { message: "Welcome back!", type: "success" } });
@@ -1701,15 +1728,18 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
 // ─── Sidebar ───
 const Sidebar = ({ screen, dispatch, business }) => {
   const isMobile = useIsMobile();
-  const navItems = [
+  const mainNav = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "quotes", label: "Quotes", icon: FileText },
     { id: "invoices", label: "Invoices", icon: Receipt },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "sequences", label: "Follow-Ups", icon: RefreshCw },
+  ];
+  const secondaryNav = [
     { id: "help", label: "Help", icon: HelpCircle },
     { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
+  const allNav = [...mainNav, ...secondaryNav];
 
   const handleLogout = async () => {
     await supabase.auth_signOut();
@@ -1720,25 +1750,30 @@ const Sidebar = ({ screen, dispatch, business }) => {
     window.history.replaceState(null, "", "/");
   };
 
+  const initials = (business?.contact_name || business?.business_name || "W").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+
   if (isMobile) {
     return (
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100,
-        background: "rgba(10,14,23,0.85)", borderTop: "1px solid rgba(255,255,255,0.06)",
-        display: "flex", justifyContent: "space-around", padding: "6px 4px env(safe-area-inset-bottom, 8px)",
-        backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+        background: "rgba(10,14,23,0.92)", borderTop: "1px solid rgba(255,255,255,0.06)",
+        display: "flex", justifyContent: "space-around", padding: "4px 4px env(safe-area-inset-bottom, 6px)",
+        backdropFilter: "blur(20px) saturate(180%)", WebkitBackdropFilter: "blur(20px) saturate(180%)",
       }}>
-        {navItems.map((item) => {
+        {allNav.map((item) => {
           const Icon = item.icon;
+          const isActive = screen === item.id;
           return (
           <div key={item.id} onClick={() => dispatch({ type: "SET_SCREEN", payload: item.id })}
             style={{
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
-              cursor: "pointer", padding: "4px 4px",
-              color: screen === item.id ? theme.accent : "rgba(255,255,255,0.35)",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+              cursor: "pointer", padding: "6px 6px 4px", position: "relative",
+              color: isActive ? theme.accent : "rgba(255,255,255,0.35)",
+              transition: "color 0.2s",
             }}>
-            <Icon size={18} />
-            <span style={{ fontSize: 9, fontWeight: 600 }}>{item.label}</span>
+            {isActive && <div style={{ position: "absolute", top: -4, width: 16, height: 2, borderRadius: 1, background: theme.accent }} />}
+            <Icon size={18} strokeWidth={isActive ? 2.2 : 1.8} />
+            <span style={{ fontSize: 9, fontWeight: isActive ? 700 : 500, letterSpacing: "0.01em" }}>{item.label}</span>
           </div>
           );
         })}
@@ -1748,40 +1783,82 @@ const Sidebar = ({ screen, dispatch, business }) => {
 
   return (
     <div style={{
-      width: 260, background: "rgba(255,255,255,0.02)", borderRight: "1px solid rgba(255,255,255,0.06)",
-      display: "flex", flexDirection: "column", padding: "24px 16px", flexShrink: 0,
+      width: 240, background: "rgba(255,255,255,0.015)", borderRight: "1px solid rgba(255,255,255,0.06)",
+      display: "flex", flexDirection: "column", padding: "20px 12px", flexShrink: 0,
     }}>
-      <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "dashboard" })} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 8px", marginBottom: 36, cursor: "pointer" }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><WynflowLogo size={36} /></div>
-        <span style={{ fontSize: 20, fontWeight: 700, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.02em" }}>Wynflow</span>
+      <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "dashboard" })} style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 12px", marginBottom: 32, cursor: "pointer" }}>
+        <div style={{ width: 32, height: 32, borderRadius: 8, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><WynflowLogo size={32} /></div>
+        <span style={{ fontSize: 18, fontWeight: 700, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.02em" }}>Wynflow</span>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
-        {navItems.map((item) => {
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {mainNav.map((item) => {
           const Icon = item.icon;
+          const isActive = screen === item.id;
           return (
           <div key={item.id} onClick={() => dispatch({ type: "SET_SCREEN", payload: item.id })}
             style={{
-              display: "flex", alignItems: "center", gap: 12, padding: "12px 14px",
-              borderRadius: 10, cursor: "pointer", fontSize: 14, fontWeight: 500,
-              background: screen === item.id ? "rgba(20,184,166,0.1)" : "transparent",
-              color: screen === item.id ? theme.accent : "rgba(255,255,255,0.4)",
-              transition: "all 0.2s ease",
-            }}>
-            <Icon size={18} />
+              display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
+              borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 500,
+              background: isActive ? "rgba(20,184,166,0.08)" : "transparent",
+              color: isActive ? theme.accent : "rgba(255,255,255,0.45)",
+              transition: "all 0.15s ease",
+              position: "relative",
+            }}
+            onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.color = "rgba(255,255,255,0.7)"; }}}
+            onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,0.45)"; }}}>
+            {isActive && <div style={{ position: "absolute", left: 0, top: 8, bottom: 8, width: 3, borderRadius: "0 2px 2px 0", background: theme.accent }} />}
+            <Icon size={17} strokeWidth={isActive ? 2.2 : 1.8} />
             {item.label}
           </div>
           );
         })}
       </div>
+
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)", margin: "12px 12px" }} />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {secondaryNav.map((item) => {
+          const Icon = item.icon;
+          const isActive = screen === item.id;
+          return (
+          <div key={item.id} onClick={() => dispatch({ type: "SET_SCREEN", payload: item.id })}
+            style={{
+              display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
+              borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 500,
+              background: isActive ? "rgba(20,184,166,0.08)" : "transparent",
+              color: isActive ? theme.accent : "rgba(255,255,255,0.35)",
+              transition: "all 0.15s ease",
+              position: "relative",
+            }}
+            onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.color = "rgba(255,255,255,0.6)"; }}}
+            onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,0.35)"; }}}>
+            {isActive && <div style={{ position: "absolute", left: 0, top: 8, bottom: 8, width: 3, borderRadius: "0 2px 2px 0", background: theme.accent }} />}
+            <Icon size={17} strokeWidth={isActive ? 2.2 : 1.8} />
+            {item.label}
+          </div>
+          );
+        })}
+      </div>
+
+      <div style={{ flex: 1 }} />
+
       <div style={{
-        padding: "16px 14px", borderRadius: 12, background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.06)",
+        padding: "14px 12px", borderRadius: 10, background: "rgba(255,255,255,0.025)",
+        border: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 10,
       }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: "#FFFFFF", marginBottom: 2 }}>{business?.business_name}</div>
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{business?.email}</div>
-        <div onClick={handleLogout}
-          style={{ fontSize: 12, color: theme.red, cursor: "pointer", marginTop: 10, fontWeight: 500 }}>
-          Sign out
+        <div style={{ width: 34, height: 34, borderRadius: 8, background: "rgba(20,184,166,0.12)", border: "1px solid rgba(20,184,166,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 12, fontWeight: 700, color: theme.accent, letterSpacing: "0.02em" }}>
+          {initials}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#FFFFFF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business?.business_name}</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{business?.email}</div>
+        </div>
+        <div onClick={handleLogout} title="Sign out"
+          style={{ width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "rgba(255,255,255,0.25)", transition: "all 0.15s" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.1)"; e.currentTarget.style.color = theme.red; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,0.25)"; }}>
+          <Lock size={14} />
         </div>
       </div>
     </div>
@@ -1791,7 +1868,6 @@ const Sidebar = ({ screen, dispatch, business }) => {
 // ─── Dashboard ───
 const Dashboard = ({ quotes, dispatch, invoices = [] }) => {
   const isMobile = useIsMobile();
-  const [alertDismissed, setAlertDismissed] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
   const requested = quotes.filter((q) => q.status === "requested").length;
   const total = quotes.length;
@@ -1844,151 +1920,155 @@ const Dashboard = ({ quotes, dispatch, invoices = [] }) => {
     return a[0].localeCompare(b[0]);
   });
 
+  // Activity feed data
+  const followUpsSentToday = quotes.filter(q => q.current_step > 0 && q.next_follow_up_at).length;
+  const openedRecently = quotes.filter(q => q.status === "opened").length;
+  const acceptedAfterFollowUp = acceptedQuotes.filter(q => (q.current_step || 0) > 0).length;
+
+  // Pipeline columns
+  const pipeline = [
+    { key: "requested", label: "New Requests", color: theme.accent, count: requested, icon: MessageSquare },
+    { key: "sent", label: "Awaiting", color: "#F59E0B", count: pending, icon: Clock },
+    { key: "accepted", label: "Accepted", color: "#22C55E", count: accepted, icon: CheckCircle2 },
+    { key: "booked", label: "Booked", color: theme.green, count: booked, icon: Check },
+  ];
+
   return (
     <div>
-      {/* Dashboard header with notification bell */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: isMobile ? 16 : 32 }}>
+      {/* Header row */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isMobile ? 20 : 28 }}>
         <div>
-          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Dashboard</h1>
-          <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>Here's what's happening with your quotes</p>
+          <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.02em" }}>Dashboard</h1>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>Here's what's happening with your quotes</p>
         </div>
-        {/* Notification bell */}
-        <div style={{ position: "relative" }}>
-          <button onClick={() => setBellOpen(!bellOpen)}
-            style={{ width: 40, height: 40, borderRadius: 10, background: bellOpen ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", transition: "all 0.2s" }}>
-            <Bell size={18} color={(requested + accepted + overdueInvoices) > 0 ? theme.text : theme.textDim} />
-            {(requested + accepted + overdueInvoices) > 0 && (
-              <div style={{ position: "absolute", top: -4, right: -4, width: 18, height: 18, borderRadius: 9, background: overdueInvoices > 0 ? theme.red : theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff", border: "2px solid #0A0E17" }}>
-                {requested + accepted + overdueInvoices}
-              </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })} size="sm" style={{ background: "rgba(20,184,166,0.1)", color: "#14B8A6", border: "1px solid rgba(20,184,166,0.15)" }}><Cpu size={13} /> AI Quote</Button>
+          {!isMobile && <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })} variant="secondary" size="sm"><Plus size={13} /> Manual</Button>}
+          {/* Notification bell */}
+          <div style={{ position: "relative" }}>
+            <button onClick={() => setBellOpen(!bellOpen)}
+              style={{ width: 36, height: 36, borderRadius: 8, background: bellOpen ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", transition: "all 0.15s" }}>
+              <Bell size={16} color={(requested + accepted + overdueInvoices) > 0 ? theme.text : theme.textDim} />
+              {(requested + accepted + overdueInvoices) > 0 && (
+                <div style={{ position: "absolute", top: -3, right: -3, width: 16, height: 16, borderRadius: 8, background: overdueInvoices > 0 ? theme.red : theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#fff", border: "2px solid #0A0E17" }}>
+                  {requested + accepted + overdueInvoices}
+                </div>
+              )}
+            </button>
+            {bellOpen && (
+              <>
+                <div onClick={() => setBellOpen(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 98 }} />
+                <div style={{ position: "absolute", top: 44, right: 0, width: isMobile ? "calc(100vw - 72px)" : 320, maxWidth: 320, background: "rgba(17,24,39,0.97)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, boxShadow: "0 16px 48px rgba(0,0,0,0.5)", zIndex: 99, overflow: "hidden", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
+                  <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: theme.text, letterSpacing: "0.02em" }}>Activity</div>
+                  </div>
+                  <div style={{ maxHeight: 280, overflowY: "auto" }}>
+                    {requested > 0 && (
+                      <div onClick={() => { dispatch({ type: "SET_SCREEN", payload: "quotes" }); setBellOpen(false); }}
+                        style={{ padding: "12px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.15s" }}
+                        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                        <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(20,184,166,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <MessageSquare size={13} color="#14B8A6" />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{requested} new quote request{requested > 1 ? "s" : ""}</div>
+                          <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 1 }}>Review and send a quote</div>
+                        </div>
+                      </div>
+                    )}
+                    {accepted > 0 && (
+                      <div onClick={() => { dispatch({ type: "SET_SCREEN", payload: "quotes" }); setBellOpen(false); }}
+                        style={{ padding: "12px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.15s" }}
+                        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                        <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(245,158,11,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <Clock size={13} color="#F59E0B" />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{accepted} accepted — ready to book</div>
+                          <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 1 }}>Call your customer{accepted > 1 ? "s" : ""} to confirm</div>
+                        </div>
+                      </div>
+                    )}
+                    {overdueInvoices > 0 && (
+                      <div onClick={() => { dispatch({ type: "SET_SCREEN", payload: "invoices" }); setBellOpen(false); }}
+                        style={{ padding: "12px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.15s" }}
+                        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                        <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(239,68,68,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <AlertTriangle size={13} color={theme.red} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{overdueInvoices} overdue invoice{overdueInvoices > 1 ? "s" : ""}</div>
+                          <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 1 }}>Chase up payment</div>
+                        </div>
+                      </div>
+                    )}
+                    {requested === 0 && accepted === 0 && overdueInvoices === 0 && (
+                      <div style={{ padding: "20px 16px", textAlign: "center" }}>
+                        <Bell size={18} color={theme.textDim} style={{ marginBottom: 6 }} />
+                        <div style={{ fontSize: 12, color: theme.textDim }}>No new activity</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
             )}
-          </button>
-          {/* Dropdown */}
-          {bellOpen && (
-            <>
-              <div onClick={() => setBellOpen(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 98 }} />
-              <div style={{ position: "absolute", top: 48, right: 0, width: isMobile ? "calc(100vw - 72px)" : 340, maxWidth: 340, background: "rgba(17,24,39,0.97)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, boxShadow: "0 16px 48px rgba(0,0,0,0.5)", zIndex: 99, overflow: "hidden", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
-                <div style={{ padding: "14px 18px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>Activity</div>
-                </div>
-                <div style={{ maxHeight: 300, overflowY: "auto" }}>
-                  {requested > 0 && (
-                    <div onClick={() => { dispatch({ type: "SET_SCREEN", payload: "quotes" }); setBellOpen(false); }}
-                      style={{ padding: "14px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.15s" }}
-                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                      <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(20,184,166,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <MessageSquare size={15} color="#14B8A6" />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>{requested} new quote request{requested > 1 ? "s" : ""}</div>
-                        <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>Review and send a quote</div>
-                      </div>
-                    </div>
-                  )}
-                  {accepted > 0 && (
-                    <div onClick={() => { dispatch({ type: "SET_SCREEN", payload: "quotes" }); setBellOpen(false); }}
-                      style={{ padding: "14px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.15s" }}
-                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                      <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(245,158,11,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <Clock size={15} color="#F59E0B" />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>{accepted} accepted — ready to book</div>
-                        <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>Call your customer{accepted > 1 ? "s" : ""} to confirm</div>
-                      </div>
-                    </div>
-                  )}
-                  {overdueInvoices > 0 && (
-                    <div onClick={() => { dispatch({ type: "SET_SCREEN", payload: "invoices" }); setBellOpen(false); }}
-                      style={{ padding: "14px 18px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.15s" }}
-                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                      <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(239,68,68,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <AlertTriangle size={15} color={theme.red} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>{overdueInvoices} overdue invoice{overdueInvoices > 1 ? "s" : ""}</div>
-                        <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>Chase up payment</div>
-                      </div>
-                    </div>
-                  )}
-                  {requested === 0 && accepted === 0 && overdueInvoices === 0 && (
-                    <div style={{ padding: "24px 18px", textAlign: "center" }}>
-                      <Bell size={20} color={theme.textDim} style={{ marginBottom: 8 }} />
-                      <div style={{ fontSize: 13, color: theme.textDim }}>No new activity</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
+          </div>
         </div>
       </div>
-      <div style={{ display: "flex", gap: 8, marginBottom: isMobile ? 16 : 24, overflowX: isMobile ? "auto" : "visible", WebkitOverflowScrolling: "touch", paddingBottom: isMobile ? 4 : 0 }}>
-        <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })} size={isMobile ? "sm" : "md"} style={{ background: "rgba(20,184,166,0.12)", color: "#14B8A6", whiteSpace: "nowrap", flexShrink: 0 }}><Cpu size={14} /> AI Quote</Button>
-        <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })} variant="secondary" size={isMobile ? "sm" : "md"} style={{ whiteSpace: "nowrap", flexShrink: 0 }}><Plus size={14} /> Manual Quote</Button>
-        <Button variant="secondary" size={isMobile ? "sm" : "md"} onClick={() => dispatch({ type: "SET_SCREEN", payload: "sequences" })} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>Manage Follow-Ups</Button>
+
+      {/* Automation activity feed strip */}
+      {(followUpsSentToday > 0 || openedRecently > 0 || acceptedAfterFollowUp > 0) && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: isMobile ? 10 : 16, padding: isMobile ? "10px 12px" : "10px 16px",
+          borderRadius: 8, background: "rgba(20,184,166,0.04)", border: "1px solid rgba(20,184,166,0.08)",
+          marginBottom: isMobile ? 16 : 20, overflowX: "auto", flexWrap: isMobile ? "nowrap" : "wrap",
+        }}>
+          <div style={{ width: 6, height: 6, borderRadius: 3, background: theme.accent, flexShrink: 0, animation: "pulse 2s ease-in-out infinite", boxShadow: `0 0 8px ${theme.accentGlow}` }} />
+          {followUpsSentToday > 0 && <span style={{ fontSize: 12, color: theme.textMuted, whiteSpace: "nowrap" }}><strong style={{ color: theme.accent }}>{followUpsSentToday}</strong> follow-up{followUpsSentToday > 1 ? "s" : ""} active</span>}
+          {openedRecently > 0 && <><span style={{ color: "rgba(255,255,255,0.1)" }}>·</span><span style={{ fontSize: 12, color: theme.textMuted, whiteSpace: "nowrap" }}><strong style={{ color: theme.accentBlue }}>{openedRecently}</strong> quote{openedRecently > 1 ? "s" : ""} opened</span></>}
+          {acceptedAfterFollowUp > 0 && <><span style={{ color: "rgba(255,255,255,0.1)" }}>·</span><span style={{ fontSize: 12, color: theme.textMuted, whiteSpace: "nowrap" }}><strong style={{ color: theme.green }}>{acceptedAfterFollowUp}</strong> won via follow-up</span></>}
+        </div>
+      )}
+
+      {/* Pipeline overview */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : `repeat(${pipeline.length}, 1fr)`, gap: isMobile ? 8 : 10, marginBottom: isMobile ? 16 : 20 }}>
+        {pipeline.map(col => (
+          <div key={col.key} onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}
+            style={{ padding: isMobile ? 12 : 14, borderRadius: 10, background: "rgba(255,255,255,0.025)", border: `1px solid ${col.color}12`, cursor: "pointer", transition: "all 0.15s" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = `${col.color}30`; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = `${col.color}12`; e.currentTarget.style.background = "rgba(255,255,255,0.025)"; }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ fontSize: 11, color: theme.textMuted, fontWeight: 500 }}>{col.label}</span>
+              <col.icon size={14} color={col.color} />
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: col.count > 0 ? col.color : theme.textDim, letterSpacing: "-0.02em" }}>{col.count}</div>
+          </div>
+        ))}
       </div>
 
       {/* Stats row */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(6, 1fr)", gap: isMobile ? 8 : 12, marginBottom: isMobile ? 16 : 24 }}>
-        <Stat label="Total" value={total} icon={FileText} />
-        <Stat label="Awaiting" value={pending} accent={theme.accent} icon={Clock} />
-        <Stat label="Accepted" value={accepted} accent="#F59E0B" icon={CheckCircle2} />
-        <Stat label="Booked" value={booked} accent={theme.green} icon={Check} />
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 8 : 10, marginBottom: isMobile ? 16 : 20 }}>
+        <Stat label="Win Rate" value={`${winRate}%`} accent={winRate >= 50 ? theme.green : winRate >= 25 ? "#F59E0B" : theme.red} icon={BarChart3} />
         <Stat label="Revenue" value={`$${revenue.toLocaleString()}`} accent={theme.green} icon={DollarSign} />
-        {outstandingAmount > 0 && <Stat label="Outstanding" value={`$${outstandingAmount.toLocaleString()}`} accent={overdueInvoices > 0 ? theme.red : "#F59E0B"} icon={Receipt} />}
+        <Stat label="Avg Quote" value={`$${avgQuoteValue.toLocaleString()}`} icon={FileText} />
+        {avgResponseDays !== null ? (
+          <Stat label="Avg Response" value={`${avgResponseDays}d`} accent={theme.accent} icon={Clock} />
+        ) : outstandingAmount > 0 ? (
+          <Stat label="Outstanding" value={`$${outstandingAmount.toLocaleString()}`} accent={overdueInvoices > 0 ? theme.red : "#F59E0B"} icon={Receipt} />
+        ) : (
+          <Stat label="Total Quotes" value={total} icon={FileText} />
+        )}
       </div>
 
-      {/* Two-column layout: Analytics + Recent Quotes */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 16 : 24 }}>
+      {/* Two-column layout */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 16 }}>
 
-        {/* Left column: Analytics (on mobile, renders second via order) */}
-        <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 12 : 24, order: isMobile ? 2 : 1 }}>
+        {/* Left: Charts */}
+        <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 12 : 16, order: isMobile ? 2 : 1 }}>
 
-          {/* Win rate ring */}
-          <Card>
-            <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-              <div style={{ position: "relative", width: 100, height: 100, flexShrink: 0 }}>
-                <svg width="100" height="100" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="42" fill="none" stroke={theme.surfaceLight} strokeWidth="8" />
-                  <circle cx="50" cy="50" r="42" fill="none" stroke={winRate >= 50 ? theme.green : winRate >= 25 ? "#F59E0B" : theme.red} strokeWidth="8" strokeLinecap="round"
-                    strokeDasharray={`${winRate * 2.64} ${264 - winRate * 2.64}`} strokeDashoffset="66"
-                    style={{ transition: "stroke-dasharray 0.8s ease" }} />
-                </svg>
-                <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ fontSize: 24, fontWeight: 800, color: theme.text, fontFamily: theme.fontDisplay, lineHeight: 1 }}>{winRate}%</span>
-                  <span style={{ fontSize: 10, color: theme.textDim, marginTop: 2 }}>win rate</span>
-                </div>
-              </div>
-              <div style={{ flex: 1 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 12px" }}>Quote Performance</h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                    <span style={{ color: theme.textMuted }}>Won</span>
-                    <span style={{ color: theme.green, fontWeight: 600 }}>{won}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                    <span style={{ color: theme.textMuted }}>Declined</span>
-                    <span style={{ color: theme.red, fontWeight: 600 }}>{declined}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                    <span style={{ color: theme.textMuted }}>Avg Quote</span>
-                    <span style={{ color: theme.text, fontWeight: 600 }}>${avgQuoteValue.toLocaleString()}</span>
-                  </div>
-                  {avgResponseDays !== null && (
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                      <span style={{ color: theme.textMuted }}>Avg Response</span>
-                      <span style={{ color: theme.accent, fontWeight: 600 }}>{avgResponseDays} day{avgResponseDays !== 1 ? "s" : ""}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Quote funnel mini bars */}
-          <Card>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 16px" }}>Quote Funnel</h3>
+          {/* Quote funnel */}
+          <Card style={{ padding: isMobile ? 16 : 20 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 14px", letterSpacing: "0.01em" }}>Quote Funnel</h3>
             {[
               { label: "Sent", value: total, color: theme.accent },
               { label: "Opened", value: quotes.filter(q => q.status === "opened").length, color: theme.blue },
@@ -1996,11 +2076,11 @@ const Dashboard = ({ quotes, dispatch, invoices = [] }) => {
               { label: "Booked", value: booked, color: theme.green },
               { label: "Declined", value: declined, color: theme.red },
             ].map((bar, i) => (
-              <div key={i} style={{ marginBottom: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>
-                  <span>{bar.label}</span><span style={{ fontWeight: 600, color: theme.text }}>{bar.value}</span>
+              <div key={i} style={{ marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: theme.textMuted, marginBottom: 3 }}>
+                  <span>{bar.label}</span><span style={{ fontWeight: 600, color: theme.text, fontFamily: "'DM Sans', sans-serif" }}>{bar.value}</span>
                 </div>
-                <div style={{ height: 6, borderRadius: 3, background: theme.surfaceLight, overflow: "hidden" }}>
+                <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${total > 0 ? (bar.value / total) * 100 : 0}%`, borderRadius: 3, background: bar.color, transition: "width 0.6s ease" }} />
                 </div>
               </div>
@@ -2009,20 +2089,19 @@ const Dashboard = ({ quotes, dispatch, invoices = [] }) => {
 
           {/* Monthly sparkline */}
           {months.length > 1 && (
-            <Card>
-              <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 4px" }}>Monthly Revenue</h3>
-              <p style={{ fontSize: 12, color: theme.textDim, margin: "0 0 16px" }}>Last {months.length} month{months.length > 1 ? "s" : ""}</p>
+            <Card style={{ padding: isMobile ? 16 : 20 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 3px", letterSpacing: "0.01em" }}>Monthly Revenue</h3>
+              <p style={{ fontSize: 11, color: theme.textDim, margin: "0 0 14px" }}>Last {months.length} months</p>
               {(() => {
                 const maxRev = Math.max(...months.map(m => m[1].revenue), 1);
-                const barWidth = Math.max(Math.floor((100 - months.length * 2) / months.length), 8);
                 return (
-                  <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 80 }}>
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 72 }}>
                     {months.map(([month, data], i) => (
                       <div key={month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                         <div style={{
-                          width: "100%", maxWidth: 40, borderRadius: 4,
-                          height: `${Math.max((data.revenue / maxRev) * 64, 4)}px`,
-                          background: i === months.length - 1 ? theme.accent : theme.accentSoft,
+                          width: "100%", maxWidth: 36, borderRadius: 4,
+                          height: `${Math.max((data.revenue / maxRev) * 56, 3)}px`,
+                          background: i === months.length - 1 ? theme.accent : "rgba(20,184,166,0.15)",
                           transition: "height 0.5s ease",
                         }} />
                         <span style={{ fontSize: 9, color: theme.textDim }}>{new Date(month + "-01").toLocaleDateString("en-NZ", { month: "short" })}</span>
@@ -2031,26 +2110,26 @@ const Dashboard = ({ quotes, dispatch, invoices = [] }) => {
                   </div>
                 );
               })()}
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, padding: "10px 0 0", borderTop: `1px solid ${theme.border}` }}>
-                <span style={{ fontSize: 12, color: theme.textMuted }}>This month</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: theme.green }}>${(months[months.length - 1]?.[1]?.revenue || 0).toLocaleString()}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, padding: "8px 0 0", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                <span style={{ fontSize: 11, color: theme.textMuted }}>This month</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: theme.green }}>${(months[months.length - 1]?.[1]?.revenue || 0).toLocaleString()}</span>
               </div>
             </Card>
           )}
 
           {/* Follow-up effectiveness */}
           {stepData.length > 0 && (
-            <Card>
-              <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 4px" }}>Follow-Up Effectiveness</h3>
-              <p style={{ fontSize: 12, color: theme.textDim, margin: "0 0 14px" }}>When customers respond to your quotes</p>
+            <Card style={{ padding: isMobile ? 16 : 20 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 3px", letterSpacing: "0.01em" }}>Follow-Up Effectiveness</h3>
+              <p style={{ fontSize: 11, color: theme.textDim, margin: "0 0 12px" }}>When customers respond</p>
               {stepData.map(([label, count]) => {
                 const maxStep = Math.max(...stepData.map(s => s[1]));
                 return (
-                  <div key={label} style={{ marginBottom: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>
+                  <div key={label} style={{ marginBottom: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: theme.textMuted, marginBottom: 3 }}>
                       <span>{label}</span><span style={{ fontWeight: 600, color: theme.text }}>{count}</span>
                     </div>
-                    <div style={{ height: 6, borderRadius: 3, background: theme.surfaceLight, overflow: "hidden" }}>
+                    <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
                       <div style={{ height: "100%", width: `${(count / maxStep) * 100}%`, borderRadius: 3, background: theme.accent, transition: "width 0.6s ease" }} />
                     </div>
                   </div>
@@ -2060,50 +2139,52 @@ const Dashboard = ({ quotes, dispatch, invoices = [] }) => {
           )}
 
           <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "analytics" })}
-            style={{ padding: "12px 16px", borderRadius: 10, background: theme.surface, border: `1px solid ${theme.border}`, cursor: "pointer", textAlign: "center", fontSize: 13, color: theme.accent, fontWeight: 500 }}>
+            style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)", cursor: "pointer", textAlign: "center", fontSize: 12, color: theme.accent, fontWeight: 500, transition: "all 0.15s" }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(20,184,166,0.2)"} onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"}>
             View Full Analytics →
           </div>
         </div>
 
-        {/* Right column: Recent Quotes (on mobile, renders first via order) */}
-        <Card style={{ alignSelf: "start", order: isMobile ? 1 : 2, padding: isMobile ? 14 : 24 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: 0 }}>Recent Quotes</h3>
+        {/* Right: Recent Quotes */}
+        <Card style={{ alignSelf: "start", order: isMobile ? 1 : 2, padding: isMobile ? 14 : 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: 0, letterSpacing: "0.01em" }}>Recent Quotes</h3>
             <span onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}
-              style={{ fontSize: 13, color: theme.accent, cursor: "pointer", fontWeight: 500 }}>View all →</span>
+              style={{ fontSize: 12, color: theme.accent, cursor: "pointer", fontWeight: 500 }}>View all →</span>
           </div>
           {recentQuotes.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 24, color: theme.textMuted, fontSize: 13 }}>
+            <div style={{ textAlign: "center", padding: 20, color: theme.textMuted, fontSize: 12 }}>
               No quotes yet — create your first one!
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
               {recentQuotes.map((q) => (
                 <div key={q.id}
                   onClick={() => dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + q.id })}
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "10px 12px", borderRadius: 8, cursor: "pointer",
+                    padding: "9px 10px", borderRadius: 7, cursor: "pointer", transition: "background 0.1s",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = theme.surfaceLight)}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
                     <div style={{
-                      width: 32, height: 32, borderRadius: 8, background: theme.surfaceLight,
+                      width: 30, height: 30, borderRadius: 7, background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.06)",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 13, fontWeight: 700, color: theme.accent, flexShrink: 0,
+                      fontSize: 12, fontWeight: 700, color: theme.accent, flexShrink: 0,
                     }}>
                       {q.customer_name?.charAt(0) || "?"}
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer_name}</div>
-                      <div style={{ fontSize: 11, color: theme.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.job_title}</div>
+                      <div style={{ fontSize: 11, color: theme.textDim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.job_title}</div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>${parseFloat(q.amount || 0).toLocaleString()}</span>
-                    <Badge status={q.status} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: "'DM Sans', sans-serif" }}>${parseFloat(q.amount || 0).toLocaleString()}</span>
+                    <Badge status={q.status} size="sm" />
                   </div>
                 </div>
               ))}
@@ -2234,100 +2315,120 @@ const QuotesList = ({ quotes, dispatch, sequences }) => {
     return new Date(dateStr).toLocaleDateString("en-NZ", { day: "numeric", month: "short" });
   };
 
+  // Urgency color: red = needs action, amber = follow up, green = all good
+  const getUrgencyColor = (q) => {
+    if (q.status === "requested") return theme.red;
+    if (q.status === "accepted") return "#F59E0B";
+    if (isNoResponse(q)) return theme.red;
+    if (q.status === "sent" || q.status === "opened") return "#F59E0B";
+    if (q.status === "booked") return theme.green;
+    return null;
+  };
+
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: isMobile ? 16 : 28, flexDirection: isMobile ? "column" : "row", gap: isMobile ? 12 : 0 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: isMobile ? 16 : 24, flexDirection: isMobile ? "column" : "row", gap: isMobile ? 12 : 0 }}>
         <div>
-          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Quotes</h1>
-          <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>{quotes.length} total quotes</p>
+          <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.02em" }}>Quotes</h1>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>{quotes.length} total quotes</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })} size={isMobile ? "sm" : "md"} style={{ background: "rgba(20,184,166,0.12)", color: "#14B8A6" }}><Cpu size={14} /> AI Quote</Button>
-          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })} variant="secondary" size={isMobile ? "sm" : "md"}><Plus size={14} /> Manual</Button>
+          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })} size="sm" style={{ background: "rgba(20,184,166,0.1)", color: "#14B8A6", border: "1px solid rgba(20,184,166,0.15)" }}><Cpu size={13} /> AI Quote</Button>
+          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })} variant="secondary" size="sm"><Plus size={13} /> Manual</Button>
         </div>
       </div>
 
       {/* Filter tabs */}
-      <div style={{ display: "flex", gap: 6, marginBottom: isMobile ? 12 : 20, overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 4, flexWrap: "nowrap", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: isMobile ? 12 : 16, overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 4, flexWrap: "nowrap", alignItems: "center" }}>
         {tabs.map((tab) => (
           <span key={tab.key} onClick={() => setFilter(tab.key)}
             style={{
-              padding: isMobile ? "6px 10px" : "8px 14px", borderRadius: 8, fontSize: isMobile ? 11 : 13, fontWeight: 500, cursor: "pointer",
-              background: filter === tab.key ? theme.accentSoft : theme.surfaceLight,
+              padding: isMobile ? "5px 10px" : "6px 12px", borderRadius: 6, fontSize: isMobile ? 11 : 12, fontWeight: 500, cursor: "pointer",
+              background: filter === tab.key ? "rgba(20,184,166,0.1)" : "transparent",
               color: filter === tab.key ? theme.accent : theme.textMuted,
-              border: `1px solid ${filter === tab.key ? theme.accent + "33" : theme.border}`,
-              whiteSpace: "nowrap", flexShrink: 0, display: "flex", alignItems: "center", gap: 6,
+              border: `1px solid ${filter === tab.key ? "rgba(20,184,166,0.2)" : "transparent"}`,
+              whiteSpace: "nowrap", flexShrink: 0, display: "flex", alignItems: "center", gap: 5,
+              transition: "all 0.15s",
             }}>
             {tab.label}
-            {tab.dot && <span style={{ width: 6, height: 6, borderRadius: 3, background: theme.accent, flexShrink: 0 }} />}
-            {tab.count > 0 && !tab.dot && <span style={{ fontSize: isMobile ? 10 : 11, fontWeight: 600, color: filter === tab.key ? theme.accent : theme.textDim }}>{tab.count}</span>}
+            {tab.dot && <span style={{ width: 5, height: 5, borderRadius: 3, background: theme.accent, flexShrink: 0 }} />}
+            {tab.count > 0 && !tab.dot && <span style={{ fontSize: 10, fontWeight: 600, color: filter === tab.key ? theme.accent : theme.textDim }}>{tab.count}</span>}
           </span>
         ))}
       </div>
 
-      {/* Search (hidden on Activity tab) */}
+      {/* Search */}
       {filter !== "activity" && (
-        <input value={search} onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search quotes..."
-          style={{
-            fontFamily: theme.font, fontSize: 13, padding: isMobile ? "10px 14px" : "8px 16px", borderRadius: isMobile ? 10 : 8, width: isMobile ? "100%" : 200,
-            background: theme.surfaceLight, border: `1px solid ${theme.border}`, color: theme.text, outline: "none", marginBottom: isMobile ? 12 : 16,
-          }} />
+        <div style={{ position: "relative", marginBottom: isMobile ? 12 : 16, maxWidth: isMobile ? "100%" : 240 }}>
+          <Search size={14} color={theme.textDim} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search quotes..."
+            style={{
+              fontFamily: theme.font, fontSize: 13, padding: "8px 12px 8px 34px", borderRadius: 8, width: "100%",
+              background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: theme.text, outline: "none",
+              boxSizing: "border-box",
+            }} />
+        </div>
       )}
 
       {/* Activity tab */}
       {filter === "activity" ? (
-        <Card style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ padding: isMobile ? "12px 14px" : "14px 20px", borderBottom: `1px solid ${theme.border}` }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>Recent Activity</span>
+        <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
+          <div style={{ padding: isMobile ? "10px 14px" : "12px 18px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: theme.text, letterSpacing: "0.01em" }}>Recent Activity</span>
           </div>
           {buildActivity().length === 0 ? (
-            <div style={{ padding: 48, textAlign: "center", color: theme.textMuted, fontSize: 14 }}>No activity yet</div>
+            <div style={{ padding: 40, textAlign: "center", color: theme.textDim, fontSize: 13 }}>No activity yet</div>
           ) : buildActivity().map((event, i) => {
             const cfg = activityIcons[event.type] || { icon: FileText, color: theme.textMuted };
             const IconComp = cfg.icon;
             return (
               <div key={i}
                 onClick={() => dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + event.quote.id })}
-                style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: isMobile ? "10px 14px" : "12px 20px", borderBottom: `1px solid ${theme.border}08`, cursor: "pointer" }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = theme.surfaceLight)}
+                style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: isMobile ? "10px 14px" : "10px 18px", borderBottom: "1px solid rgba(255,255,255,0.03)", cursor: "pointer", transition: "background 0.1s" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: cfg.color + "18", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
-                  <IconComp size={16} color={cfg.color} />
+                <div style={{ width: 28, height: 28, borderRadius: 7, background: cfg.color + "15", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                  <IconComp size={14} color={cfg.color} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: theme.text, lineHeight: 1.5 }}>{event.text}</div>
-                  <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>{timeAgo(event.date)}</div>
+                  <div style={{ fontSize: 12, color: theme.text, lineHeight: 1.5 }}>{event.text}</div>
+                  <div style={{ fontSize: 10, color: theme.textDim, marginTop: 2 }}>{timeAgo(event.date)}</div>
                 </div>
               </div>
             );
           })}
-        </Card>
+        </div>
       ) : (
         /* Quote list */
-        <Card style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
           {!isMobile && (
           <div style={{
-            display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 80px",
-            padding: "14px 20px", borderBottom: `1px solid ${theme.border}`, fontSize: 12,
-            fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", letterSpacing: 0.5,
+            display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 40px",
+            padding: "10px 18px", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: 11,
+            fontWeight: 600, color: theme.textDim, textTransform: "uppercase", letterSpacing: 0.5,
           }}>
             <span>Customer</span><span>Job</span><span>Amount</span><span>Status</span><span></span>
           </div>
           )}
           {filtered.map((q) => {
             const followUpLabel = getFollowUpLabel(q);
+            const urgency = getUrgencyColor(q);
             return (
             <div key={q.id}
               onClick={() => dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + q.id })}
               style={isMobile ? {
-                padding: "12px 14px", borderBottom: `1px solid ${theme.border}08`, cursor: "pointer",
+                padding: "11px 14px", borderBottom: "1px solid rgba(255,255,255,0.03)", cursor: "pointer",
+                borderLeft: urgency ? `3px solid ${urgency}` : "3px solid transparent",
+                transition: "background 0.1s",
               } : {
-                display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 80px",
-                padding: "16px 20px", borderBottom: `1px solid ${theme.border}08`, cursor: "pointer",
+                display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 40px",
+                padding: "12px 18px", borderBottom: "1px solid rgba(255,255,255,0.03)", cursor: "pointer",
+                borderLeft: urgency ? `3px solid ${urgency}` : "3px solid transparent",
+                transition: "background 0.1s",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = theme.surfaceLight)}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
               {isMobile ? (
@@ -2340,24 +2441,24 @@ const QuotesList = ({ quotes, dispatch, sequences }) => {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>${parseFloat(q.amount || 0).toLocaleString()}</span>
-                    <Badge status={q.status} />
+                    <Badge status={q.status} size="sm" />
                   </div>
                 </div>
               ) : (
                 <>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>{q.customer_name}</div>
-                    <div style={{ fontSize: 12, color: theme.textMuted }}>{q.customer_email}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>{q.customer_name}</div>
+                    <div style={{ fontSize: 11, color: theme.textDim }}>{q.customer_email}</div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                    <div style={{ fontSize: 14, color: theme.text }}>{q.job_title}</div>
-                    {followUpLabel && <div style={{ fontSize: 11, color: theme.accent, fontWeight: 500, marginTop: 2 }}>{followUpLabel}</div>}
-                    {isNoResponse(q) && <div style={{ fontSize: 11, color: theme.red, fontWeight: 500, marginTop: 2 }}>No response — all follow-ups sent</div>}
+                    <div style={{ fontSize: 13, color: theme.text }}>{q.job_title}</div>
+                    {followUpLabel && <div style={{ fontSize: 10, color: theme.accent, fontWeight: 500, marginTop: 2 }}>{followUpLabel}</div>}
+                    {isNoResponse(q) && <div style={{ fontSize: 10, color: theme.red, fontWeight: 500, marginTop: 2 }}>No response — all follow-ups sent</div>}
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, display: "flex", alignItems: "center" }}>${parseFloat(q.amount || 0).toLocaleString()}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, display: "flex", alignItems: "center", fontFamily: "'DM Sans', sans-serif" }}>${parseFloat(q.amount || 0).toLocaleString()}</div>
                   <div style={{ display: "flex", alignItems: "center" }}><Badge status={q.status} /></div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-                    <span style={{ fontSize: 18, color: theme.textDim }}>→</span>
+                    <ChevronRight size={14} color={theme.textDim} />
                   </div>
                 </>
               )}
@@ -2365,11 +2466,11 @@ const QuotesList = ({ quotes, dispatch, sequences }) => {
             );
           })}
           {filtered.length === 0 && (
-            <div style={{ padding: 48, textAlign: "center", color: theme.textMuted, fontSize: 14 }}>
+            <div style={{ padding: 40, textAlign: "center", color: theme.textDim, fontSize: 13 }}>
               {quotes.length === 0 ? "No quotes yet — create your first one!" : filter === "noResponse" ? "No unresponsive quotes — nice!" : "No quotes match this filter"}
             </div>
           )}
-        </Card>
+        </div>
       )}
     </div>
   );
@@ -2427,35 +2528,34 @@ const Analytics = ({ quotes, invoices = [] }) => {
   const avgResponseDays = responseTimes.length > 0 ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length) : null;
 
   const BarSimple = ({ value, max, color, label, count }) => (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: theme.textMuted, marginBottom: 4 }}>
-        <span>{label}</span><span style={{ fontWeight: 600, color: theme.text }}>{count}</span>
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: theme.textMuted, marginBottom: 3 }}>
+        <span>{label}</span><span style={{ fontWeight: 600, color: theme.text, fontFamily: "'DM Sans', sans-serif" }}>{count}</span>
       </div>
-      <div style={{ height: 8, borderRadius: 4, background: theme.surfaceLight, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${max > 0 ? (value / max) * 100 : 0}%`, borderRadius: 4, background: color, transition: "width 0.5s" }} />
+      <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${max > 0 ? (value / max) * 100 : 0}%`, borderRadius: 3, background: color, transition: "width 0.5s" }} />
       </div>
     </div>
   );
 
   return (
     <div>
-      <div style={{ marginBottom: isMobile ? 16 : 32 }}>
-        <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Analytics</h1>
-        <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>See how your quotes are performing</p>
+      <div style={{ marginBottom: isMobile ? 16 : 24 }}>
+        <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.02em" }}>Analytics</h1>
+        <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>See how your quotes are performing</p>
       </div>
 
       {/* Top stats */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr", gap: isMobile ? 8 : 12, marginBottom: isMobile ? 16 : 24 }}>
-        <Stat label="Win Rate" value={`${winRate}%`} accent={theme.green} icon={BarChart3} />
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 8 : 10, marginBottom: isMobile ? 16 : 20 }}>
+        <Stat label="Win Rate" value={`${winRate}%`} accent={winRate >= 50 ? theme.green : winRate >= 25 ? "#F59E0B" : theme.red} icon={BarChart3} />
         <Stat label="Total Revenue" value={`$${totalRevenue.toLocaleString()}`} accent={theme.green} icon={DollarSign} />
         <Stat label="Avg Quote Value" value={`$${avgQuoteValue.toLocaleString()}`} accent={theme.accent} icon={DollarSign} />
-        {avgResponseDays !== null && <Stat label="Avg Response Time" value={`${avgResponseDays}d`} accent={theme.accent} icon={Clock} />}
+        {avgResponseDays !== null && <Stat label="Avg Response" value={`${avgResponseDays}d`} accent={theme.accent} icon={Clock} />}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 24, marginBottom: 24 }}>
-        {/* Quote funnel */}
-        <Card>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Quote Funnel</h3>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 16, marginBottom: isMobile ? 12 : 16 }}>
+        <Card style={{ padding: isMobile ? 16 : 20 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 16px", letterSpacing: "0.01em" }}>Quote Funnel</h3>
           <BarSimple label="Total Sent" value={total} max={total} color={theme.accent} count={total} />
           <BarSimple label="Awaiting Response" value={sent} max={total} color={theme.blue} count={sent} />
           <BarSimple label="Accepted" value={accepted} max={total} color="#F59E0B" count={accepted} />
@@ -2463,41 +2563,40 @@ const Analytics = ({ quotes, invoices = [] }) => {
           <BarSimple label="Declined" value={declined} max={total} color={theme.red} count={declined} />
         </Card>
 
-        {/* Which follow-up converts */}
-        <Card>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>When Do Customers Respond?</h3>
-          <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 20px" }}>Which follow-up email triggered the response</p>
+        <Card style={{ padding: isMobile ? 16 : 20 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 6px", letterSpacing: "0.01em" }}>When Do Customers Respond?</h3>
+          <p style={{ fontSize: 11, color: theme.textDim, margin: "0 0 16px" }}>Which follow-up triggered the response</p>
           {stepData.length > 0 ? (
             stepData.map(([label, count]) => (
               <BarSimple key={label} label={label} value={count} max={Math.max(...stepData.map(s => s[1]))} color={theme.accent} count={count} />
             ))
           ) : (
-            <p style={{ fontSize: 14, color: theme.textDim, textAlign: "center", padding: 20 }}>No responses yet</p>
+            <p style={{ fontSize: 13, color: theme.textDim, textAlign: "center", padding: 16 }}>No responses yet</p>
           )}
         </Card>
       </div>
 
       {/* Monthly trend */}
       {months.length > 0 && (
-        <Card style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Monthly Overview</h3>
+        <Card style={{ marginBottom: isMobile ? 12 : 16, padding: isMobile ? 16 : 20 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 16px", letterSpacing: "0.01em" }}>Monthly Overview</h3>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr>
                   {["Month", "Sent", "Won", "Declined", "Revenue"].map(h => (
-                    <th key={h} style={{ textAlign: h === "Month" ? "left" : "right", padding: "10px 12px", borderBottom: `1px solid ${theme.border}`, color: theme.textMuted, fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                    <th key={h} style={{ textAlign: h === "Month" ? "left" : "right", padding: "8px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)", color: theme.textDim, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.03em" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {months.map(([month, data]) => (
                   <tr key={month}>
-                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}08`, color: theme.text, fontWeight: 500 }}>{new Date(month + "-01").toLocaleDateString("en-NZ", { month: "short", year: "numeric" })}</td>
-                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}08`, color: theme.textMuted, textAlign: "right" }}>{data.sent}</td>
-                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}08`, color: theme.green, textAlign: "right", fontWeight: 600 }}>{data.won}</td>
-                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}08`, color: theme.red, textAlign: "right" }}>{data.declined}</td>
-                    <td style={{ padding: "10px 12px", borderBottom: `1px solid ${theme.border}08`, color: theme.green, textAlign: "right", fontWeight: 600 }}>${data.revenue.toLocaleString()}</td>
+                    <td style={{ padding: "8px 10px", borderBottom: "1px solid rgba(255,255,255,0.03)", color: theme.text, fontWeight: 500, fontSize: 12 }}>{new Date(month + "-01").toLocaleDateString("en-NZ", { month: "short", year: "numeric" })}</td>
+                    <td style={{ padding: "8px 10px", borderBottom: "1px solid rgba(255,255,255,0.03)", color: theme.textMuted, textAlign: "right", fontSize: 12 }}>{data.sent}</td>
+                    <td style={{ padding: "8px 10px", borderBottom: "1px solid rgba(255,255,255,0.03)", color: theme.green, textAlign: "right", fontWeight: 600, fontSize: 12 }}>{data.won}</td>
+                    <td style={{ padding: "8px 10px", borderBottom: "1px solid rgba(255,255,255,0.03)", color: theme.red, textAlign: "right", fontSize: 12 }}>{data.declined}</td>
+                    <td style={{ padding: "8px 10px", borderBottom: "1px solid rgba(255,255,255,0.03)", color: theme.green, textAlign: "right", fontWeight: 600, fontSize: 12 }}>${data.revenue.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -2515,9 +2614,9 @@ const Analytics = ({ quotes, invoices = [] }) => {
         const reasonData = Object.entries(reasonCounts).sort((a, b) => b[1] - a[1]);
         const maxCount = Math.max(...reasonData.map(r => r[1]));
         return (
-          <Card>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Why Customers Decline</h3>
-            <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 20px" }}>Feedback from {declinedQuotes.length} declined quote{declinedQuotes.length > 1 ? "s" : ""}</p>
+          <Card style={{ padding: isMobile ? 16 : 20 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 6px", letterSpacing: "0.01em" }}>Why Customers Decline</h3>
+            <p style={{ fontSize: 11, color: theme.textDim, margin: "0 0 16px" }}>Feedback from {declinedQuotes.length} declined quote{declinedQuotes.length > 1 ? "s" : ""}</p>
             {reasonData.map(([reason, count]) => (
               <BarSimple key={reason} label={reason} value={count} max={maxCount} color={theme.red} count={count} />
             ))}
@@ -2538,29 +2637,24 @@ const Analytics = ({ quotes, invoices = [] }) => {
         const overdueCount = invoices.filter(i => (i.status === "sent" || i.status === "viewed") && i.due_date && new Date(i.due_date) < new Date()).length;
         const collectionRate = (paidCount + overdueCount) > 0 ? Math.round((paidCount / (paidCount + overdueCount)) * 100) : 100;
         return (
-          <Card style={{ marginTop: 24 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 8 }}><Receipt size={18} /> Invoicing</h3>
-            <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 20px" }}>{invoices.length} invoice{invoices.length !== 1 ? "s" : ""} total</p>
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
-              <div style={{ padding: 14, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color: theme.accent, fontFamily: theme.fontDisplay }}>${invoiced.toLocaleString()}</div>
-                <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>Invoiced</div>
-              </div>
-              <div style={{ padding: 14, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color: theme.green, fontFamily: theme.fontDisplay }}>${collected.toLocaleString()}</div>
-                <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>Collected</div>
-              </div>
-              <div style={{ padding: 14, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color: outstanding > 0 ? "#F59E0B" : theme.textDim, fontFamily: theme.fontDisplay }}>${outstanding.toLocaleString()}</div>
-                <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>Outstanding</div>
-              </div>
-              <div style={{ padding: 14, borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color: collectionRate >= 80 ? theme.green : collectionRate >= 50 ? "#F59E0B" : theme.red, fontFamily: theme.fontDisplay }}>{collectionRate}%</div>
-                <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>Collection Rate</div>
-              </div>
+          <Card style={{ marginTop: isMobile ? 12 : 16, padding: isMobile ? 16 : 20 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 6px", display: "flex", alignItems: "center", gap: 7, letterSpacing: "0.01em" }}><Receipt size={15} /> Invoicing</h3>
+            <p style={{ fontSize: 11, color: theme.textDim, margin: "0 0 16px" }}>{invoices.length} invoice{invoices.length !== 1 ? "s" : ""} total</p>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 8, marginBottom: 16 }}>
+              {[
+                { label: "Invoiced", value: `$${invoiced.toLocaleString()}`, color: theme.accent },
+                { label: "Collected", value: `$${collected.toLocaleString()}`, color: theme.green },
+                { label: "Outstanding", value: `$${outstanding.toLocaleString()}`, color: outstanding > 0 ? "#F59E0B" : theme.textDim },
+                { label: "Collection", value: `${collectionRate}%`, color: collectionRate >= 80 ? theme.green : collectionRate >= 50 ? "#F59E0B" : theme.red },
+              ].map((item, i) => (
+                <div key={i} style={{ padding: 12, borderRadius: 8, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)", textAlign: "center" }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: item.color, letterSpacing: "-0.02em" }}>{item.value}</div>
+                  <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 3 }}>{item.label}</div>
+                </div>
+              ))}
             </div>
             {avgPayDays !== null && (
-              <div style={{ fontSize: 13, color: theme.textMuted }}>Average payment time: <strong style={{ color: theme.text }}>{avgPayDays} day{avgPayDays !== 1 ? "s" : ""}</strong></div>
+              <div style={{ fontSize: 12, color: theme.textMuted }}>Average payment time: <strong style={{ color: theme.text }}>{avgPayDays} day{avgPayDays !== 1 ? "s" : ""}</strong></div>
             )}
           </Card>
         );
@@ -3653,25 +3747,47 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
               <div style={{ fontSize: 12, color: theme.textMuted }}>Amount</div>
               <div style={{ fontSize: 28, color: theme.accent, fontWeight: 700, fontFamily: theme.fontDisplay }}>${parseFloat(quote.amount || 0).toLocaleString()}</div>
             </div>
-            {quote.ai_estimate && (
-              <div style={{ padding: 16, borderRadius: 10, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.2)" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, color: "#14B8A6", fontWeight: 600 }}>AI Estimate</div>
-                  {quote.ai_estimate_notes && (() => {
-                    const notes = quote.ai_estimate_notes || "";
-                    const isHigh = notes.startsWith("HIGH");
-                    const isMed = notes.startsWith("MEDIUM");
-                    const color = isHigh ? theme.green : isMed ? "#F59E0B" : theme.red;
-                    const label = isHigh ? "High Confidence" : isMed ? "Medium Confidence" : notes.startsWith("LOW") ? "Low Confidence" : null;
-                    return label ? <span style={{ fontSize: 11, fontWeight: 600, color, padding: "3px 8px", borderRadius: 6, background: color + "18" }}>{label}</span> : null;
-                  })()}
+            {quote.ai_estimate && (() => {
+              let bd = null;
+              if (quote.ai_estimate_notes) {
+                try { bd = typeof quote.ai_estimate_notes === "string" ? JSON.parse(quote.ai_estimate_notes) : quote.ai_estimate_notes; } catch {}
+              }
+              const estimate = parseFloat(quote.ai_estimate) || 0;
+              const rangeLow = quote.ai_estimate_range_low || Math.round(estimate * 0.85);
+              const rangeHigh = quote.ai_estimate_range_high || Math.round(estimate * 1.15);
+              return (
+                <div style={{ padding: 16, borderRadius: 10, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.2)" }}>
+                  <div style={{ fontSize: 13, color: "#14B8A6", fontWeight: 600, marginBottom: 8 }}>AI Estimate</div>
+                  <div style={{ fontSize: 22, color: "#14B8A6", fontWeight: 700 }}>
+                    ${rangeLow.toLocaleString()} — ${rangeHigh.toLocaleString()}
+                  </div>
+                  {bd && (
+                    <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                      {bd.scope && <div><div style={{ fontSize: 11, color: theme.textDim, textTransform: "uppercase", fontWeight: 600, marginBottom: 2 }}>Scope</div><div style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{bd.scope}</div></div>}
+                      {bd.lineItems && bd.lineItems.length > 0 && bd.lineItems.some(i => i.description?.trim()) && (
+                        <div>
+                          <div style={{ fontSize: 11, color: theme.textDim, textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Line Items</div>
+                          {bd.lineItems.filter(i => i.description?.trim()).map((item, idx) => (
+                            <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: theme.textMuted, padding: "3px 0", borderBottom: `1px solid ${theme.border}` }}>
+                              <span>{item.description}</span>
+                              {item.price && <span style={{ color: theme.text, fontWeight: 500 }}>${parseFloat(item.price).toLocaleString()}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {(bd.labourHours || bd.materialsCost) && (
+                        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                          {bd.labourHours && <div><div style={{ fontSize: 11, color: theme.textDim, textTransform: "uppercase", fontWeight: 600 }}>Labour</div><div style={{ fontSize: 13, color: theme.textMuted }}>{bd.labourHours}hrs @ ${bd.labourRate}/hr</div></div>}
+                          {bd.materialsCost && <div><div style={{ fontSize: 11, color: theme.textDim, textTransform: "uppercase", fontWeight: 600 }}>Materials</div><div style={{ fontSize: 13, color: theme.textMuted }}>${parseFloat(bd.materialsCost).toLocaleString()}</div></div>}
+                          {bd.includeCallout && bd.calloutFee && <div><div style={{ fontSize: 11, color: theme.textDim, textTransform: "uppercase", fontWeight: 600 }}>Callout</div><div style={{ fontSize: 13, color: theme.textMuted }}>${parseFloat(bd.calloutFee).toLocaleString()}</div></div>}
+                        </div>
+                      )}
+                      {bd.notes && <div><div style={{ fontSize: 11, color: theme.textDim, textTransform: "uppercase", fontWeight: 600, marginBottom: 2 }}>Notes</div><div style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{bd.notes}</div></div>}
+                    </div>
+                  )}
                 </div>
-                <div style={{ fontSize: 22, color: "#14B8A6", fontWeight: 700 }}>
-                  ${(quote.ai_estimate_range_low || 0).toLocaleString()} — ${(quote.ai_estimate_range_high || 0).toLocaleString()}
-                </div>
-                {quote.ai_estimate_notes && <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 8, lineHeight: 1.5 }}>{quote.ai_estimate_notes.replace(/^(HIGH|MEDIUM|LOW) CONFIDENCE: /i, "")}</div>}
-              </div>
-            )}
+              );
+            })()}
             {quote.description && <div><div style={{ fontSize: 12, color: theme.textMuted }}>Description</div><div style={{ fontSize: 14, color: theme.text, lineHeight: 1.5 }}>{quote.description}</div></div>}
             {quote.photos && quote.photos.length > 0 && (
               <div>
@@ -3912,18 +4028,18 @@ const InvoicesList = ({ invoices, dispatch, quotes = [], business }) => {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: isMobile ? 16 : 28, flexDirection: isMobile ? "column" : "row", gap: isMobile ? 12 : 0 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: isMobile ? 16 : 24, flexDirection: isMobile ? "column" : "row", gap: isMobile ? 12 : 0 }}>
         <div>
-          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Invoices</h1>
-          <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>{invoices.length} total invoice{invoices.length !== 1 ? "s" : ""}</p>
+          <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.02em" }}>Invoices</h1>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>{invoices.length} total invoice{invoices.length !== 1 ? "s" : ""}</p>
         </div>
         <div style={{ display: "flex", gap: 8, position: "relative" }}>
           {(() => {
             const invoiceable = quotes.filter(q => (q.status === "accepted" || q.status === "booked") && !invoices.some(inv => inv.quote_id === q.id));
             return invoiceable.length > 0 && (
               <div style={{ position: "relative" }}>
-                <Button onClick={() => setShowFromQuote(!showFromQuote)} size={isMobile ? "sm" : "md"} variant="secondary">
-                  <FileText size={14} /> From Quote
+                <Button onClick={() => setShowFromQuote(!showFromQuote)} size="sm" variant="secondary">
+                  <FileText size={13} /> From Quote
                 </Button>
                 {showFromQuote && (
                   <>
@@ -3945,38 +4061,42 @@ const InvoicesList = ({ invoices, dispatch, quotes = [], business }) => {
               </div>
             );
           })()}
-          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "createInvoice" })} size={isMobile ? "sm" : "md"} style={{ background: "rgba(20,184,166,0.12)", color: "#14B8A6" }}><Plus size={14} /> New Invoice</Button>
+          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "createInvoice" })} size="sm" style={{ background: "rgba(20,184,166,0.1)", color: "#14B8A6", border: "1px solid rgba(20,184,166,0.15)" }}><Plus size={13} /> New Invoice</Button>
         </div>
       </div>
 
       {/* Filter tabs */}
-      <div style={{ display: "flex", gap: 6, marginBottom: isMobile ? 12 : 20, overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 4, flexWrap: "nowrap", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: isMobile ? 12 : 16, overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 4, flexWrap: "nowrap", alignItems: "center" }}>
         {tabs.map((tab) => (
           <span key={tab.key} onClick={() => setFilter(tab.key)}
             style={{
-              padding: isMobile ? "6px 10px" : "8px 14px", borderRadius: 8, fontSize: isMobile ? 11 : 13, fontWeight: 500, cursor: "pointer",
-              background: filter === tab.key ? theme.accentSoft : theme.surfaceLight,
+              padding: isMobile ? "5px 10px" : "6px 12px", borderRadius: 6, fontSize: isMobile ? 11 : 12, fontWeight: 500, cursor: "pointer",
+              background: filter === tab.key ? "rgba(20,184,166,0.1)" : "transparent",
               color: filter === tab.key ? theme.accent : theme.textMuted,
-              border: `1px solid ${filter === tab.key ? theme.accent + "33" : theme.border}`,
-              whiteSpace: "nowrap", flexShrink: 0, display: "flex", alignItems: "center", gap: 6,
+              border: `1px solid ${filter === tab.key ? "rgba(20,184,166,0.2)" : "transparent"}`,
+              whiteSpace: "nowrap", flexShrink: 0, display: "flex", alignItems: "center", gap: 5,
+              transition: "all 0.15s",
             }}>
             {tab.label}
-            {tab.dot && <span style={{ width: 6, height: 6, borderRadius: 3, background: theme.red, flexShrink: 0 }} />}
-            {tab.count > 0 && !tab.dot && <span style={{ fontSize: isMobile ? 10 : 11, fontWeight: 600, color: filter === tab.key ? theme.accent : theme.textDim }}>{tab.count}</span>}
+            {tab.dot && <span style={{ width: 5, height: 5, borderRadius: 3, background: theme.red, flexShrink: 0 }} />}
+            {tab.count > 0 && !tab.dot && <span style={{ fontSize: 10, fontWeight: 600, color: filter === tab.key ? theme.accent : theme.textDim }}>{tab.count}</span>}
           </span>
         ))}
       </div>
 
       {/* Search */}
-      <input value={search} onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search invoices..."
-        style={{
-          width: "100%", padding: "10px 14px 10px 38px", borderRadius: 10, fontSize: 14,
-          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-          color: theme.text, outline: "none", fontFamily: theme.font, marginBottom: isMobile ? 12 : 20,
-          boxSizing: "border-box",
-        }}
-      />
+      <div style={{ position: "relative", marginBottom: isMobile ? 12 : 16, maxWidth: isMobile ? "100%" : 240 }}>
+        <Search size={14} color={theme.textDim} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
+        <input value={search} onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search invoices..."
+          style={{
+            width: "100%", padding: "8px 12px 8px 34px", borderRadius: 8, fontSize: 13,
+            background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
+            color: theme.text, outline: "none", fontFamily: theme.font,
+            boxSizing: "border-box",
+          }}
+        />
+      </div>
 
       {/* Invoice list */}
       {filtered.length === 0 ? (
@@ -5553,10 +5673,10 @@ const Settings = ({ business, dispatch }) => {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: isMobile ? 16 : 32 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: isMobile ? 16 : 24 }}>
         <div>
-          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>Settings</h1>
-          <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>Manage your business profile</p>
+          <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.02em" }}>Settings</h1>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>Manage your business profile</p>
         </div>
         {isMobile && (
           <button onClick={async () => { await supabase.auth_signOut(); supabase.token = null; supabase.user = null; clearCookies(); dispatch({ type: "LOGOUT" }); window.history.replaceState(null, "", "/"); }}
@@ -5573,7 +5693,7 @@ const Settings = ({ business, dispatch }) => {
       )}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 10 : 24 }}>
         <Card style={isMobile ? { padding: 16 } : {}}>
-          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 14px" }}>Business Profile</h3>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 14px", letterSpacing: "0.01em" }}>Business Profile</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 10 : 16 }}>
             <Input label="Business Name" value={businessName} onChange={setBusinessName} />
             <Input label="Contact Name" value={contactName} onChange={setContactName} />
@@ -5591,7 +5711,7 @@ const Settings = ({ business, dispatch }) => {
           </div>
         </Card>
         <Card style={isMobile ? { padding: 16 } : {}}>
-          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Quote Details</h3>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 8px", letterSpacing: "0.01em" }}>Quote Details</h3>
           <p style={{ fontSize: 12, color: theme.textMuted, margin: "0 0 12px" }}>Add your business details to display on quotes. Toggle them on/off per quote when sending.</p>
           <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 10 : 14 }}>
             <Input label="Business Address" value={address} onChange={setAddress} placeholder="e.g. 12 Queen St, Auckland 1010" />
@@ -5603,7 +5723,7 @@ const Settings = ({ business, dispatch }) => {
           </div>
         </Card>
         <Card style={isMobile ? { padding: 16 } : {}}>
-          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Pricing & AI Estimates</h3>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 8px", letterSpacing: "0.01em" }}>Pricing & AI Estimates</h3>
           <p style={{ fontSize: 12, color: theme.textMuted, margin: "0 0 12px" }}>Set your rates so AI can estimate quotes from photos.</p>
           <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 10 : 14 }}>
             <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 10 : 12 }}>
@@ -5670,7 +5790,7 @@ const Settings = ({ business, dispatch }) => {
           </div>
         </Card>
         <Card style={isMobile ? { padding: 16 } : {}}>
-          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Invoice & Payment Settings</h3>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 8px", letterSpacing: "0.01em" }}>Invoice & Payment Settings</h3>
           {(() => {
             const { complete, missing } = isInvoiceSettingsComplete({ business_name: businessName, email, phone, address, bank_name: bankName, bank_account_name: bankAccountName, bank_account_number: bankAccountNumber });
             return !complete ? (
@@ -5734,7 +5854,7 @@ const Settings = ({ business, dispatch }) => {
           </div>
         </Card>
         <Card style={{ gridColumn: "1 / -1", ...(isMobile ? { padding: 16 } : {}) }}>
-          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Your Quote Request Link</h3>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 8px", letterSpacing: "0.01em" }}>Your Quote Request Link</h3>
           <p style={{ fontSize: 12, color: theme.textMuted, margin: "0 0 12px" }}>Customers use this link to request a quote. Their request lands in your dashboard.</p>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
             <div style={{ flex: 1, padding: isMobile ? "10px 12px" : "12px 16px", borderRadius: 8, background: theme.surfaceLight, border: `1px solid ${theme.border}`, fontSize: isMobile ? 11 : 13, color: theme.accent, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -5760,7 +5880,7 @@ const Settings = ({ business, dispatch }) => {
           </div>
         </Card>
         <Card style={{ gridColumn: "1 / -1", ...(isMobile ? { padding: 16 } : {}) }}>
-          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 8px" }}>Feedback Questionnaire</h3>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 8px", letterSpacing: "0.01em" }}>Feedback Questionnaire</h3>
           <p style={{ fontSize: 12, color: theme.textMuted, margin: "0 0 14px" }}>When a customer declines, they'll see these options.</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
             {declineReasons.map((reason, i) => (
@@ -5784,7 +5904,7 @@ const Settings = ({ business, dispatch }) => {
           <p style={{ fontSize: 11, color: theme.textDim, margin: "10px 0 0" }}>Customers can also leave a comment. Hit "Save Changes" above to update.</p>
         </Card>
         <Card style={{ gridColumn: "1 / -1", ...(isMobile ? { padding: 16 } : {}) }}>
-          <h3 style={{ fontSize: isMobile ? 15 : 16, fontWeight: 600, color: theme.text, margin: "0 0 12px" }}>Subscription</h3>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 12px", letterSpacing: "0.01em" }}>Subscription</h3>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: business?.subscription_status === "trialing" ? 12 : 0 }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600, color: theme.text }}>
@@ -6100,9 +6220,10 @@ export default function WynflowApp() {
   const isMobile = useIsMobile();
   useSEO(screen);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [sessionReady, setSessionReady] = useState(true);
 
   const loadData = useCallback(async () => {
-    if (!business) return;
+    if (!business || !sessionReady) return;
     dispatch({ type: "SET_LOADING", payload: true });
     try {
       const [quotesRes, seqRes, invoicesRes] = await Promise.all([
@@ -6117,7 +6238,7 @@ export default function WynflowApp() {
       dispatch({ type: "NOTIFY", payload: { message: "Failed to load data. Please refresh.", type: "error" } });
     }
     dispatch({ type: "SET_LOADING", payload: false });
-  }, [business?.id]);
+  }, [business?.id, sessionReady]);
 
   // Restore session on mount
   useEffect(() => {
@@ -6143,23 +6264,47 @@ export default function WynflowApp() {
     const savedToken = getCookie("wynflow_token");
     const savedUser = getCookie("wynflow_user");
     const savedBusiness = getCookie("wynflow_business");
+    const savedRefresh = getCookie("wynflow_refresh");
     if (savedToken && savedUser && savedBusiness) {
       supabase.token = savedToken;
       supabase.user = savedUser;
+      setSessionReady(false); // Gate loadData until token is validated
       dispatch({ type: "SET_USER", payload: savedUser });
       dispatch({ type: "SET_BUSINESS", payload: savedBusiness });
-      // Validate token is still valid, refresh cookie expiry on success
-      supabase.auth_getUser().then(res => {
-        if (!res) {
+      // Validate token is still valid — if expired, try refreshing
+      supabase.auth_getUser().then(async (res) => {
+        if (!res && savedRefresh) {
+          // Access token expired — use refresh token to get a new one
+          const refreshed = await supabase.auth_refreshSession(savedRefresh);
+          if (refreshed && refreshed.access_token) {
+            // Fetch fresh business data with the new token
+            const { data: freshBiz } = await db("businesses").eq("user_id", refreshed.user.id).single().select();
+            const bizData = freshBiz || savedBusiness;
+            setCookie("wynflow_token", refreshed.access_token, 43200);
+            setCookie("wynflow_refresh", refreshed.refresh_token, 43200);
+            setCookie("wynflow_user", refreshed.user, 43200);
+            setCookie("wynflow_business", bizData, 43200);
+            dispatch({ type: "SET_USER", payload: refreshed.user });
+            dispatch({ type: "SET_BUSINESS", payload: bizData });
+            setSessionReady(true);
+          } else {
+            supabase.token = null;
+            supabase.user = null;
+            clearCookies();
+            dispatch({ type: "LOGOUT" });
+          }
+        } else if (!res) {
           supabase.token = null;
           supabase.user = null;
           clearCookies();
           dispatch({ type: "LOGOUT" });
         } else {
-          // Refresh cookies so they don't expire while user is active
+          // Token still valid — refresh cookie expiry
           setCookie("wynflow_token", savedToken, 43200);
+          setCookie("wynflow_refresh", savedRefresh, 43200);
           setCookie("wynflow_user", savedUser, 43200);
           setCookie("wynflow_business", savedBusiness, 43200);
+          setSessionReady(true);
         }
       }).catch(() => {});
     } else {
@@ -6215,6 +6360,7 @@ export default function WynflowApp() {
     ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08);border-radius:3px; }
     @keyframes slideIn { from{transform:translateX(100px);opacity:0} to{transform:translateX(0);opacity:1} }
     @keyframes spin { to{transform:rotate(360deg)} }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
     @media (max-width: 767px) {
       .mobile-stack { grid-template-columns: 1fr !important; }
       .mobile-hide { display: none !important; }
@@ -6308,7 +6454,7 @@ export default function WynflowApp() {
       {showOnboarding && <OnboardingTutorial business={business} dispatch={dispatch} onComplete={() => { setShowOnboarding(false); try { localStorage.setItem("wynflow_onboarded_" + business.id, "true"); } catch(e) {} setCookie("wynflow_onboarded", "true", 525600); }} />}
       <div style={{ display: "flex", height: "100vh", fontFamily: theme.font, color: "#F1F3F7", background: theme.bg, overflow: "hidden", flexDirection: isMobile ? "column" : "row" }}>
         <Sidebar screen={activeScreen} dispatch={dispatch} business={business} />
-        <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "16px 14px 90px" : "32px 40px", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "16px 14px 90px" : "28px 36px", WebkitOverflowScrolling: "touch" }}>
           {renderContent()}
         </div>
       </div>
