@@ -7088,174 +7088,294 @@ const Settings = ({ business, dispatch }) => {
 const OnboardingTutorial = ({ business, dispatch, onComplete }) => {
   const [step, setStep] = useState(0);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [animKey, setAnimKey] = useState(0);
   const isMobile = useIsMobile();
   const requestLink = `https://www.wynflow.co.nz/request/${business?.id || ""}`;
+
+  // Animated pulsing click indicator
+  const ClickPulse = ({ top, left, delay = 0, label }) => (
+    <div style={{ position: "absolute", top, left, zIndex: 5, pointerEvents: "none", animation: `onb-click-appear 0.4s ${delay}s ease both` }}>
+      <div style={{ position: "relative" }}>
+        <div style={{ width: 24, height: 24, borderRadius: 12, background: "rgba(20,184,166,0.35)", border: "2px solid #14B8A6", animation: "onb-pulse 1.5s ease-in-out infinite", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 8, height: 8, borderRadius: 4, background: "#14B8A6" }} />
+        </div>
+        {label && <div style={{ position: "absolute", top: -24, left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", fontSize: 10, fontWeight: 700, color: "#14B8A6", background: "rgba(20,184,166,0.12)", padding: "3px 8px", borderRadius: 6, border: "1px solid rgba(20,184,166,0.2)" }}>{label}</div>}
+      </div>
+    </div>
+  );
+
+  // Mini mock sidebar for desktop demos
+  const MockSidebar = ({ activeId }) => (
+    <div style={{ width: 56, background: "rgba(255,255,255,0.02)", borderRight: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 0", gap: 4 }}>
+      {[
+        { id: "dashboard", icon: LayoutDashboard },
+        { id: "quotes", icon: FileText },
+        { id: "invoices", icon: Receipt },
+        { id: "analytics", icon: BarChart3 },
+        { id: "sequences", icon: RefreshCw },
+        { id: "settings", icon: SettingsIcon },
+      ].map(item => (
+        <div key={item.id} style={{ width: 36, height: 36, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: item.id === activeId ? "rgba(20,184,166,0.1)" : "transparent", transition: "all 0.3s" }}>
+          <item.icon size={16} color={item.id === activeId ? "#14B8A6" : "rgba(255,255,255,0.25)"} strokeWidth={item.id === activeId ? 2.2 : 1.5} />
+        </div>
+      ))}
+    </div>
+  );
+
+  // Mock screen wrapper for animated demos
+  const MockScreen = ({ children, activeNav, style: extraStyle }) => (
+    <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(10,14,23,0.9)", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", position: "relative", ...extraStyle }}>
+      <div style={{ padding: "6px 12px", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ width: 8, height: 8, borderRadius: 4, background: "#EF4444", opacity: 0.7 }} />
+        <div style={{ width: 8, height: 8, borderRadius: 4, background: "#F59E0B", opacity: 0.7 }} />
+        <div style={{ width: 8, height: 8, borderRadius: 4, background: "#22C55E", opacity: 0.7 }} />
+        <span style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", marginLeft: 8, fontFamily: "monospace" }}>wynflow.co.nz</span>
+      </div>
+      <div style={{ display: "flex", minHeight: isMobile ? 160 : 200 }}>
+        {!isMobile && activeNav && <MockSidebar activeId={activeNav} />}
+        <div style={{ flex: 1, padding: 16, position: "relative", overflow: "hidden" }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
 
   const steps = [
     // 0 — Welcome
     {
       icon: Sparkles, iconBg: "rgba(20,184,166,0.15)", iconColor: "#14B8A6",
       title: `Welcome, ${business?.contact_name || "legend"}`,
-      subtitle: "Let's get you winning more jobs",
+      subtitle: "Let's get you winning more jobs in 2 minutes",
       content: (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <p style={{ fontSize: 15, color: theme.textMuted, lineHeight: 1.7, margin: 0 }}>
-            Wynflow is your AI-powered quoting tool — snap photos, generate professional quotes, and let automated follow-ups chase your customers so you don't have to.
+            Wynflow turns job site photos into professional quotes — then chases your customers automatically so you don't have to.
           </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* Animated flow diagram */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: isMobile ? 8 : 12, padding: "20px 0" }}>
             {[
-              { icon: Cpu, text: "AI quotes from job site photos" },
-              { icon: RefreshCw, text: "Automated follow-up emails" },
-              { icon: Globe, text: "Personal quote request link" },
-              { icon: BarChart3, text: "Dashboard & analytics" },
+              { icon: Camera, label: "Photos", color: "#14B8A6", delay: 0 },
+              { icon: Cpu, label: "AI Quote", color: "#3B82F6", delay: 0.2 },
+              { icon: Send, label: "Send", color: "#8B5CF6", delay: 0.4 },
+              { icon: RefreshCw, label: "Follow-Up", color: "#F59E0B", delay: 0.6 },
+              { icon: CheckCircle2, label: "Won", color: "#22C55E", delay: 0.8 },
             ].map((item, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(20,184,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <item.icon size={16} color="#14B8A6" />
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: isMobile ? 4 : 8 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, animation: `onb-step-in 0.5s ${item.delay}s ease both` }}>
+                  <div style={{ width: isMobile ? 40 : 48, height: isMobile ? 40 : 48, borderRadius: 12, background: item.color + "15", border: `1px solid ${item.color}30`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <item.icon size={isMobile ? 18 : 20} color={item.color} />
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: item.color, letterSpacing: "0.02em" }}>{item.label}</span>
                 </div>
-                <span style={{ fontSize: 14, color: theme.text, fontWeight: 500 }}>{item.text}</span>
+                {i < 4 && <div style={{ width: isMobile ? 12 : 20, height: 2, background: `linear-gradient(90deg, ${item.color}40, ${[
+                  "#3B82F6", "#8B5CF6", "#F59E0B", "#22C55E"
+                ][i]}40)`, borderRadius: 1, marginBottom: 18, animation: `onb-line-in 0.3s ${item.delay + 0.3}s ease both` }} />}
               </div>
             ))}
+          </div>
+          <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(20,184,166,0.06)", border: "1px solid rgba(20,184,166,0.12)", textAlign: "center" }}>
+            <p style={{ fontSize: 13, color: theme.accent, margin: 0, fontWeight: 500 }}>Quick walkthrough — we'll show you exactly where everything is</p>
           </div>
         </div>
       ),
     },
-    // 1 — Dashboard
+    // 1 — Dashboard overview with animated mock
     {
       icon: LayoutDashboard, iconBg: "rgba(20,184,166,0.15)", iconColor: "#14B8A6",
       title: "Your Dashboard",
-      subtitle: "Everything at a glance",
-      tab: "dashboard",
+      subtitle: "Stats, alerts, and quick actions",
       content: (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, margin: 0 }}>
-            Your home base. See your quote stats, revenue, new requests, and recent activity — all in one place.
-          </p>
-          <div style={{ padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: theme.accent, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Quick Actions</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <MockScreen activeNav="dashboard">
+            {/* Mock stat cards */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
               {[
-                { icon: Cpu, label: "AI Quote", color: "#14B8A6" },
-                { icon: Plus, label: "Manual Quote", color: theme.textMuted },
-                { icon: RefreshCw, label: "Follow-Ups", color: theme.textMuted },
-              ].map((btn, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, background: i === 0 ? "rgba(20,184,166,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${i === 0 ? "rgba(20,184,166,0.2)" : "rgba(255,255,255,0.08)"}` }}>
-                  <btn.icon size={13} color={btn.color} />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: btn.color }}>{btn.label}</span>
+                { label: "Total Quotes", val: "0", color: theme.accent },
+                { label: "Accepted", val: "0", color: "#22C55E" },
+                { label: "Revenue", val: "$0", color: "#3B82F6" },
+              ].map((s, i) => (
+                <div key={i} style={{ padding: "10px 8px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", animation: `onb-card-in 0.4s ${i * 0.15}s ease both` }}>
+                  <div style={{ fontSize: 8, color: theme.textDim, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{s.label}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: s.color }}>{s.val}</div>
                 </div>
               ))}
             </div>
-          </div>
-          <p style={{ fontSize: 13, color: theme.textDim, lineHeight: 1.5, margin: 0 }}>
-            Action alerts will appear when customers request quotes or accept — so you never miss a lead.
+            {/* Mock action buttons with click pulse on AI Quote */}
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(20,184,166,0.12)", border: "1px solid rgba(20,184,166,0.2)", display: "flex", alignItems: "center", gap: 6, position: "relative", animation: "onb-glow-btn 2s 1s ease-in-out infinite" }}>
+                <Cpu size={12} color="#14B8A6" />
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#14B8A6" }}>AI Quote</span>
+                <ClickPulse top={-4} left={-4} delay={1.2} label="Click here" />
+              </div>
+              <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 6 }}>
+                <Plus size={12} color={theme.textDim} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: theme.textDim }}>Manual Quote</span>
+              </div>
+            </div>
+            {/* Mock alert */}
+            <div style={{ marginTop: 12, padding: "8px 10px", borderRadius: 8, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)", display: "flex", alignItems: "center", gap: 8, animation: `onb-card-in 0.4s 0.6s ease both` }}>
+              <Bell size={12} color="#F59E0B" />
+              <span style={{ fontSize: 11, color: theme.textMuted }}>Alerts appear here when customers respond</span>
+            </div>
+          </MockScreen>
+          <p style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.5, margin: 0 }}>
+            Your home base — stats, new requests, and quick actions. Hit <strong style={{ color: theme.accent }}>AI Quote</strong> to create your first quote.
           </p>
         </div>
       ),
     },
-    // 2 — AI Quoting
+    // 2 — AI Quoting walkthrough with animated mock
     {
       icon: Cpu, iconBg: "rgba(20,184,166,0.15)", iconColor: "#14B8A6",
       title: "AI Photo Quoting",
-      subtitle: "Your biggest time-saver",
-      tab: "aiQuote",
+      subtitle: "Photos in, quote out — in seconds",
       content: (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, margin: 0 }}>
-            Snap photos on site, enter the customer details, and let AI generate a detailed quote with scope, materials, and pricing — ready to send in seconds.
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <MockScreen activeNav="quotes">
+            {/* Mock form fields */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ animation: `onb-card-in 0.3s 0.1s ease both` }}>
+                <div style={{ fontSize: 9, color: theme.textDim, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Customer Name</div>
+                <div style={{ padding: "6px 10px", borderRadius: 6, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 12, color: theme.text }}>
+                  <span style={{ animation: "onb-typing 2s 0.5s steps(12) both", overflow: "hidden", whiteSpace: "nowrap", display: "inline-block", width: 0 }}>Sarah Johnson</span>
+                </div>
+              </div>
+              <div style={{ animation: `onb-card-in 0.3s 0.3s ease both` }}>
+                <div style={{ fontSize: 9, color: theme.textDim, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Job Title</div>
+                <div style={{ padding: "6px 10px", borderRadius: 6, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 12, color: theme.text }}>
+                  <span style={{ animation: "onb-typing 2s 1s steps(16) both", overflow: "hidden", whiteSpace: "nowrap", display: "inline-block", width: 0 }}>Bathroom renovation</span>
+                </div>
+              </div>
+              {/* Mock photo upload area */}
+              <div style={{ display: "flex", gap: 6, marginTop: 4, animation: `onb-card-in 0.3s 0.5s ease both` }}>
+                {[1,2,3].map(i => (
+                  <div key={i} style={{ width: 40, height: 40, borderRadius: 6, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", animation: `onb-photo-pop 0.3s ${1.5 + i * 0.2}s ease both`, opacity: 0 }}>
+                    <Camera size={14} color="rgba(20,184,166,0.5)" />
+                  </div>
+                ))}
+                <div style={{ width: 40, height: 40, borderRadius: 6, border: "1px dashed rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                  <Upload size={14} color={theme.textDim} />
+                  <ClickPulse top={-4} left={-4} delay={2} label="Add photos" />
+                </div>
+              </div>
+              {/* Generate button */}
+              <div style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, background: "rgba(20,184,166,0.15)", border: "1px solid rgba(20,184,166,0.25)", display: "inline-flex", alignItems: "center", gap: 6, animation: `onb-card-in 0.4s 0.7s ease both`, position: "relative", alignSelf: "flex-start" }}>
+                <Cpu size={13} color="#14B8A6" />
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#14B8A6" }}>Generate Quote</span>
+                <ClickPulse top={-4} left="50%" delay={2.8} label="AI does the rest" />
+              </div>
+            </div>
+          </MockScreen>
+          <div style={{ display: "flex", gap: 8 }}>
             {[
-              { num: "1", text: "Enter customer name, email, and job title" },
-              { num: "2", text: "Upload site photos and add any notes" },
-              { num: "3", text: "AI generates scope, materials & pricing" },
-              { num: "4", text: "Edit anything, preview, and hit send" },
+              { num: "1", text: "Enter customer details" },
+              { num: "2", text: "Upload site photos" },
+              { num: "3", text: "AI generates the quote" },
+              { num: "4", text: "Review, edit & send" },
             ].map((s, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div style={{ width: 24, height: 24, borderRadius: 12, background: "rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 12, fontWeight: 700, color: theme.accent }}>{s.num}</div>
-                <span style={{ fontSize: 13, color: theme.text, lineHeight: 1.5 }}>{s.text}</span>
+              <div key={i} style={{ flex: 1, textAlign: "center", padding: "8px 4px" }}>
+                <div style={{ width: 22, height: 22, borderRadius: 11, background: "rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 6px", fontSize: 11, fontWeight: 700, color: theme.accent }}>{s.num}</div>
+                <div style={{ fontSize: 10, color: theme.textMuted, lineHeight: 1.4 }}>{s.text}</div>
               </div>
             ))}
-          </div>
-          <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(20,184,166,0.06)", border: "1px solid rgba(20,184,166,0.12)" }}>
-            <p style={{ fontSize: 13, color: theme.accent, margin: 0, lineHeight: 1.5 }}>
-              <strong>Tip:</strong> The more photos and notes you add, the more accurate the AI quote will be.
-            </p>
           </div>
         </div>
       ),
     },
-    // 3 — Automated Follow-Ups
+    // 3 — Follow-ups with animated timeline
     {
       icon: RefreshCw, iconBg: "rgba(59,130,246,0.15)", iconColor: "#3B82F6",
       title: "Automated Follow-Ups",
       subtitle: "Wynflow chases so you don't have to",
-      tab: "sequences",
       content: (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, margin: 0 }}>
-            When a customer doesn't respond, Wynflow sends follow-up emails automatically. You set the timing and wording — it does the rest.
-          </p>
-          <div style={{ padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#3B82F6", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Default Sequence</div>
-            {[
-              { day: "Day 2", text: "Friendly check-in" },
-              { day: "Day 5", text: "Reminder with urgency" },
-              { day: "Day 10", text: "Final follow-up" },
-            ].map((f, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                <div style={{ width: 56, fontSize: 12, fontWeight: 600, color: theme.accent }}>{f.day}</div>
-                <span style={{ fontSize: 13, color: theme.text }}>{f.text}</span>
-                <Mail size={13} color={theme.textDim} style={{ marginLeft: "auto" }} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <MockScreen activeNav="sequences">
+            <div style={{ fontSize: 10, fontWeight: 600, color: "#3B82F6", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Standard Follow-Up Sequence</div>
+            {/* Animated timeline */}
+            <div style={{ position: "relative", paddingLeft: 20 }}>
+              {/* Timeline line */}
+              <div style={{ position: "absolute", left: 6, top: 8, bottom: 8, width: 2, background: "rgba(59,130,246,0.15)", borderRadius: 1 }}>
+                <div style={{ width: "100%", background: "#3B82F6", borderRadius: 1, animation: "onb-timeline-fill 2s 0.5s ease both", height: 0 }} />
               </div>
-            ))}
-          </div>
-          <p style={{ fontSize: 13, color: theme.textDim, lineHeight: 1.5, margin: 0 }}>
-            Customise everything in the <strong style={{ color: theme.text }}>Follow-Ups</strong> tab — change timing, edit email wording, or add more steps.
+              {[
+                { day: "Day 2", subject: "Following up on your quote", desc: "Friendly check-in", delay: 0.5 },
+                { day: "Day 5", subject: "Any questions about your quote?", desc: "Gentle reminder", delay: 1.2 },
+                { day: "Day 10", subject: "Last chance — your quote expires soon", desc: "Final nudge with urgency", delay: 1.9 },
+              ].map((f, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, marginBottom: i < 2 ? 12 : 0, position: "relative", animation: `onb-card-in 0.4s ${f.delay}s ease both` }}>
+                  <div style={{ position: "absolute", left: -17, top: 6, width: 10, height: 10, borderRadius: 5, background: "#3B82F6", border: "2px solid rgba(10,14,23,0.9)", zIndex: 1, animation: `onb-dot-pop 0.3s ${f.delay + 0.2}s ease both`, opacity: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#3B82F6" }}>{f.day}</span>
+                      <Mail size={10} color={theme.textDim} />
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: theme.text, marginBottom: 2 }}>{f.subject}</div>
+                    <div style={{ fontSize: 10, color: theme.textDim }}>{f.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 12, position: "relative" }}>
+              <ClickPulse top={0} left={isMobile ? 60 : 80} delay={2.5} label="Customise these" />
+            </div>
+          </MockScreen>
+          <p style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.5, margin: 0 }}>
+            Emails go out automatically when customers don't respond. Edit the wording, timing, and number of steps in <strong style={{ color: theme.text }}>Follow-Ups</strong>.
           </p>
         </div>
       ),
     },
-    // 4 — Settings & AI Accuracy
+    // 4 — Settings with animated mock
     {
       icon: SettingsIcon, iconBg: "rgba(245,158,11,0.15)", iconColor: "#F59E0B",
       title: "Settings & AI Accuracy",
       subtitle: "Better data = better quotes",
-      tab: "settings",
       content: (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)" }}>
             <p style={{ fontSize: 13, color: "#F59E0B", margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
-              The AI uses your settings to generate accurate quotes. Fill these in first for the best results.
+              Fill these in first — the AI uses your rates and price list to generate accurate quotes.
             </p>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {[
-              { label: "Hourly Rate", desc: "Your standard hourly charge — used to calculate labour costs", important: true },
-              { label: "Callout Fee", desc: "Optional fixed fee added to each job", important: true },
-              { label: "Price List", desc: "Add your common materials and prices for spot-on estimates", important: true },
-              { label: "Business Details", desc: "Name, address, GST number — shown on professional quotes", important: false },
-              { label: "Deposit Settings", desc: "Require a deposit percentage on quotes", important: false },
-            ].map((item, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: `1px solid ${item.important ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.06)"}` }}>
-                {item.important && <Zap size={14} color="#F59E0B" style={{ marginTop: 2, flexShrink: 0 }} />}
-                {!item.important && <Check size={14} color={theme.textDim} style={{ marginTop: 2, flexShrink: 0 }} />}
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>{item.label}</div>
-                  <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>{item.desc}</div>
+          <MockScreen activeNav="settings">
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {[
+                { label: "Hourly Rate", val: "$85/hr", important: true, delay: 0.2 },
+                { label: "Callout Fee", val: "$50", important: true, delay: 0.4 },
+                { label: "Price List", val: "Add your materials & prices", important: true, delay: 0.6 },
+                { label: "Business Details", val: "Name, address, GST...", important: false, delay: 0.8 },
+              ].map((item, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: `1px solid ${item.important ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.06)"}`, animation: `onb-card-in 0.3s ${item.delay}s ease both`, position: "relative" }}>
+                  {item.important ? <Zap size={12} color="#F59E0B" /> : <Check size={12} color={theme.textDim} />}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>{item.label}</div>
+                  </div>
+                  <div style={{ fontSize: 10, color: item.important ? "rgba(245,158,11,0.6)" : theme.textDim, fontStyle: item.important ? "normal" : "italic" }}>{item.val}</div>
+                  {i === 0 && <ClickPulse top={-2} left={-2} delay={1.2} label="Set your rate" />}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          </MockScreen>
+          <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ flex: 1, padding: "10px 12px", borderRadius: 10, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.1)", textAlign: "center" }}>
+              <div style={{ fontSize: 10, color: theme.textDim, marginBottom: 4 }}>Without rates</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#EF4444" }}>Generic quotes</div>
+            </div>
+            <div style={{ flex: 1, padding: "10px 12px", borderRadius: 10, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.1)", textAlign: "center" }}>
+              <div style={{ fontSize: 10, color: theme.textDim, marginBottom: 4 }}>With your rates</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#22C55E" }}>Accurate quotes</div>
+            </div>
           </div>
         </div>
       ),
     },
-    // 5 — Quote Request Link + Go
+    // 5 — Quote Request Link
     {
       icon: Link, iconBg: "rgba(34,197,94,0.15)", iconColor: "#22C55E",
       title: "Your Quote Request Link",
       subtitle: "Let customers come to you",
       content: (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, margin: 0 }}>
             Share this link anywhere — customers fill in their details and the request lands straight in your dashboard.
           </p>
@@ -7278,7 +7398,7 @@ const OnboardingTutorial = ({ business, dispatch, onComplete }) => {
               { label: "Your website", tip: "Add a 'Request a Quote' button" },
               { label: "Email signature", tip: "Add to your footer" },
             ].map((item, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.04)" : "none", animation: `onb-card-in 0.3s ${i * 0.1}s ease both` }}>
                 <ArrowRight size={11} color={theme.textDim} />
                 <span style={{ fontSize: 13, color: theme.text }}><strong>{item.label}</strong> — <span style={{ color: theme.textMuted }}>{item.tip}</span></span>
               </div>
@@ -7295,52 +7415,79 @@ const OnboardingTutorial = ({ business, dispatch, onComplete }) => {
 
   const goNext = () => {
     if (isLast) {
-      // Navigate to settings so they fill in their details
       dispatch({ type: "SET_SCREEN", payload: "settings" });
       onComplete();
     } else {
       setStep(step + 1);
+      setAnimKey(prev => prev + 1);
     }
   };
 
+  const goBack = () => {
+    setStep(step - 1);
+    setAnimKey(prev => prev + 1);
+  };
+
+  // Onboarding animation keyframes
+  const onbStyles = `
+    @keyframes onb-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.6); opacity: 0.4; } }
+    @keyframes onb-click-appear { from { opacity: 0; transform: scale(0.3); } to { opacity: 1; transform: scale(1); } }
+    @keyframes onb-step-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes onb-line-in { from { opacity: 0; width: 0; } to { opacity: 1; } }
+    @keyframes onb-card-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes onb-typing { from { width: 0; } to { width: 100%; } }
+    @keyframes onb-photo-pop { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+    @keyframes onb-dot-pop { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+    @keyframes onb-timeline-fill { from { height: 0; } to { height: 100%; } }
+    @keyframes onb-glow-btn { 0%, 100% { box-shadow: 0 0 0 rgba(20,184,166,0); } 50% { box-shadow: 0 0 16px rgba(20,184,166,0.25); } }
+    @keyframes onb-slide-in { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  `;
+
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.75)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? 16 : 20, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
-      <div style={{ width: "100%", maxWidth: 520, background: "rgba(17,24,39,0.95)", borderRadius: 20, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 24px 80px rgba(0,0,0,0.5), 0 0 1px rgba(255,255,255,0.1)" }}>
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? 12 : 20, backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
+      <style>{onbStyles}</style>
+      <div style={{ width: "100%", maxWidth: 560, background: "rgba(17,24,39,0.97)", borderRadius: 20, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 24px 80px rgba(0,0,0,0.6), 0 0 1px rgba(255,255,255,0.1)" }}>
 
         {/* Header */}
-        <div style={{ padding: isMobile ? "28px 24px 20px" : "36px 40px 24px", background: "linear-gradient(180deg, rgba(20,184,166,0.06) 0%, transparent 100%)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: s.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Icon size={22} color={s.iconColor} />
+        <div style={{ padding: isMobile ? "24px 20px 16px" : "32px 36px 20px", background: "linear-gradient(180deg, rgba(20,184,166,0.06) 0%, transparent 100%)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+            <div key={step} style={{ width: 48, height: 48, borderRadius: 14, background: s.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, animation: "onb-step-in 0.3s ease" }}>
+              <Icon size={24} color={s.iconColor} />
             </div>
-            <div>
+            <div key={`txt-${step}`} style={{ animation: "onb-slide-in 0.3s ease" }}>
               <h2 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay, lineHeight: 1.2 }}>{s.title}</h2>
               <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0", fontWeight: 500 }}>{s.subtitle}</p>
             </div>
           </div>
-          {/* Progress bar */}
-          <div style={{ display: "flex", gap: 4 }}>
+          {/* Progress dots */}
+          <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
             {steps.map((_, i) => (
-              <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= step ? theme.accent : "rgba(255,255,255,0.06)", transition: "background 0.3s" }} />
+              <div key={i} onClick={() => { setStep(i); setAnimKey(prev => prev + 1); }} style={{ width: i === step ? 24 : 8, height: 8, borderRadius: 4, background: i === step ? theme.accent : i < step ? "rgba(20,184,166,0.4)" : "rgba(255,255,255,0.08)", transition: "all 0.3s ease", cursor: "pointer" }} />
             ))}
           </div>
         </div>
 
         {/* Content */}
-        <div style={{ padding: isMobile ? "0 24px 24px" : "0 40px 32px", maxHeight: isMobile ? "55vh" : "50vh", overflowY: "auto" }}>
+        <div key={animKey} style={{ padding: isMobile ? "8px 20px 20px" : "8px 36px 28px", maxHeight: isMobile ? "52vh" : "48vh", overflowY: "auto", animation: "onb-slide-in 0.35s ease" }}>
           {s.content}
         </div>
 
         {/* Footer */}
-        <div style={{ padding: isMobile ? "0 24px 24px" : "0 40px 32px", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ padding: isMobile ? "0 20px 20px" : "0 36px 28px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", gap: 10 }}>
             {step > 0 && (
-              <button onClick={() => setStep(step - 1)}
-                style={{ flex: 1, padding: "14px 20px", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: theme.textMuted, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: theme.font, transition: "all 0.2s" }}>
-                Back
+              <button onClick={goBack}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                style={{ flex: 1, padding: "14px 20px", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: theme.textMuted, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: theme.font, transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <ChevronLeft size={16} /> Back
               </button>
             )}
             <button onClick={goNext}
+              onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.02)"; if (isLast) e.currentTarget.style.boxShadow = "0 0 32px rgba(20,184,166,0.35)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; if (isLast) e.currentTarget.style.boxShadow = "0 0 20px rgba(20,184,166,0.25)"; }}
+              onMouseDown={e => { e.currentTarget.style.transform = "scale(0.97)"; }}
+              onMouseUp={e => { e.currentTarget.style.transform = "scale(1.02)"; }}
               style={{ flex: step > 0 ? 2 : 1, padding: "14px 20px", borderRadius: 12, background: isLast ? theme.accent : "rgba(20,184,166,0.15)", border: `1px solid ${isLast ? theme.accent : "rgba(20,184,166,0.25)"}`, color: isLast ? "#000" : theme.accent, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: theme.font, transition: "all 0.2s", boxShadow: isLast ? "0 0 20px rgba(20,184,166,0.25)" : "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
               {isLast ? <><SettingsIcon size={16} /> Set Up My Settings</> : <>Next <ArrowRight size={15} /></>}
             </button>
