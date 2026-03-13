@@ -7510,14 +7510,20 @@ export default function WynflowApp() {
           clearCookies();
           dispatch({ type: "LOGOUT" });
         } else {
-          // Token still valid — refresh cookie expiry
+          // Token still valid — fetch fresh business data from DB
+          const { data: freshBiz } = await db("businesses").eq("user_id", savedUser.id).single().select();
+          const bizData = freshBiz || savedBusiness;
           setCookie("wynflow_token", savedToken, 43200);
           setCookie("wynflow_refresh", savedRefresh, 43200);
           setCookie("wynflow_user", savedUser, 43200);
-          setCookie("wynflow_business", savedBusiness, 43200);
+          setCookie("wynflow_business", bizData, 43200);
+          dispatch({ type: "SET_BUSINESS", payload: bizData });
           setSessionReady(true);
         }
-      }).catch(() => {});
+      }).catch(() => {
+        // Token validation failed — still allow dashboard with cached data
+        setSessionReady(true);
+      });
     } else {
       const routes = { "about": "about", "pricing": "pricing", "login": "login", "signup": "signup" };
       if (routes[path]) {
