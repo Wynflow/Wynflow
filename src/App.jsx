@@ -36,7 +36,12 @@ const useSEO = (screen) => {
     setMeta("property", "og:title", config.title);
     setMeta("property", "og:description", config.description);
     setMeta("property", "og:url", config.canonical);
-    setMeta("property", "og:image", "https://www.wynflow.co.nz/og-image.png");
+    const ogTitle = { home: "AI-Powered Quote Management", about: "Built in NZ for Kiwi Tradies", pricing: "Plans from $29/mo NZD" }[screen] || "AI-Powered Quote Management";
+    const ogSubtitle = { home: "Generate quotes from photos. Chase customers automatically. Win more jobs.", about: "Born from watching a tradie lose $47K to forgotten follow-ups.", pricing: "AI quoting, unlimited quotes, automated follow-ups. Free 14-day trial." }[screen] || "";
+    const ogImage = `https://www.wynflow.co.nz/api/og?title=${encodeURIComponent(ogTitle)}&subtitle=${encodeURIComponent(ogSubtitle)}`;
+    setMeta("property", "og:image", ogImage);
+    setMeta("property", "og:image:width", "1200");
+    setMeta("property", "og:image:height", "630");
     setMeta("property", "og:type", "website");
     setMeta("property", "og:site_name", "Wynflow");
     setMeta("property", "og:locale", "en_NZ");
@@ -44,7 +49,7 @@ const useSEO = (screen) => {
     setMeta("name", "twitter:card", "summary_large_image");
     setMeta("name", "twitter:title", config.title);
     setMeta("name", "twitter:description", config.description);
-    setMeta("name", "twitter:image", "https://www.wynflow.co.nz/og-image.png");
+    setMeta("name", "twitter:image", ogImage);
   }, [screen]);
 };
 
@@ -3368,7 +3373,7 @@ const Dashboard = ({ quotes, dispatch, invoices = [] }) => {
 };
 
 // ─── Quotes List ───
-const QuotesList = ({ quotes, dispatch, sequences }) => {
+const QuotesList = ({ quotes, dispatch, sequences, invoices = [] }) => {
   const isMobile = useIsMobile();
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -3429,12 +3434,21 @@ const QuotesList = ({ quotes, dispatch, sequences }) => {
     booked: { icon: Check, color: theme.green },
   };
 
+  // Archived = booked, declined, or manually completed
+  const isArchived = (q) => q.status === "booked" || q.status === "declined" || q.manually_completed;
+  // Active quotes = not archived
+  const activeQuotes = quotes.filter(q => !isArchived(q));
+  const archivedQuotes = quotes.filter(q => isArchived(q));
+
   // Filter logic
-  const filtered = quotes.filter((q) => {
-    if (filter === "activity") return false; // Activity tab renders separately
+  const filtered = (filter === "archived" ? archivedQuotes : activeQuotes).filter((q) => {
+    if (filter === "activity") return false;
+    if (filter === "archived") {
+      if (search && !q.customer_name?.toLowerCase().includes(search.toLowerCase()) && !q.job_title?.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    }
     if (filter === "noResponse") return isNoResponse(q);
     if (filter !== "all" && filter !== "noResponse") {
-      // For "sent" filter, exclude no-response quotes (they have their own tab)
       if (filter === "sent") return (q.status === "sent" || q.status === "opened") && !isNoResponse(q);
       if (q.status !== filter) return false;
     }
@@ -3442,15 +3456,14 @@ const QuotesList = ({ quotes, dispatch, sequences }) => {
     return true;
   });
 
-  // Tab counts
+  // Tab counts (active only, except archived)
   const counts = {
-    all: quotes.length,
-    requested: quotes.filter(q => q.status === "requested").length,
-    accepted: quotes.filter(q => q.status === "accepted").length,
-    sent: quotes.filter(q => (q.status === "sent" || q.status === "opened") && !isNoResponse(q)).length,
-    booked: quotes.filter(q => q.status === "booked").length,
-    declined: quotes.filter(q => q.status === "declined").length,
-    noResponse: quotes.filter(q => isNoResponse(q)).length,
+    all: activeQuotes.length,
+    requested: activeQuotes.filter(q => q.status === "requested").length,
+    accepted: activeQuotes.filter(q => q.status === "accepted").length,
+    sent: activeQuotes.filter(q => (q.status === "sent" || q.status === "opened") && !isNoResponse(q)).length,
+    noResponse: activeQuotes.filter(q => isNoResponse(q)).length,
+    archived: archivedQuotes.length,
   };
 
   // Tabs in priority hierarchy
@@ -3459,10 +3472,9 @@ const QuotesList = ({ quotes, dispatch, sequences }) => {
     { key: "requested", label: "Requested", count: counts.requested, dot: counts.requested > 0 },
     { key: "accepted", label: "Accepted", count: counts.accepted },
     { key: "sent", label: "Awaiting", count: counts.sent },
-    { key: "booked", label: "Booked", count: counts.booked },
-    { key: "declined", label: "Declined", count: counts.declined },
     { key: "noResponse", label: "No Response", count: counts.noResponse },
     { key: "activity", label: "Activity" },
+    { key: "archived", label: "Archived", count: counts.archived },
   ];
 
   // Follow-up step label for a quote
@@ -3501,7 +3513,7 @@ const QuotesList = ({ quotes, dispatch, sequences }) => {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: isMobile ? 16 : 24, flexDirection: isMobile ? "column" : "row", gap: isMobile ? 12 : 0 }}>
         <div>
           <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.02em" }}>Quotes</h1>
-          <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>{quotes.length} total quotes</p>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>{activeQuotes.length} active{archivedQuotes.length > 0 ? ` · ${archivedQuotes.length} archived` : ""}</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })} size="sm" style={{ background: "rgba(20,184,166,0.1)", color: "#14B8A6", border: "1px solid rgba(20,184,166,0.15)" }}><Cpu size={13} /> AI Quote</Button>
@@ -3603,17 +3615,20 @@ const QuotesList = ({ quotes, dispatch, sequences }) => {
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
               {isMobile ? (
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer_name}</div>
-                    <div style={{ fontSize: 11, color: theme.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.job_title}</div>
-                    {followUpLabel && <div style={{ fontSize: 10, color: theme.accent, fontWeight: 500, marginTop: 2 }}>{followUpLabel}</div>}
-                    {isNoResponse(q) && <div style={{ fontSize: 10, color: theme.red, fontWeight: 500, marginTop: 2 }}>No response — all follow-ups sent</div>}
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer_name}</div>
+                      <div style={{ fontSize: 11, color: theme.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.job_title}</div>
+                      {followUpLabel && <div style={{ fontSize: 10, color: theme.accent, fontWeight: 500, marginTop: 2 }}>{followUpLabel}</div>}
+                      {isNoResponse(q) && <div style={{ fontSize: 10, color: theme.red, fontWeight: 500, marginTop: 2 }}>No response — all follow-ups sent</div>}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>${parseFloat(q.amount || 0).toLocaleString()}</span>
+                      <Badge status={q.status} size="sm" />
+                    </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>${parseFloat(q.amount || 0).toLocaleString()}</span>
-                    <Badge status={q.status} size="sm" />
-                  </div>
+                  {filter === "archived" && <ArchiveAction quote={q} invoices={invoices} dispatch={dispatch} />}
                 </div>
               ) : (
                 <>
@@ -3625,6 +3640,7 @@ const QuotesList = ({ quotes, dispatch, sequences }) => {
                     <div style={{ fontSize: 13, color: theme.text }}>{q.job_title}</div>
                     {followUpLabel && <div style={{ fontSize: 10, color: theme.accent, fontWeight: 500, marginTop: 2 }}>{followUpLabel}</div>}
                     {isNoResponse(q) && <div style={{ fontSize: 10, color: theme.red, fontWeight: 500, marginTop: 2 }}>No response — all follow-ups sent</div>}
+                    {filter === "archived" && <ArchiveAction quote={q} invoices={invoices} dispatch={dispatch} />}
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, display: "flex", alignItems: "center", fontFamily: "'DM Sans', sans-serif" }}>${parseFloat(q.amount || 0).toLocaleString()}</div>
                   <div style={{ display: "flex", alignItems: "center" }}><Badge status={q.status} /></div>
@@ -3638,11 +3654,64 @@ const QuotesList = ({ quotes, dispatch, sequences }) => {
           })}
           {filtered.length === 0 && (
             <div style={{ padding: 40, textAlign: "center", color: theme.textDim, fontSize: 13 }}>
-              {quotes.length === 0 ? "No quotes yet — create your first one!" : filter === "noResponse" ? "No unresponsive quotes — nice!" : "No quotes match this filter"}
+              {quotes.length === 0 ? "No quotes yet — create your first one!" : filter === "archived" ? "No archived jobs yet" : filter === "noResponse" ? "No unresponsive quotes — nice!" : "No quotes match this filter"}
             </div>
           )}
         </div>
       )}
+    </div>
+  );
+};
+
+// Archive action row — shows invoice status for booked quotes
+const ArchiveAction = ({ quote, invoices, dispatch }) => {
+  const linkedInvoice = invoices.find(inv => inv.quote_id === quote.id);
+  const [marking, setMarking] = useState(false);
+
+  const markDoneManually = async (e) => {
+    e.stopPropagation();
+    setMarking(true);
+    await db("quotes").eq("id", quote.id).update({ manually_completed: true });
+    dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, manually_completed: true } });
+    dispatch({ type: "NOTIFY", payload: { message: "Marked as done", type: "success" } });
+    setMarking(false);
+  };
+
+  if (quote.status === "declined") return null;
+  if (quote.manually_completed) {
+    return (
+      <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+        <Check size={12} color={theme.textDim} />
+        <span style={{ fontSize: 11, color: theme.textDim }}>Done manually</span>
+      </div>
+    );
+  }
+  if (linkedInvoice) {
+    return (
+      <div onClick={e => { e.stopPropagation(); dispatch({ type: "SET_SCREEN", payload: "invoiceDetail:" + linkedInvoice.id }); }}
+        style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, cursor: "pointer" }}>
+        <Receipt size={12} color={linkedInvoice.status === "paid" ? theme.green : theme.accent} />
+        <span style={{ fontSize: 11, color: linkedInvoice.status === "paid" ? theme.green : theme.accent, fontWeight: 500 }}>
+          Invoice {linkedInvoice.status === "paid" ? "paid" : linkedInvoice.status === "sent" || linkedInvoice.status === "viewed" ? "sent" : "draft"}
+        </span>
+      </div>
+    );
+  }
+  // Booked but no invoice
+  return (
+    <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+      <span onClick={() => dispatch({ type: "SET_SCREEN", payload: "createInvoice:" + quote.id })}
+        style={{ fontSize: 11, fontWeight: 600, color: theme.accent, cursor: "pointer", padding: "3px 8px", borderRadius: 6, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", transition: "all 0.15s" }}
+        onMouseEnter={e => { e.currentTarget.style.background = "rgba(20,184,166,0.15)"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "rgba(20,184,166,0.08)"; }}>
+        <Receipt size={10} style={{ display: "inline", verticalAlign: "middle", marginRight: 4, marginTop: -1 }} />Create Invoice
+      </span>
+      <span onClick={markDoneManually}
+        style={{ fontSize: 11, fontWeight: 500, color: theme.textDim, cursor: "pointer", padding: "3px 8px", borderRadius: 6, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", transition: "all 0.15s" }}
+        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}>
+        {marking ? "..." : "Done Manually"}
+      </span>
     </div>
   );
 };
@@ -5176,7 +5245,15 @@ const InvoicesList = ({ invoices, dispatch, quotes = [], business }) => {
 
   const isOverdue = (inv) => (inv.status === "sent" || inv.status === "viewed") && inv.due_date && new Date(inv.due_date) < new Date();
 
-  const filtered = invoices.filter((inv) => {
+  // Active invoices = not paid; Archived = paid
+  const activeInvoices = invoices.filter(i => i.status !== "paid");
+  const archivedInvoices = invoices.filter(i => i.status === "paid");
+
+  const filtered = (filter === "archived" ? archivedInvoices : activeInvoices).filter((inv) => {
+    if (filter === "archived") {
+      if (search && !inv.customer_name?.toLowerCase().includes(search.toLowerCase()) && !inv.job_title?.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    }
     if (filter === "overdue") return isOverdue(inv);
     if (filter !== "all" && inv.status !== filter) return false;
     if (search && !inv.customer_name?.toLowerCase().includes(search.toLowerCase()) && !inv.job_title?.toLowerCase().includes(search.toLowerCase())) return false;
@@ -5184,11 +5261,11 @@ const InvoicesList = ({ invoices, dispatch, quotes = [], business }) => {
   });
 
   const counts = {
-    all: invoices.length,
-    draft: invoices.filter(i => i.status === "draft").length,
-    sent: invoices.filter(i => i.status === "sent" || i.status === "viewed").length,
-    overdue: invoices.filter(i => isOverdue(i)).length,
-    paid: invoices.filter(i => i.status === "paid").length,
+    all: activeInvoices.length,
+    draft: activeInvoices.filter(i => i.status === "draft").length,
+    sent: activeInvoices.filter(i => i.status === "sent" || i.status === "viewed").length,
+    overdue: activeInvoices.filter(i => isOverdue(i)).length,
+    archived: archivedInvoices.length,
   };
 
   const tabs = [
@@ -5196,7 +5273,7 @@ const InvoicesList = ({ invoices, dispatch, quotes = [], business }) => {
     { key: "draft", label: "Draft", count: counts.draft },
     { key: "sent", label: "Sent", count: counts.sent },
     { key: "overdue", label: "Overdue", count: counts.overdue, dot: counts.overdue > 0 },
-    { key: "paid", label: "Paid", count: counts.paid },
+    { key: "archived", label: "Archived", count: counts.archived },
   ];
 
   const daysUntilDue = (dueDate) => {
@@ -5212,7 +5289,7 @@ const InvoicesList = ({ invoices, dispatch, quotes = [], business }) => {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: isMobile ? 16 : 24, flexDirection: isMobile ? "column" : "row", gap: isMobile ? 12 : 0 }}>
         <div>
           <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.02em" }}>Invoices</h1>
-          <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>{invoices.length} total invoice{invoices.length !== 1 ? "s" : ""}</p>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>{activeInvoices.length} active{archivedInvoices.length > 0 ? ` · ${archivedInvoices.length} paid` : ""}</p>
         </div>
         <div style={{ display: "flex", gap: 8, position: "relative" }}>
           {(() => {
@@ -7859,7 +7936,7 @@ export default function WynflowApp() {
     if (loading) return <Spinner />;
     switch (activeScreen) {
       case "dashboard": return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} />;
-      case "quotes": return <QuotesList quotes={quotes} dispatch={dispatch} sequences={sequences} />;
+      case "quotes": return <QuotesList quotes={quotes} dispatch={dispatch} sequences={sequences} invoices={invoices} />;
       case "analytics": return <Analytics quotes={quotes} invoices={invoices} />;
       case "newQuote": return <NewQuoteForm dispatch={dispatch} business={business} sequences={sequences} />;
       case "aiQuote": return <AIQuoteForm dispatch={dispatch} business={business} sequences={sequences} quotes={quotes} />;
