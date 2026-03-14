@@ -345,15 +345,14 @@ function appReducer(state, action) {
 
 // ─── Logo ───
 const WYNFLOW_LOGO = "/logo.png";
+const WYNFLOW_WORD_LOGO = "/wynflow-word-logo.png";
 
 const WynflowLogo = ({ size = 36, showText = false, textSize, textColor = "#FFFFFF" }) => {
   if (!showText) return <img src={WYNFLOW_LOGO} alt="Wynflow — AI quoting software for NZ tradies" style={{ width: size, height: size, borderRadius: size * 0.28, objectFit: "cover", display: "block" }} />;
-  const fontSize = textSize || Math.round(size * 0.56);
+  const isDark = textColor && textColor !== "#FFFFFF" && textColor !== "#fff" && !textColor.startsWith("rgba(255");
+  const logoHeight = size;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: Math.round(size * 0.25) }}>
-      <img src={WYNFLOW_LOGO} alt="Wynflow" style={{ width: size, height: size, borderRadius: size * 0.28, objectFit: "cover", display: "block", flexShrink: 0 }} />
-      <span style={{ fontSize, fontWeight: 700, color: textColor, fontFamily: theme.font, letterSpacing: "-0.02em", whiteSpace: "nowrap" }}>Wynflow</span>
-    </div>
+    <img src={WYNFLOW_WORD_LOGO} alt="Wynflow — AI quoting software for NZ tradies" style={{ height: logoHeight, width: "auto", display: "block", objectFit: "contain", ...(isDark ? { filter: "brightness(0)" } : {}) }} />
   );
 };
 
