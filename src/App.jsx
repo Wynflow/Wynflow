@@ -2745,15 +2745,29 @@ const PaymentSuccess = ({ dispatch, business }) => {
   const isMobile = useIsMobile();
   const [countdown, setCountdown] = useState(5);
 
+  const goToDashboard = useCallback(() => {
+    // Update local business state to active so trial paywall doesn't block
+    if (business) {
+      const updatedBiz = { ...business, subscription_status: "active", trial_ends_at: null };
+      dispatch({ type: "SET_BUSINESS", payload: updatedBiz });
+      setCookie("wynflow_business", updatedBiz, 43200);
+    }
+    window.history.replaceState(null, "", "/");
+    dispatch({ type: "SET_SCREEN", payload: "dashboard" });
+  }, [dispatch, business]);
+
+  useEffect(() => {
+    // Also update the DB directly via our custom client (best-effort, webhook should also handle this)
+    if (business?.id) {
+      db("businesses").eq("id", business.id).update({ subscription_status: "active", trial_ends_at: null }).then(() => {}).catch(() => {});
+    }
+  }, [business?.id]);
+
   useEffect(() => {
     const timer = setInterval(() => setCountdown(c => c - 1), 1000);
-    const redirect = setTimeout(() => {
-      // Clean URL
-      window.history.replaceState(null, "", "/");
-      dispatch({ type: "SET_SCREEN", payload: "dashboard" });
-    }, 5000);
+    const redirect = setTimeout(goToDashboard, 5000);
     return () => { clearInterval(timer); clearTimeout(redirect); };
-  }, [dispatch]);
+  }, [goToDashboard]);
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: `radial-gradient(ellipse at 50% 30%, rgba(34,197,94,0.08) 0%, transparent 50%), ${theme.bg}`, fontFamily: theme.font, padding: 20 }}>
@@ -2764,12 +2778,9 @@ const PaymentSuccess = ({ dispatch, business }) => {
         <h1 style={{ fontSize: isMobile ? 24 : 32, fontWeight: 700, color: "#FFFFFF", marginBottom: 12, letterSpacing: "-0.02em" }}>You're all set!</h1>
         <p style={{ fontSize: 16, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, marginBottom: 8 }}>Payment confirmed — your Wynflow subscription is now active.</p>
         <p style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", marginBottom: 40 }}>Redirecting to your dashboard in {countdown}s...</p>
-        <Button onClick={() => { window.history.replaceState(null, "", "/"); dispatch({ type: "SET_SCREEN", payload: "dashboard" }); }} style={{ minWidth: 200 }}>
+        <Button onClick={goToDashboard} style={{ minWidth: 200 }}>
           Go to Dashboard
         </Button>
-        <div style={{ marginTop: 48, padding: "20px 24px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: 0, lineHeight: 1.6 }}>Your subscription status may take a moment to update. If you see a trial banner, just refresh the page.</p>
-        </div>
       </div>
     </div>
   );
