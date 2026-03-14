@@ -348,11 +348,13 @@ const WYNFLOW_LOGO = "/logo.png";
 const WYNFLOW_WORD_LOGO = "/wynflow-word-logo.png";
 
 const WynflowLogo = ({ size = 36, showText = false, textSize, textColor = "#FFFFFF" }) => {
-  if (!showText) return <img src={WYNFLOW_LOGO} alt="Wynflow — AI quoting software for NZ tradies" style={{ width: size, height: size, borderRadius: size * 0.28, objectFit: "cover", display: "block" }} />;
-  const isDark = textColor && textColor !== "#FFFFFF" && textColor !== "#fff" && !textColor.startsWith("rgba(255");
-  const logoHeight = size;
+  if (!showText) return <img src={WYNFLOW_LOGO} alt="Wynflow" style={{ height: size, width: "auto", objectFit: "contain", display: "block" }} />;
+  const fontSize = textSize || Math.round(size * 0.56);
   return (
-    <img src={WYNFLOW_WORD_LOGO} alt="Wynflow — AI quoting software for NZ tradies" style={{ height: logoHeight, width: "auto", display: "block", objectFit: "contain", ...(isDark ? { filter: "brightness(0)" } : {}) }} />
+    <div style={{ display: "flex", alignItems: "center", gap: Math.round(size * 0.25) }}>
+      <img src={WYNFLOW_LOGO} alt="Wynflow" style={{ height: size, width: "auto", objectFit: "contain", display: "block", flexShrink: 0 }} />
+      <span style={{ fontSize, fontWeight: 700, color: textColor, fontFamily: theme.font, letterSpacing: "-0.02em", whiteSpace: "nowrap" }}>Wynflow</span>
+    </div>
   );
 };
 
@@ -757,7 +759,7 @@ const Navbar = ({ dispatch, transparent }) => {
   return (
     <nav style={{ position: transparent ? "fixed" : "relative", top: 0, left: 0, right: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMobile ? "16px 24px" : "16px 48px", background: navBg, borderBottom: navBorder, fontFamily: theme.font, backdropFilter: transparent && scrolled ? "blur(20px) saturate(180%)" : "none", WebkitBackdropFilter: transparent && scrolled ? "blur(20px) saturate(180%)" : "none", transition: "all 0.35s cubic-bezier(0.16,1,0.3,1)" }}>
       <div style={{ cursor: "pointer", transition: "opacity 0.2s ease-out" }} onClick={() => dispatch({ type: "SET_SCREEN", payload: "home" })} onMouseEnter={e => e.currentTarget.style.opacity = "0.8"} onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
-        <WynflowLogo size={32} showText textSize={20} />
+        <WynflowLogo size={38} showText textSize={22} />
       </div>
       {isMobile ? (
         <>
@@ -3010,7 +3012,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
       display: "flex", flexDirection: "column", padding: "20px 12px", flexShrink: 0,
     }}>
       <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "dashboard" })} style={{ padding: "4px 12px", marginBottom: 32, cursor: "pointer" }}>
-        <WynflowLogo size={32} showText textSize={18} />
+        <WynflowLogo size={36} showText textSize={20} />
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
