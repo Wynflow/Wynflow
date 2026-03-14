@@ -2100,8 +2100,8 @@ const PricingPage = ({ dispatch }) => {
   const [openFaq, setOpenFaq] = useState(null);
 
   const plans = [
-    {name:"Starter",price:"29",desc:"AI quoting & automated follow-ups to win more jobs",features:["AI photo quote generator","Unlimited quotes","1 automated follow-up sequence","Customer quote request page","One-click Accept / Decline","File attachments","Quote dashboard & analytics","Email support"],highlighted:true,active:true,link:"https://buy.stripe.com/bJecN5cNf6gD70L1A973G00"},
-    {name:"Pro",price:"49",desc:"The full AI-powered toolkit for serious tradies",features:[],highlighted:false,active:false,comingSoon:true,link:"https://buy.stripe.com/9B6cN500t6gD2Kv52B73G01"},
+    {name:"Starter",price:"29",desc:"AI quoting & automated follow-ups to win more jobs",features:["AI photo quote generator","Unlimited quotes","1 automated follow-up sequence","Customer quote request page","One-click Accept / Decline","File attachments","Quote dashboard & analytics","Email support"],highlighted:true,active:true,link:"https://buy.stripe.com/eVqfZhaF76gDcl57Yx73G02"},
+    {name:"Pro",price:"49",desc:"The full AI-powered toolkit for serious tradies",features:[],highlighted:false,active:false,comingSoon:true,link:"https://buy.stripe.com/7sY3cv7sVawT1Gr6Ut73G03"},
   ];
   const faqs = [{q:"How does the AI quote generator work?",a:"Take photos on the job site, add a few details about the work, and Wynflow's AI analyses everything — your trade, your rates, the scope of work — to generate an itemised quote with materials, labour, and pricing. Review it, tweak if needed, and send."},{q:"Is there really a free trial?",a:"Yep. 14 days, full access including AI quoting, no credit card needed. Send real quotes from day one."},{q:"Can I cancel anytime?",a:"Absolutely. No lock-in contracts, no cancellation fees. But most tradies stay."},{q:"Do my customers know it's automated?",a:"Nope. Emails come from Wynflow on behalf of your business name. They look professional and personal — your customers just think you're on the ball."},{q:"What if I already use Xero / Tradify / Fergus?",a:"Keep using them for your invoicing. Wynflow is specifically for AI-powered quoting and automated follow-ups — it fills the gap most trade software misses."},{q:"How long does it take to set up?",a:"About 30 seconds. Sign up, enter your business details, and generate your first AI quote. The default follow-up sequence is ready to go."}];
 
@@ -2459,8 +2459,8 @@ const ResetPasswordScreen = ({ dispatch }) => {
 };
 
 const STRIPE_LINKS = {
-  starter: "https://buy.stripe.com/bJecN5cNf6gD70L1A973G00",
-  pro: "https://buy.stripe.com/9B6cN500t6gD2Kv52B73G01",
+  starter: "https://buy.stripe.com/eVqfZhaF76gDcl57Yx73G02",
+  pro: "https://buy.stripe.com/7sY3cv7sVawT1Gr6Ut73G03",
 };
 
 const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
