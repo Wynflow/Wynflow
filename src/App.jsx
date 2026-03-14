@@ -4,22 +4,47 @@ import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload,
 
 // ─── SEO Helper ───
 const SEO_CONFIG = {
-  home: { title: "Wynflow — AI Quote Generator & Automated Follow-Ups for NZ Tradies", description: "Generate quotes from photos with AI, send them in seconds, and let automated follow-ups chase your customers for you. The #1 quoting tool built for New Zealand tradies.", canonical: "https://www.wynflow.co.nz" },
-  about: { title: "About Wynflow — AI-Powered Quoting Built by a Kiwi, for Kiwi Tradies", description: "Born from watching a Napier carpet layer lose jobs to forgotten follow-ups. Wynflow combines AI photo quoting with automated follow-ups so NZ tradies never lose a job to silence again.", canonical: "https://www.wynflow.co.nz/about" },
-  pricing: { title: "Wynflow Pricing — AI Quoting from $29/mo | Free 14-Day Trial", description: "AI-powered quote generation, automated follow-ups, and a full quote dashboard from $29/mo. No credit card required. Built for NZ tradies.", canonical: "https://www.wynflow.co.nz/pricing" },
+  home: {
+    title: "Wynflow — AI Quote Generator for NZ Tradies | Plumber, Electrician & Builder Quoting Software",
+    description: "Generate accurate quotes from job site photos with AI. Automated follow-up emails chase customers so you don't have to. Free 14-day trial. Built for New Zealand plumbers, electricians, builders and tradies.",
+    canonical: "https://www.wynflow.co.nz",
+  },
+  about: {
+    title: "About Wynflow — AI-Powered Quoting Software Built in New Zealand for Kiwi Tradies",
+    description: "Born from watching a Napier carpet layer lose $47,000 in jobs to forgotten follow-ups. Wynflow combines AI photo quoting with automated follow-up emails so NZ tradies never lose a job to silence again.",
+    canonical: "https://www.wynflow.co.nz/about",
+  },
+  pricing: {
+    title: "Wynflow Pricing — AI Quote Generator from $29/mo NZD | Free 14-Day Trial",
+    description: "AI-powered quote generation, unlimited quotes, automated follow-up sequences, and analytics from $29/mo NZD. No credit card required. 14-day free trial for New Zealand tradies.",
+    canonical: "https://www.wynflow.co.nz/pricing",
+  },
 };
 const useSEO = (screen) => {
   useEffect(() => {
     const config = SEO_CONFIG[screen];
     if (!config) return;
     document.title = config.title;
-    let metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) metaDesc.setAttribute("content", config.description);
+    // Meta description
+    const setMeta = (attr, key, val) => { let el = document.querySelector(`meta[${attr}="${key}"]`); if (!el) { el = document.createElement("meta"); el.setAttribute(attr, key); document.head.appendChild(el); } el.setAttribute("content", val); };
+    setMeta("name", "description", config.description);
+    // Canonical
     let canonical = document.querySelector('link[rel="canonical"]');
     if (!canonical) { canonical = document.createElement("link"); canonical.setAttribute("rel", "canonical"); document.head.appendChild(canonical); }
     canonical.setAttribute("href", config.canonical);
-    const ogTags = { "og:title": config.title, "og:description": config.description, "og:url": config.canonical };
-    Object.entries(ogTags).forEach(([prop, content]) => { let tag = document.querySelector(`meta[property="${prop}"]`); if (tag) tag.setAttribute("content", content); });
+    // Open Graph
+    setMeta("property", "og:title", config.title);
+    setMeta("property", "og:description", config.description);
+    setMeta("property", "og:url", config.canonical);
+    setMeta("property", "og:image", "https://www.wynflow.co.nz/og-image.png");
+    setMeta("property", "og:type", "website");
+    setMeta("property", "og:site_name", "Wynflow");
+    setMeta("property", "og:locale", "en_NZ");
+    // Twitter Card
+    setMeta("name", "twitter:card", "summary_large_image");
+    setMeta("name", "twitter:title", config.title);
+    setMeta("name", "twitter:description", config.description);
+    setMeta("name", "twitter:image", "https://www.wynflow.co.nz/og-image.png");
   }, [screen]);
 };
 
@@ -311,7 +336,7 @@ function appReducer(state, action) {
 const WYNFLOW_LOGO = "/logo.png";
 
 const WynflowLogo = ({ size = 36 }) => (
-  <img src={WYNFLOW_LOGO} alt="Wynflow" style={{ width: size, height: size, borderRadius: size * 0.28, objectFit: "cover", display: "block" }} />
+  <img src={WYNFLOW_LOGO} alt="Wynflow — AI quoting software for NZ tradies" style={{ width: size, height: size, borderRadius: size * 0.28, objectFit: "cover", display: "block" }} />
 );
 
 // ─── Theme ───

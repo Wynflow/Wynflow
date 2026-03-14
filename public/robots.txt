@@ -3,5 +3,11 @@ Allow: /
 Disallow: /dashboard
 Disallow: /settings
 Disallow: /quotes
+Disallow: /invoices
+Disallow: /analytics
+Disallow: /sequences
+Disallow: /help
+
+Crawl-delay: 1
 
 Sitemap: https://www.wynflow.co.nz/sitemap.xml
