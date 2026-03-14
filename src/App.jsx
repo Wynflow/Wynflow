@@ -265,6 +265,7 @@ const initialState = {
   business: null,
   screen: "home",
   prevScreen: "dashboard",
+  screenHistory: [],
   quotes: [],
   sequences: [],
   invoices: [],
@@ -282,10 +283,15 @@ function appReducer(state, action) {
       return { ...state, loading: action.payload };
     case "LOGOUT":
       return { ...initialState };
-    case "SET_SCREEN":
-      return { ...state, screen: action.payload, prevScreen: state.screen };
-    case "GO_BACK":
-      return { ...state, screen: state.prevScreen || "dashboard" };
+    case "SET_SCREEN": {
+      const history = [...(state.screenHistory || []), state.screen].slice(-10);
+      return { ...state, screen: action.payload, prevScreen: state.screen, screenHistory: history };
+    }
+    case "GO_BACK": {
+      const history = [...(state.screenHistory || [])];
+      const prev = history.pop() || "dashboard";
+      return { ...state, screen: prev, prevScreen: state.screen, screenHistory: history };
+    }
     case "SET_QUOTES":
       return { ...state, quotes: action.payload };
     case "ADD_QUOTE":
@@ -7543,9 +7549,11 @@ export default function WynflowApp() {
   useSEO(screen);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [sessionReady, setSessionReady] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (force = false) => {
     if (!business || !sessionReady) return;
+    if (!business.id) return;
     dispatch({ type: "SET_LOADING", payload: true });
     try {
       const [quotesRes, seqRes, invoicesRes] = await Promise.all([
@@ -7556,6 +7564,7 @@ export default function WynflowApp() {
       if (quotesRes.data) dispatch({ type: "SET_QUOTES", payload: quotesRes.data });
       if (seqRes.data) dispatch({ type: "SET_SEQUENCES", payload: seqRes.data });
       if (invoicesRes.data) dispatch({ type: "SET_INVOICES", payload: invoicesRes.data });
+      setDataLoaded(true);
     } catch (err) {
       dispatch({ type: "NOTIFY", payload: { message: "Failed to load data. Please refresh.", type: "error" } });
     }
@@ -7726,6 +7735,14 @@ export default function WynflowApp() {
     }
   }, [screen, business]);
 
+  // Load data whenever business/session becomes ready, or hasn't loaded yet
+  useEffect(() => {
+    if (business?.id && sessionReady && !dataLoaded) {
+      loadData();
+    }
+  }, [business?.id, sessionReady, dataLoaded, loadData]);
+
+  // Also reload when loadData reference changes (covers edge cases)
   useEffect(() => { loadData(); }, [loadData]);
 
   // Show onboarding for new users
