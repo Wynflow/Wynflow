@@ -2740,6 +2740,41 @@ const getTrialDaysRemaining = (business) => {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 };
 
+// ─── Payment Success Screen ───
+const PaymentSuccess = ({ dispatch, business }) => {
+  const isMobile = useIsMobile();
+  const [countdown, setCountdown] = useState(5);
+
+  useEffect(() => {
+    const timer = setInterval(() => setCountdown(c => c - 1), 1000);
+    const redirect = setTimeout(() => {
+      // Clean URL
+      window.history.replaceState(null, "", "/");
+      dispatch({ type: "SET_SCREEN", payload: "dashboard" });
+    }, 5000);
+    return () => { clearInterval(timer); clearTimeout(redirect); };
+  }, [dispatch]);
+
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: `radial-gradient(ellipse at 50% 30%, rgba(34,197,94,0.08) 0%, transparent 50%), ${theme.bg}`, fontFamily: theme.font, padding: 20 }}>
+      <div style={{ textAlign: "center", maxWidth: 480 }}>
+        <div style={{ width: 80, height: 80, borderRadius: 20, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 32, animation: "successPop 0.5s cubic-bezier(0.16,1,0.3,1)" }}>
+          <CheckCircle2 size={40} color="#22C55E" />
+        </div>
+        <h1 style={{ fontSize: isMobile ? 24 : 32, fontWeight: 700, color: "#FFFFFF", marginBottom: 12, letterSpacing: "-0.02em" }}>You're all set!</h1>
+        <p style={{ fontSize: 16, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, marginBottom: 8 }}>Payment confirmed — your Wynflow subscription is now active.</p>
+        <p style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", marginBottom: 40 }}>Redirecting to your dashboard in {countdown}s...</p>
+        <Button onClick={() => { window.history.replaceState(null, "", "/"); dispatch({ type: "SET_SCREEN", payload: "dashboard" }); }} style={{ minWidth: 200 }}>
+          Go to Dashboard
+        </Button>
+        <div style={{ marginTop: 48, padding: "20px 24px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", margin: 0, lineHeight: 1.6 }}>Your subscription status may take a moment to update. If you see a trial banner, just refresh the page.</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const isTrialExpired = (business) => {
   if (!business) return false;
   const status = business.subscription_status;
@@ -7736,6 +7771,10 @@ export default function WynflowApp() {
     }
 
     const path = window.location.pathname.replace(/^\//, "").toLowerCase();
+    if (path === "success") {
+      dispatch({ type: "SET_SCREEN", payload: "paymentSuccess" });
+      // Still continue to restore session below so business data loads
+    }
     if (path.startsWith("request/")) {
       const bizId = window.location.pathname.split("/request/")[1];
       if (bizId) dispatch({ type: "SET_SCREEN", payload: "requestQuote:" + bizId });
@@ -7855,6 +7894,7 @@ export default function WynflowApp() {
     @keyframes slideIn { from{transform:translateX(100px);opacity:0} to{transform:translateX(0);opacity:1} }
     @keyframes spin { to{transform:rotate(360deg)} }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    @keyframes successPop { 0%{transform:scale(0.5);opacity:0} 100%{transform:scale(1);opacity:1} }
     @media (max-width: 767px) {
       .mobile-stack { grid-template-columns: 1fr !important; }
       .mobile-hide { display: none !important; }
@@ -7895,6 +7935,16 @@ export default function WynflowApp() {
         <style>{globalStyles}</style>
         {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
         <ResetPasswordScreen dispatch={dispatch} />
+      </>
+    );
+  }
+
+  if (screen === "paymentSuccess") {
+    return (
+      <>
+        <style>{globalStyles}</style>
+        {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
+        <PaymentSuccess dispatch={dispatch} business={business} />
       </>
     );
   }
