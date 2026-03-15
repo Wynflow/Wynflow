@@ -2608,6 +2608,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
   const [businessName, setBusinessName] = useState("");
   const [contactName, setContactName] = useState("");
   const [trade, setTrade] = useState("");
+  const [phone, setPhone] = useState("");
   const [hourlyRate, setHourlyRate] = useState("");
   const [calloutFee, setCalloutFee] = useState("");
   const [loading, setLoading] = useState(false);
@@ -2637,7 +2638,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
 
   const handleSubmit = async () => {
     if (!email || !password) { setError("Please enter email and password"); return; }
-    if (isSignup && (!businessName || !contactName || !trade)) { setError("Please fill in all required fields"); return; }
+    if (isSignup && (!businessName || !contactName || !trade || !phone.trim())) { setError("Please fill in all required fields"); return; }
     setLoading(true);
     setError("");
     try {
@@ -2653,13 +2654,13 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         // If no token but user exists with identities, email confirmation is pending
         if (!authData.access_token) {
           // Store signup details temporarily so we can create business after email confirmation
-          try { localStorage.setItem("wynflow_pending_signup", JSON.stringify({ businessName, contactName, email, trade, hourlyRate, calloutFee, plan })); } catch(e) {}
+          try { localStorage.setItem("wynflow_pending_signup", JSON.stringify({ businessName, contactName, email, phone, trade, hourlyRate, calloutFee, plan })); } catch(e) {}
           setEmailSent(true);
           setLoading(false);
           // Notify N8N about new signup
           fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, trade, hourly_rate: hourlyRate, callout_fee: calloutFee }),
+            body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, phone, trade, hourly_rate: hourlyRate, callout_fee: calloutFee }),
           }).catch(() => {});
           return;
         }
@@ -2668,6 +2669,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
           business_name: businessName,
           contact_name: contactName,
           email: email,
+          phone: phone.trim(),
           trade: trade || null,
           trade_category: trade || null,
           hourly_rate: parseFloat(hourlyRate) || 0,
@@ -2717,7 +2719,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         dispatch({ type: "SET_SCREEN", payload: "dashboard" });
         fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, trade, hourly_rate: hourlyRate, callout_fee: calloutFee }),
+          body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, phone, trade, hourly_rate: hourlyRate, callout_fee: calloutFee }),
         }).catch(() => {});
       } else {
         const authData = await supabase.auth_signIn(email, password);
@@ -2816,6 +2818,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
               <>
                 <Input label="Business Name *" value={businessName} onChange={setBusinessName} />
                 <Input label="Your Name *" value={contactName} onChange={setContactName} />
+                <Input label="Mobile Number *" value={phone} onChange={setPhone} type="tel" placeholder="e.g. 021 123 4567" />
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 6 }}>Trade / Industry *</div>
                   <select value={trade} onChange={e => setTrade(e.target.value)}
