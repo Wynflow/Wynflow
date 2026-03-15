@@ -4770,10 +4770,91 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
       </div>
       <div style={{ display: "flex", gap: 12, marginTop: isMobile ? 16 : 24, justifyContent: "flex-end" }}>
         <Button variant="secondary" onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}>Cancel</Button>
+        <Button variant="secondary" onClick={() => {
+          if (!form.customerName || !form.jobTitle || !form.amount) { dispatch({ type: "NOTIFY", payload: { message: "Fill in customer name, job title, and amount to preview", type: "error" } }); return; }
+          setShowPreview(true);
+        }} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Eye size={16} /> Preview</Button>
         <Button onClick={handleCreate} disabled={loading}>
           {loading ? "Sending..." : isMobile ? "Send Quote →" : "Send Quote & Start Follow-Ups →"}
         </Button>
       </div>
+      {showPreview && (
+        <div onClick={() => setShowPreview(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(4px)" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 620, maxHeight: "90vh", overflowY: "auto", borderRadius: 12, background: "#fff", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
+            <div style={{ padding: isMobile ? "24px 20px" : "32px 40px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
+                <div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: "#0A0E17", fontFamily: theme.fontDisplay }}>{business.business_name}</div>
+                  {business.address && <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>{business.address}</div>}
+                  {business.phone && <div style={{ fontSize: 13, color: "#6b7280" }}>{business.phone}</div>}
+                  {business.email && <div style={{ fontSize: 13, color: "#6b7280" }}>{business.email}</div>}
+                  {(business.gst_number || business.license_number) && (
+                    <div style={{ display: "flex", gap: 12, marginTop: 4 }}>
+                      {business.gst_number && <div style={{ fontSize: 11, color: "#9ca3af" }}>GST: {business.gst_number}</div>}
+                      {business.license_number && <div style={{ fontSize: 11, color: "#9ca3af" }}>{business.license_number}</div>}
+                    </div>
+                  )}
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 11, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1 }}>Quote</div>
+                  <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>{new Date().toLocaleDateString("en-NZ", { day: "numeric", month: "long", year: "numeric" })}</div>
+                </div>
+              </div>
+              <div style={{ borderBottom: "3px solid #14B8A6", marginBottom: 24 }} />
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Prepared For</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: "#111827" }}>{form.customerName}</div>
+                {form.customerEmail && <div style={{ fontSize: 13, color: "#6b7280" }}>{form.customerEmail}</div>}
+                {form.customerPhone && <div style={{ fontSize: 13, color: "#6b7280" }}>{form.customerPhone}</div>}
+              </div>
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Job</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>{form.jobTitle}</div>
+              </div>
+              {form.description && (
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Description</div>
+                  <div style={{ fontSize: 14, color: "#374151", lineHeight: 1.7, whiteSpace: "pre-line" }}>{form.description}</div>
+                </div>
+              )}
+              <div style={{ background: "#f9fafb", borderRadius: 10, padding: 20, marginBottom: 24 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total{business.gst_number ? " (incl. GST)" : ""}</span>
+                  <span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(form.amount || 0).toLocaleString()}</span>
+                </div>
+              </div>
+              {business.require_deposit && business.bank_account_number && (
+                <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 10, background: "#f0fdfa", border: "1px solid #ccfbf1" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#0d9488", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Deposit Required — {business.deposit_percentage || 25}%</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ fontSize: 14, color: "#0d9488", fontWeight: 600 }}>Deposit Amount</span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: "#0d9488" }}>${(parseFloat(form.amount || 0) * (parseFloat(business.deposit_percentage || 25) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div style={{ borderTop: "1px solid #ccfbf1", paddingTop: 10, marginTop: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Payment Details</div>
+                    {business.bank_name && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 13, color: "#6b7280" }}>Bank</span><span style={{ fontSize: 13, color: "#111827" }}>{business.bank_name}</span></div>}
+                    {business.bank_account_name && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 13, color: "#6b7280" }}>Account Name</span><span style={{ fontSize: 13, color: "#111827" }}>{business.bank_account_name}</span></div>}
+                    <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 13, color: "#6b7280" }}>Account Number</span><span style={{ fontSize: 13, color: "#111827", fontWeight: 600 }}>{business.bank_account_number}</span></div>
+                  </div>
+                </div>
+              )}
+              {business.quote_footer && (
+                <div style={{ marginBottom: 24, padding: "14px 16px", borderRadius: 8, background: "#f9fafb", border: "1px solid #e5e7eb" }}>
+                  <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-line" }}>{business.quote_footer}</div>
+                </div>
+              )}
+              <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontSize: 11, color: "#9ca3af" }}>Powered by <span style={{ color: "#14B8A6", fontWeight: 600 }}>Wynflow</span></div>
+                <div style={{ fontSize: 11, color: "#9ca3af" }}>Valid for 30 days</div>
+              </div>
+            </div>
+            <div style={{ padding: "16px 40px 24px", background: "#f9fafb", borderTop: "1px solid #e5e7eb", display: "flex", gap: 12, justifyContent: "flex-end" }}>
+              <Button variant="secondary" onClick={() => setShowPreview(false)}>Close</Button>
+              <Button onClick={() => { setShowPreview(false); handleCreate(); }} disabled={loading}><Send size={16} /> Send Quote</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
