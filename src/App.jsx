@@ -8312,16 +8312,16 @@ export default function WynflowApp() {
     );
   }
 
-  // Trial paywall — blocks dashboard when trial/subscription has expired
-  if (isTrialExpired(business)) {
-    return (
-      <>
-        <style>{globalStyles}</style>
-        {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
-        <TrialPaywall business={business} dispatch={dispatch} />
-      </>
-    );
-  }
+  // Trial paywall — DISABLED until Stripe payment flow is fully tested
+  // if (isTrialExpired(business)) {
+  //   return (
+  //     <>
+  //       <style>{globalStyles}</style>
+  //       {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
+  //       <TrialPaywall business={business} dispatch={dispatch} />
+  //     </>
+  //   );
+  // }
 
   const renderContent = () => {
     if (loading) return <Spinner />;
