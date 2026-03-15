@@ -1,6 +1,6 @@
 import { useState, useEffect, useReducer, useCallback } from "react";
 import { jsPDF } from "jspdf";
-import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History } from "lucide-react";
+import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History, Users, Target, ExternalLink, Phone, MapPin, Filter } from "lucide-react";
 
 // ─── SEO Helper ───
 const SEO_CONFIG = {
@@ -1305,6 +1305,36 @@ const HomePage = ({ dispatch }) => {
           </div>
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", marginTop: 24, letterSpacing: "0.04em" }}>No credit card required  ·  14-day free trial  ·  Cancel anytime</p>
         </FadeIn>
+
+        {/* ── Limited Offer Banner ── */}
+        <FadeIn delay={0.32}>
+          <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })} style={{
+            marginTop: 40, padding: "16px 24px", borderRadius: 14,
+            background: "linear-gradient(135deg, rgba(20,184,166,0.08), rgba(20,184,166,0.03))",
+            border: "1px solid rgba(20,184,166,0.2)",
+            cursor: "pointer", transition: "all 0.2s ease-out", maxWidth: 440, marginLeft: "auto", marginRight: "auto",
+            display: "flex", alignItems: "center", gap: 16,
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.4)"; e.currentTarget.style.background = "linear-gradient(135deg, rgba(20,184,166,0.12), rgba(20,184,166,0.05))"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.2)"; e.currentTarget.style.background = "linear-gradient(135deg, rgba(20,184,166,0.08), rgba(20,184,166,0.03))"; }}
+          >
+            <div style={{
+              width: 40, height: 40, borderRadius: 10,
+              background: "rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+              <Zap size={20} color="#14B8A6" />
+            </div>
+            <div style={{ flex: 1, textAlign: "left" }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#FFFFFF", marginBottom: 2 }}>
+                First 10 sign-ups get <span style={{ color: "#14B8A6" }}>3 months free</span>
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
+                <span style={{ color: "#14B8A6", fontWeight: 600 }}>7 spots left</span> — limited early adopter offer
+              </div>
+            </div>
+            <ArrowRight size={16} color="rgba(255,255,255,0.3)" />
+          </div>
+        </FadeIn>
       </div>
 
       {/* Bottom gradient fade */}
@@ -2159,6 +2189,21 @@ const PricingPage = ({ dispatch }) => {
         <FadeIn delay={0.16}>
           <p style={{ fontSize: isMobile ? 16 : 19, color: "rgba(255,255,255,0.45)", maxWidth: 480, margin: "0 auto", lineHeight: 1.7, fontWeight: 400, letterSpacing: "0.01em" }}>No hidden fees. No lock-in contracts. Start free for 14 days, no credit card needed.</p>
         </FadeIn>
+        <FadeIn delay={0.24}>
+          <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })} style={{
+            marginTop: 32, padding: "14px 24px", borderRadius: 12,
+            background: "linear-gradient(135deg, rgba(20,184,166,0.1), rgba(20,184,166,0.04))",
+            border: "1px solid rgba(20,184,166,0.25)",
+            cursor: "pointer", transition: "all 0.2s ease-out", display: "inline-flex", alignItems: "center", gap: 12,
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.4)"; e.currentTarget.style.background = "linear-gradient(135deg, rgba(20,184,166,0.15), rgba(20,184,166,0.06))"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.25)"; e.currentTarget.style.background = "linear-gradient(135deg, rgba(20,184,166,0.1), rgba(20,184,166,0.04))"; }}
+          >
+            <Zap size={18} color="#14B8A6" />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#FFFFFF" }}>First 10 sign-ups get <span style={{ color: "#14B8A6" }}>3 months free</span></span>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginLeft: 4 }}>· <span style={{ color: "#14B8A6", fontWeight: 600 }}>7 spots left</span></span>
+          </div>
+        </FadeIn>
       </div>
 
       {/* Bottom gradient fade */}
@@ -2959,6 +3004,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
     { id: "invoices", label: "Invoices", icon: Receipt },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "sequences", label: "Follow-Ups", icon: RefreshCw },
+    { id: "leads", label: "Leads", icon: Target },
   ];
   const secondaryNav = [
     { id: "help", label: "Help", icon: HelpCircle },
@@ -3085,6 +3131,291 @@ const Sidebar = ({ screen, dispatch, business }) => {
           <Lock size={14} />
         </div>
       </div>
+    </div>
+  );
+};
+
+// ─── Lead Status Config ───
+const leadStatusConfig = {
+  new: { label: "New", color: theme.textMuted, bg: "rgba(139,149,168,0.12)" },
+  enriched: { label: "Enriched", color: theme.accent, bg: theme.accentSoft },
+  contacted: { label: "Contacted", color: theme.blue, bg: theme.blueSoft },
+  replied: { label: "Replied", color: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
+  converted: { label: "Converted", color: theme.green, bg: theme.greenSoft },
+  unsubscribed: { label: "Unsubscribed", color: theme.red, bg: theme.redSoft },
+};
+
+const LeadBadge = ({ status }) => {
+  const config = leadStatusConfig[status] || leadStatusConfig.new;
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px",
+      borderRadius: 6, fontSize: 11, fontWeight: 600, letterSpacing: 0.3,
+      color: config.color, background: config.bg, border: `1px solid ${config.color}15`,
+    }}>
+      <span style={{ width: 5, height: 5, borderRadius: "50%", background: config.color, flexShrink: 0 }} />
+      {config.label}
+    </span>
+  );
+};
+
+// ─── Leads Screen ───
+const LeadsScreen = ({ dispatch, business }) => {
+  const isMobile = useIsMobile();
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("created_at");
+
+  // Load leads from Supabase
+  useEffect(() => {
+    const loadLeads = async () => {
+      setLoading(true);
+      try {
+        let query = db("leads").select().order("created_at", false);
+        const { data, error } = await query;
+        if (error) throw error;
+        setLeads(data || []);
+      } catch (err) {
+        console.error("Failed to load leads:", err);
+        setLeads([]);
+      }
+      setLoading(false);
+    };
+    loadLeads();
+  }, []);
+
+  // Stats
+  const total = leads.length;
+  const enriched = leads.filter(l => l.status === "enriched").length;
+  const contacted = leads.filter(l => l.status === "contacted").length;
+  const replied = leads.filter(l => l.status === "replied").length;
+  const converted = leads.filter(l => l.status === "converted").length;
+  const emailRate = total > 0 ? Math.round((leads.filter(l => l.email).length / total) * 100) : 0;
+  const conversionRate = contacted > 0 ? Math.round((converted / contacted) * 100) : 0;
+
+  // Filter & search
+  const filtered = leads.filter(l => {
+    if (filter !== "all" && l.status !== filter) return false;
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      return (l.business_name || "").toLowerCase().includes(term) ||
+        (l.trade || "").toLowerCase().includes(term) ||
+        (l.city || "").toLowerCase().includes(term) ||
+        (l.email || "").toLowerCase().includes(term);
+    }
+    return true;
+  });
+
+  // Sort
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === "lead_score") return (b.lead_score || 0) - (a.lead_score || 0);
+    if (sortBy === "google_rating") return (b.google_rating || 0) - (a.google_rating || 0);
+    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+  });
+
+  // Update lead status
+  const updateLeadStatus = async (leadId, newStatus) => {
+    try {
+      await db("leads").update({ status: newStatus }).eq("id", leadId);
+      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: newStatus } : l));
+    } catch (err) {
+      console.error("Failed to update lead:", err);
+    }
+  };
+
+  // Filter tabs
+  const tabs = [
+    { key: "all", label: "All", count: total },
+    { key: "new", label: "New", count: leads.filter(l => l.status === "new").length },
+    { key: "enriched", label: "Enriched", count: enriched },
+    { key: "contacted", label: "Contacted", count: contacted },
+    { key: "replied", label: "Replied", count: replied },
+    { key: "converted", label: "Converted", count: converted },
+  ];
+
+  if (loading) return <Spinner />;
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isMobile ? 20 : 28 }}>
+        <div>
+          <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.02em" }}>Leads</h1>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>Your outbound lead pipeline</p>
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div style={{ display: "flex", gap: isMobile ? 8 : 12, marginBottom: isMobile ? 16 : 24, flexWrap: "wrap" }}>
+        <Stat label="Total Leads" value={total} icon={Users} accent={theme.accent} />
+        <Stat label="Email Rate" value={`${emailRate}%`} icon={Mail} accent={theme.blue} sub={`${leads.filter(l => l.email).length} with email`} />
+        <Stat label="Contacted" value={contacted} icon={Send} accent="#F59E0B" />
+        {!isMobile && <Stat label="Conversion" value={`${conversionRate}%`} icon={Target} accent={theme.green} sub={`${converted} converted`} />}
+      </div>
+
+      {/* Pipeline funnel */}
+      <div style={{ padding: isMobile ? 16 : 20, borderRadius: 10, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)", marginBottom: isMobile ? 16 : 24 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 14 }}>Pipeline</div>
+        <div style={{ display: "flex", gap: 2, height: 32, borderRadius: 6, overflow: "hidden" }}>
+          {[
+            { key: "new", label: "New", count: leads.filter(l => l.status === "new").length, color: theme.textMuted },
+            { key: "enriched", label: "Enriched", count: enriched, color: theme.accent },
+            { key: "contacted", label: "Contacted", count: contacted, color: theme.blue },
+            { key: "replied", label: "Replied", count: replied, color: "#F59E0B" },
+            { key: "converted", label: "Converted", count: converted, color: theme.green },
+          ].map(stage => {
+            const pct = total > 0 ? Math.max((stage.count / total) * 100, stage.count > 0 ? 8 : 0) : 20;
+            return (
+              <div key={stage.key} style={{ width: `${pct}%`, background: `${stage.color}25`, display: "flex", alignItems: "center", justifyContent: "center", minWidth: stage.count > 0 ? 40 : 0, transition: "width 0.3s" }}>
+                {stage.count > 0 && <span style={{ fontSize: 10, fontWeight: 600, color: stage.color }}>{stage.count}</span>}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ display: "flex", gap: 2, marginTop: 4 }}>
+          {["New", "Enriched", "Contacted", "Replied", "Converted"].map(label => (
+            <div key={label} style={{ flex: 1, fontSize: 9, color: theme.textDim, textAlign: "center" }}>{label}</div>
+          ))}
+        </div>
+      </div>
+
+      {/* Filter tabs + search */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 4, flex: 1, flexWrap: "wrap" }}>
+          {tabs.map(tab => (
+            <button key={tab.key} onClick={() => setFilter(tab.key)} style={{
+              padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 500, border: "none", cursor: "pointer",
+              background: filter === tab.key ? "rgba(20,184,166,0.15)" : "rgba(255,255,255,0.03)",
+              color: filter === tab.key ? theme.accent : theme.textMuted,
+              transition: "all 0.15s",
+            }}>
+              {tab.label} {tab.count > 0 && <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.7 }}>({tab.count})</span>}
+            </button>
+          ))}
+        </div>
+        <div style={{ position: "relative", minWidth: isMobile ? "100%" : 220 }}>
+          <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: theme.textDim }} />
+          <input
+            type="text" placeholder="Search leads..." value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            style={{
+              width: "100%", padding: "8px 12px 8px 32px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.06)",
+              background: "rgba(255,255,255,0.03)", color: theme.text, fontSize: 13, outline: "none",
+              fontFamily: theme.font,
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Sort controls */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <span style={{ fontSize: 11, color: theme.textDim }}>Sort:</span>
+        {[
+          { key: "created_at", label: "Newest" },
+          { key: "lead_score", label: "Score" },
+          { key: "google_rating", label: "Rating" },
+        ].map(s => (
+          <button key={s.key} onClick={() => setSortBy(s.key)} style={{
+            padding: "4px 10px", borderRadius: 5, fontSize: 11, fontWeight: 500, border: "none", cursor: "pointer",
+            background: sortBy === s.key ? "rgba(20,184,166,0.12)" : "transparent",
+            color: sortBy === s.key ? theme.accent : theme.textDim,
+          }}>{s.label}</button>
+        ))}
+        <span style={{ fontSize: 11, color: theme.textDim, marginLeft: "auto" }}>{sorted.length} leads</span>
+      </div>
+
+      {/* Leads list */}
+      {sorted.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 48, color: theme.textMuted }}>
+          <Users size={32} style={{ marginBottom: 12, opacity: 0.4 }} />
+          <p style={{ fontSize: 14, margin: 0 }}>No leads yet</p>
+          <p style={{ fontSize: 12, color: theme.textDim, marginTop: 4 }}>Import leads from Google Maps via your N8N workflow to get started</p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {sorted.map(lead => (
+            <div key={lead.id} style={{
+              padding: isMobile ? 14 : 16, borderRadius: 10,
+              background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)",
+              transition: "border-color 0.2s",
+              cursor: "default",
+            }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(20,184,166,0.2)"}
+            onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"}
+            >
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>{lead.business_name}</span>
+                    <LeadBadge status={lead.status} />
+                    {lead.lead_score > 0 && (
+                      <span style={{ fontSize: 10, fontWeight: 600, color: theme.accent, background: theme.accentSoft, padding: "2px 6px", borderRadius: 4 }}>
+                        Score: {lead.lead_score}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 8 : 16, fontSize: 12, color: theme.textMuted }}>
+                    {lead.trade && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Wrench size={11} /> {lead.trade}</span>}
+                    {lead.city && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><MapPin size={11} /> {lead.city}</span>}
+                    {lead.email && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Mail size={11} /> {lead.email}</span>}
+                    {lead.phone && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Phone size={11} /> {lead.phone}</span>}
+                    {lead.google_rating && (
+                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <Star size={11} color="#F59E0B" /> {lead.google_rating} ({lead.review_count || 0} reviews)
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                  {lead.google_maps_url && (
+                    <a href={lead.google_maps_url} target="_blank" rel="noopener noreferrer" style={{
+                      width: 30, height: 30, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center",
+                      background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", cursor: "pointer",
+                      textDecoration: "none",
+                    }}><ExternalLink size={13} color={theme.textDim} /></a>
+                  )}
+                  {lead.website && (
+                    <a href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`} target="_blank" rel="noopener noreferrer" style={{
+                      width: 30, height: 30, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center",
+                      background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", cursor: "pointer",
+                      textDecoration: "none",
+                    }}><Globe size={13} color={theme.textDim} /></a>
+                  )}
+                  {lead.status === "new" && (
+                    <button onClick={() => updateLeadStatus(lead.id, "enriched")} style={{
+                      padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 500, border: "none", cursor: "pointer",
+                      background: "rgba(20,184,166,0.1)", color: theme.accent,
+                    }}>Mark Enriched</button>
+                  )}
+                  {lead.status === "enriched" && lead.email && (
+                    <button onClick={() => updateLeadStatus(lead.id, "contacted")} style={{
+                      padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 500, border: "none", cursor: "pointer",
+                      background: "rgba(59,130,246,0.1)", color: theme.blue,
+                    }}>Mark Contacted</button>
+                  )}
+                  {lead.status === "contacted" && (
+                    <button onClick={() => updateLeadStatus(lead.id, "replied")} style={{
+                      padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 500, border: "none", cursor: "pointer",
+                      background: "rgba(245,158,11,0.1)", color: "#F59E0B",
+                    }}>Mark Replied</button>
+                  )}
+                  {lead.status === "replied" && (
+                    <button onClick={() => updateLeadStatus(lead.id, "converted")} style={{
+                      padding: "6px 10px", borderRadius: 6, fontSize: 11, fontWeight: 500, border: "none", cursor: "pointer",
+                      background: "rgba(34,197,94,0.1)", color: theme.green,
+                    }}>Mark Converted</button>
+                  )}
+                </div>
+              </div>
+              {lead.notes && (
+                <div style={{ marginTop: 8, fontSize: 12, color: theme.textDim, fontStyle: "italic" }}>{lead.notes}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -8010,6 +8341,7 @@ export default function WynflowApp() {
       case "editInvoice": return <CreateInvoiceForm dispatch={dispatch} business={business} quotes={quotes} sequences={sequences} invoices={invoices} editInvoice={invoices.find(i => i.id === detailId)} />;
       case "invoiceDetail": return <InvoiceDetail invoiceId={detailId} invoices={invoices} business={business} dispatch={dispatch} sequences={sequences} quotes={quotes} />;
       case "help": return <HelpCentre />;
+      case "leads": return <LeadsScreen dispatch={dispatch} business={business} />;
       case "historicalQuotes": return <HistoricalQuotes business={business} dispatch={dispatch} quotes={quotes} />;
       case "settings": return <Settings business={business} dispatch={dispatch} />;
       default: return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} />;
