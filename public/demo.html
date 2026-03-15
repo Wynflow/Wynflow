@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en-NZ">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wynflow — AI Quote Generator Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0A0E17;
+    font-family: 'DM Sans', sans-serif;
+    color: #F1F3F7;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  /* Header */
+  .demo-header {
+    width: 100%;
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(10,14,23,0.9);
+    backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .demo-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .demo-logo img { height: 36px; width: auto; }
+  .demo-logo span { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  .demo-badge {
+    padding: 6px 16px;
+    border-radius: 100px;
+    background: rgba(20,184,166,0.1);
+    border: 1px solid rgba(20,184,166,0.2);
+    color: #14B8A6;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    width: 100%;
+    max-width: 900px;
+    margin: 40px auto 0;
+    padding: 0 24px;
+  }
+  .progress-steps {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+  }
+  .progress-steps::before {
+    content: '';
+    position: absolute;
+    top: 16px;
+    left: 40px;
+    right: 40px;
+    height: 2px;
+    background: rgba(255,255,255,0.08);
+  }
+  .progress-line {
+    position: absolute;
+    top: 16px;
+    left: 40px;
+    height: 2px;
+    background: #14B8A6;
+    transition: width 0.8s cubic-bezier(0.16,1,0.3,1);
+    z-index: 1;
+  }
+  .step-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: 2px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.3);
+    position: relative;
+    z-index: 2;
+    transition: all 0.5s cubic-bezier(0.16,1,0.3,1);
+  }
+  .step-dot.active {
+    background: #14B8A6;
+    border-color: #14B8A6;
+    color: #000;
+    box-shadow: 0 0 20px rgba(20,184,166,0.3);
+  }
+  .step-dot.done {
+    background: rgba(20,184,166,0.15);
+    border-color: #14B8A6;
+    color: #14B8A6;
+  }
+  .step-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    margin-top: 8px;
+    text-align: center;
+    transition: color 0.3s;
+  }
+  .step-label.active { color: #14B8A6; }
+
+  /* Scene container */
+  .scene-wrap {
+    width: 100%;
+    max-width: 900px;
+    margin: 32px auto;
+    padding: 0 24px;
+    min-height: 520px;
+    position: relative;
+  }
+  .scene {
+    position: absolute;
+    top: 0;
+    left: 24px;
+    right: 24px;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.6s cubic-bezier(0.16,1,0.3,1);
+    pointer-events: none;
+  }
+  .scene.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  /* Cards */
+  .card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 20px;
+  }
+
+  /* Fake inputs */
+  .input-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .input-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .input-label {
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+    font-weight: 500;
+  }
+  .fake-input {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: #F1F3F7;
+    font-family: inherit;
+    position: relative;
+    overflow: hidden;
+    min-height: 40px;
+  }
+  .fake-input.typing {
+    border-color: rgba(20,184,166,0.4);
+    box-shadow: 0 0 0 2px rgba(20,184,166,0.15);
+  }
+  .fake-input .cursor {
+    display: inline-block;
+    width: 2px;
+    height: 16px;
+    background: #14B8A6;
+    margin-left: 1px;
+    vertical-align: middle;
+    animation: blink 0.8s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* Photos */
+  .photo-grid {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .photo-thumb {
+    width: 80px;
+    height: 80px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.08);
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+    position: relative;
+  }
+  .photo-thumb.show {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .photo-thumb .photo-inner {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    background: linear-gradient(135deg, rgba(20,184,166,0.15), rgba(59,130,246,0.1));
+  }
+  .photo-thumb .check {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    background: #14B8A6;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #000;
+    font-weight: 700;
+  }
+
+  /* AI Loading */
+  .ai-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 40px;
+    text-align: center;
+  }
+  .ai-brain {
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(20,184,166,0.15), rgba(20,184,166,0.05));
+    border: 1px solid rgba(20,184,166,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    margin-bottom: 24px;
+    animation: aiPulse 2s ease-in-out infinite;
+  }
+  @keyframes aiPulse {
+    0%,100% { box-shadow: 0 0 20px rgba(20,184,166,0.1); }
+    50% { box-shadow: 0 0 40px rgba(20,184,166,0.3); transform: scale(1.05); }
+  }
+  .ai-dots {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .ai-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #14B8A6;
+    animation: dotBounce 1.4s infinite;
+  }
+  .ai-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .ai-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotBounce {
+    0%,80%,100% { transform: scale(0.6); opacity: 0.3; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+  .ai-step-list {
+    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: left;
+    width: 100%;
+    max-width: 340px;
+  }
+  .ai-step-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.3);
+    transition: all 0.4s;
+  }
+  .ai-step-item.active {
+    color: #14B8A6;
+  }
+  .ai-step-item.done {
+    color: rgba(34,197,94,0.8);
+  }
+  .ai-check {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+  .ai-step-item.done .ai-check {
+    background: rgba(34,197,94,0.15);
+    border-color: #22C55E;
+  }
+  .ai-step-item.active .ai-check {
+    border-color: #14B8A6;
+    animation: spinDot 1s linear infinite;
+  }
+  @keyframes spinDot {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Quote result */
+  .quote-result {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 768px) {
+    .quote-result { grid-template-columns: 1fr; }
+  }
+  .quote-preview {
+    background: #fff;
+    border-radius: 12px;
+    padding: 28px;
+    color: #111827;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    position: relative;
+    overflow: hidden;
+  }
+  .quote-preview::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #14B8A6;
+  }
+  .qp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding-top: 4px;
+  }
+  .qp-biz { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: #0A0E17; }
+  .qp-date { font-size: 11px; color: #9ca3af; text-align: right; }
+  .qp-date strong { display: block; font-size: 12px; color: #6b7280; }
+  .qp-section { margin-bottom: 16px; }
+  .qp-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #9ca3af; margin-bottom: 4px; }
+  .qp-value { font-size: 14px; color: #374151; line-height: 1.5; }
+  .qp-value strong { color: #111827; }
+  .qp-line-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 13px;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+  }
+  .qp-line-item.show {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  .qp-line-item .desc { color: #374151; }
+  .qp-line-item .price { color: #111827; font-weight: 600; }
+  .qp-total-box {
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+  .qp-total-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #6b7280;
+    padding: 4px 0;
+  }
+  .qp-total-row.total {
+    border-top: 2px solid #e5e7eb;
+    margin-top: 8px;
+    padding-top: 12px;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .qp-total-row.total .price { color: #14B8A6; }
+  .qp-footer {
+    margin-top: 16px;
+    text-align: center;
+    font-size: 11px;
+    color: #9ca3af;
+  }
+  .qp-footer span { color: #14B8A6; font-weight: 600; }
+
+  /* Send animation */
+  .send-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+  }
+  .send-btn {
+    padding: 14px 48px;
+    border-radius: 12px;
+    background: #14B8A6;
+    color: #000;
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: inherit;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .send-btn:hover { background: #0D9488; }
+  .send-btn.sent {
+    background: #22C55E;
+    pointer-events: none;
+  }
+
+  /* Sent success */
+  .sent-success {
+    text-align: center;
+    padding: 60px 40px;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: all 0.5s cubic-bezier(0.16,1,0.3,1);
+  }
+  .sent-success.show {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .sent-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(34,197,94,0.1);
+    border: 2px solid rgba(34,197,94,0.2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    margin-bottom: 20px;
+    animation: successPop 0.5s cubic-bezier(0.16,1,0.3,1);
+  }
+  @keyframes successPop { 0%{transform:scale(0.5);opacity:0} 100%{transform:scale(1);opacity:1} }
+
+  /* Follow-up timeline */
+  .followup-timeline {
+    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .followup-item {
+    display: flex;
+    gap: 16px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+    position: relative;
+    padding-bottom: 24px;
+  }
+  .followup-item.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .followup-dot-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 20px;
+    flex-shrink: 0;
+  }
+  .followup-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(20,184,166,0.2);
+    border: 2px solid #14B8A6;
+    flex-shrink: 0;
+  }
+  .followup-line {
+    width: 2px;
+    flex: 1;
+    background: rgba(20,184,166,0.15);
+    margin-top: 4px;
+  }
+  .followup-content {
+    flex: 1;
+    padding-top: 0;
+  }
+  .followup-day {
+    font-size: 11px;
+    font-weight: 600;
+    color: #14B8A6;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .followup-text {
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+
+  /* Restart button */
+  .restart-btn {
+    margin: 40px auto;
+    padding: 12px 32px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.5);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+    display: block;
+  }
+  .restart-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .demo-header { padding: 16px 20px; }
+    .scene-wrap { padding: 0 16px; }
+    .scene { left: 16px; right: 16px; }
+    .card { padding: 20px; }
+    .input-row { flex-direction: column; }
+    .quote-result { grid-template-columns: 1fr; }
+    .progress-bar { margin-top: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="demo-header">
+  <div class="demo-logo">
+    <img src="/logo.png" alt="Wynflow" />
+    <span>Wynflow</span>
+  </div>
+  <div class="demo-badge">Interactive Demo</div>
+</div>
+
+<!-- Progress -->
+<div class="progress-bar">
+  <div class="progress-steps">
+    <div class="progress-line" id="progressLine" style="width: 0%"></div>
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <div class="step-dot active" id="dot0">1</div>
+      <div class="step-label active" id="label0">Customer</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <div class="step-dot" id="dot1">2</div>
+      <div class="step-label" id="label1">Job Details</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <div class="step-dot" id="dot2">3</div>
+      <div class="step-label" id="label2">AI Generates</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <div class="step-dot" id="dot3">4</div>
+      <div class="step-label" id="label3">Review & Send</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <div class="step-dot" id="dot4">5</div>
+      <div class="step-label" id="label4">Follow-Ups</div>
+    </div>
+  </div>
+</div>
+
+<!-- Scenes -->
+<div class="scene-wrap">
+
+  <!-- Scene 1: Customer Details -->
+  <div class="scene active" id="scene0">
+    <div class="card">
+      <div class="card-title">Customer Details</div>
+      <div class="input-row">
+        <div class="input-group">
+          <div class="input-label">Customer Name</div>
+          <div class="fake-input" id="nameInput"><span id="nameText"></span><span class="cursor" id="nameCursor"></span></div>
+        </div>
+        <div class="input-group">
+          <div class="input-label">Email</div>
+          <div class="fake-input" id="emailInput"><span id="emailText"></span></div>
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <div class="input-label">Phone</div>
+          <div class="fake-input" id="phoneInput"><span id="phoneText"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scene 2: Job Details + Photos -->
+  <div class="scene" id="scene1">
+    <div class="card">
+      <div class="card-title">Job Details</div>
+      <div class="input-row">
+        <div class="input-group">
+          <div class="input-label">Job Title</div>
+          <div class="fake-input" id="jobInput"><span id="jobText"></span><span class="cursor" id="jobCursor" style="display:none"></span></div>
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="input-group">
+          <div class="input-label">Description</div>
+          <div class="fake-input" id="descInput" style="min-height:60px"><span id="descText"></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Site Photos</div>
+      <div class="photo-grid">
+        <div class="photo-thumb" id="photo0"><div class="photo-inner">🔧</div><div class="check">✓</div></div>
+        <div class="photo-thumb" id="photo1"><div class="photo-inner">🚿</div><div class="check">✓</div></div>
+        <div class="photo-thumb" id="photo2"><div class="photo-inner">🪠</div><div class="check">✓</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scene 3: AI Loading -->
+  <div class="scene" id="scene2">
+    <div class="card">
+      <div class="ai-loading">
+        <div class="ai-brain">🧠</div>
+        <div style="font-size:18px;font-weight:600;margin-bottom:4px">AI is generating your quote</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.4)">Analysing photos, trade rates & scope</div>
+        <div class="ai-dots"><span></span><span></span><span></span></div>
+        <div class="ai-step-list">
+          <div class="ai-step-item" id="aiStep0"><div class="ai-check">...</div>Analysing site photos</div>
+          <div class="ai-step-item" id="aiStep1"><div class="ai-check">...</div>Calculating materials & quantities</div>
+          <div class="ai-step-item" id="aiStep2"><div class="ai-check">...</div>Estimating labour hours</div>
+          <div class="ai-step-item" id="aiStep3"><div class="ai-check">...</div>Building itemised quote</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scene 4: Quote Preview -->
+  <div class="scene" id="scene3">
+    <div class="quote-result">
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+            <div style="width:8px;height:8px;border-radius:50%;background:#22C55E"></div>
+            <span style="font-size:13px;font-weight:600;color:#22C55E">Quote Generated</span>
+            <span style="margin-left:auto;padding:4px 10px;border-radius:100px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.15);font-size:11px;color:#22C55E;font-weight:600">High Confidence</span>
+          </div>
+          <div class="card-title" style="margin-bottom:12px">Scope of Work</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.5);line-height:1.7">
+            Replace mixer tap in kitchen. Isolate water supply, remove existing tap and fittings, install new mixer tap with flexible hose connections, test for leaks, clean up work area.
+          </div>
+        </div>
+        <div class="send-section">
+          <button class="send-btn" id="sendBtn" onclick="sendQuote()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            Send Quote
+          </button>
+        </div>
+      </div>
+      <div class="quote-preview" id="quotePreview">
+        <div class="qp-header">
+          <div>
+            <div class="qp-biz">Mike's Plumbing</div>
+            <div style="font-size:12px;color:#6b7280;margin-top:2px">027 555 1234 &bull; mike@mikesplumbing.co.nz</div>
+          </div>
+          <div class="qp-date"><strong>Quote</strong>15 Mar 2026</div>
+        </div>
+        <div class="qp-section">
+          <div class="qp-label">Prepared For</div>
+          <div class="qp-value"><strong>Sarah Johnson</strong></div>
+          <div style="font-size:12px;color:#9ca3af">sarah.j@gmail.com &bull; 021 987 6543</div>
+        </div>
+        <div class="qp-section">
+          <div class="qp-label">Job</div>
+          <div class="qp-value"><strong>Kitchen mixer tap replacement</strong></div>
+        </div>
+        <div class="qp-section">
+          <div class="qp-label">Materials</div>
+          <div class="qp-line-item" id="line0"><span class="desc">Mixer tap (standard)</span><span class="price">$189.00</span></div>
+          <div class="qp-line-item" id="line1"><span class="desc">Flexible hose connectors x2</span><span class="price">$34.00</span></div>
+          <div class="qp-line-item" id="line2"><span class="desc">Thread tape & silicone</span><span class="price">$12.00</span></div>
+        </div>
+        <div class="qp-total-box">
+          <div class="qp-total-row"><span>Materials</span><span>$235.00</span></div>
+          <div class="qp-total-row"><span>Labour (1.5 hrs @ $85/hr)</span><span>$127.50</span></div>
+          <div class="qp-total-row"><span>Callout fee</span><span>$50.00</span></div>
+          <div class="qp-total-row total"><span>Total (incl. GST)</span><span class="price" id="totalPrice">$0.00</span></div>
+        </div>
+        <div class="qp-footer">Powered by <span>Wynflow</span> &bull; Valid for 30 days</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scene 5: Sent + Follow-ups -->
+  <div class="scene" id="scene4">
+    <div class="sent-success" id="sentSuccess">
+      <div class="sent-icon">✓</div>
+      <h2 style="font-size:24px;font-weight:700;margin-bottom:8px">Quote Sent!</h2>
+      <p style="font-size:15px;color:rgba(255,255,255,0.4);margin-bottom:8px">Sarah just received her quote via email</p>
+      <p style="font-size:13px;color:rgba(255,255,255,0.3)">Wynflow will now automatically follow up...</p>
+      <div class="followup-timeline">
+        <div class="followup-item" id="fu0">
+          <div class="followup-dot-col"><div class="followup-dot"></div><div class="followup-line"></div></div>
+          <div class="followup-content">
+            <div class="followup-day">Day 2</div>
+            <div class="followup-text">"Hi Sarah, just checking in on the quote I sent through for Kitchen mixer tap replacement..."</div>
+          </div>
+        </div>
+        <div class="followup-item" id="fu1">
+          <div class="followup-dot-col"><div class="followup-dot"></div><div class="followup-line"></div></div>
+          <div class="followup-content">
+            <div class="followup-day">Day 5</div>
+            <div class="followup-text">"Any questions about your quote? Happy to adjust anything..."</div>
+          </div>
+        </div>
+        <div class="followup-item" id="fu2">
+          <div class="followup-dot-col"><div class="followup-dot"></div></div>
+          <div class="followup-content">
+            <div class="followup-day">Day 10</div>
+            <div class="followup-text">"Last chance — your quote for Kitchen mixer tap replacement ($474.38) expires in 5 days..."</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="restart-btn" id="restartBtn" style="opacity:0" onclick="restart()">Watch Again</button>
+  </div>
+</div>
+
+<script>
+let currentScene = 0;
+const totalScenes = 5;
+
+function setProgress(step) {
+  const pct = (step / (totalScenes - 1)) * 100;
+  document.getElementById('progressLine').style.width = `calc(${pct}% - ${80 - (pct/100)*80}px)`;
+  for (let i = 0; i < totalScenes; i++) {
+    const dot = document.getElementById('dot' + i);
+    const label = document.getElementById('label' + i);
+    dot.className = 'step-dot' + (i < step ? ' done' : i === step ? ' active' : '');
+    label.className = 'step-label' + (i === step ? ' active' : '');
+    if (i < step) dot.textContent = '✓';
+  }
+}
+
+function showScene(n) {
+  for (let i = 0; i < totalScenes; i++) {
+    document.getElementById('scene' + i).classList.toggle('active', i === n);
+  }
+  setProgress(n);
+  currentScene = n;
+}
+
+function typeText(elementId, text, speed, callback) {
+  const el = document.getElementById(elementId);
+  let i = 0;
+  const parent = el.parentElement;
+  if (parent) parent.classList.add('typing');
+  const interval = setInterval(() => {
+    el.textContent = text.slice(0, ++i);
+    if (i >= text.length) {
+      clearInterval(interval);
+      if (parent) parent.classList.remove('typing');
+      const cursor = parent?.querySelector('.cursor');
+      if (cursor) cursor.style.display = 'none';
+      if (callback) setTimeout(callback, 400);
+    }
+  }, speed);
+}
+
+function animateScene0() {
+  document.getElementById('nameCursor').style.display = 'inline-block';
+  document.getElementById('nameInput').classList.add('typing');
+  setTimeout(() => {
+    typeText('nameText', 'Sarah Johnson', 60, () => {
+      document.getElementById('emailInput').classList.add('typing');
+      setTimeout(() => {
+        document.getElementById('emailText').textContent = 'sarah.j@gmail.com';
+        document.getElementById('emailInput').classList.remove('typing');
+        setTimeout(() => {
+          document.getElementById('phoneInput').classList.add('typing');
+          setTimeout(() => {
+            document.getElementById('phoneText').textContent = '021 987 6543';
+            document.getElementById('phoneInput').classList.remove('typing');
+            setTimeout(() => showScene(1), 800);
+          }, 300);
+        }, 400);
+      }, 300);
+    });
+  }, 600);
+}
+
+function animateScene1() {
+  setTimeout(() => {
+    document.getElementById('jobCursor').style.display = 'inline-block';
+    document.getElementById('jobInput').classList.add('typing');
+    typeText('jobText', 'Kitchen mixer tap replacement', 50, () => {
+      document.getElementById('descInput').classList.add('typing');
+      setTimeout(() => {
+        document.getElementById('descText').textContent = 'Old tap is leaking at the base. Customer wants standard replacement. Good access under sink.';
+        document.getElementById('descInput').classList.remove('typing');
+        setTimeout(() => {
+          ['photo0','photo1','photo2'].forEach((id, i) => {
+            setTimeout(() => document.getElementById(id).classList.add('show'), i * 300);
+          });
+          setTimeout(() => showScene(2), 1800);
+        }, 600);
+      }, 400);
+    });
+  }, 400);
+}
+
+function animateScene2() {
+  const steps = ['aiStep0','aiStep1','aiStep2','aiStep3'];
+  steps.forEach((id, i) => {
+    setTimeout(() => {
+      if (i > 0) {
+        document.getElementById(steps[i-1]).classList.remove('active');
+        document.getElementById(steps[i-1]).classList.add('done');
+        document.getElementById(steps[i-1]).querySelector('.ai-check').textContent = '✓';
+      }
+      document.getElementById(id).classList.add('active');
+    }, i * 1000);
+  });
+  setTimeout(() => {
+    document.getElementById(steps[3]).classList.remove('active');
+    document.getElementById(steps[3]).classList.add('done');
+    document.getElementById(steps[3]).querySelector('.ai-check').textContent = '✓';
+    setTimeout(() => showScene(3), 600);
+  }, 4000);
+}
+
+function animateScene3() {
+  setTimeout(() => {
+    ['line0','line1','line2'].forEach((id, i) => {
+      setTimeout(() => document.getElementById(id).classList.add('show'), i * 250);
+    });
+    setTimeout(() => {
+      let current = 0;
+      const target = 474.38;
+      const duration = 800;
+      const start = performance.now();
+      function tick(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        current = target * eased;
+        document.getElementById('totalPrice').textContent = '$' + current.toFixed(2);
+        if (progress < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }, 1000);
+  }, 400);
+}
+
+function sendQuote() {
+  const btn = document.getElementById('sendBtn');
+  btn.classList.add('sent');
+  btn.innerHTML = '✓ Sent!';
+  setTimeout(() => showScene(4), 800);
+}
+
+function animateScene4() {
+  setTimeout(() => {
+    document.getElementById('sentSuccess').classList.add('show');
+    ['fu0','fu1','fu2'].forEach((id, i) => {
+      setTimeout(() => document.getElementById(id).classList.add('show'), 600 + i * 500);
+    });
+    setTimeout(() => {
+      document.getElementById('restartBtn').style.opacity = '1';
+    }, 2600);
+  }, 200);
+}
+
+function restart() {
+  // Reset all states
+  ['nameText','emailText','phoneText','jobText','descText'].forEach(id => document.getElementById(id).textContent = '');
+  ['nameInput','emailInput','phoneInput','jobInput','descInput'].forEach(id => document.getElementById(id)?.classList.remove('typing'));
+  document.getElementById('nameCursor').style.display = 'none';
+  document.getElementById('jobCursor').style.display = 'none';
+  ['photo0','photo1','photo2'].forEach(id => document.getElementById(id).classList.remove('show'));
+  ['aiStep0','aiStep1','aiStep2','aiStep3'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('active','done');
+    el.querySelector('.ai-check').textContent = '...';
+  });
+  ['line0','line1','line2'].forEach(id => document.getElementById(id).classList.remove('show'));
+  document.getElementById('totalPrice').textContent = '$0.00';
+  const btn = document.getElementById('sendBtn');
+  btn.classList.remove('sent');
+  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg> Send Quote';
+  document.getElementById('sentSuccess').classList.remove('show');
+  ['fu0','fu1','fu2'].forEach(id => document.getElementById(id).classList.remove('show'));
+  document.getElementById('restartBtn').style.opacity = '0';
+
+  showScene(0);
+  setTimeout(animateScene0, 500);
+}
+
+// Scene transition watchers
+const observer = new MutationObserver(() => {
+  const active = document.querySelector('.scene.active');
+  if (!active) return;
+  const id = parseInt(active.id.replace('scene', ''));
+  if (id === 1) animateScene1();
+  if (id === 2) animateScene2();
+  if (id === 3) animateScene3();
+  if (id === 4) animateScene4();
+});
+document.querySelectorAll('.scene').forEach(s => observer.observe(s, { attributes: true, attributeFilter: ['class'] }));
+
+// Start
+setTimeout(animateScene0, 800);
+</script>
+</body>
+</html>
