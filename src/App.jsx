@@ -375,7 +375,7 @@ function appReducer(state, action) {
     case "SET_USER":
       return { ...state, user: action.payload };
     case "SET_BUSINESS":
-      return { ...state, business: action.payload, screen: "dashboard" };
+      return { ...state, business: action.payload };
     case "SET_LOADING":
       return { ...state, loading: action.payload };
     case "LOGOUT":
@@ -2739,6 +2739,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         setCookie("wynflow_refresh", authData.refresh_token, 43200);
         setCookie("wynflow_user", authData.user, 43200);
         setCookie("wynflow_business", biz, 43200);
+        dispatch({ type: "SET_SCREEN", payload: "dashboard" });
         dispatch({ type: "NOTIFY", payload: { message: "Welcome back!", type: "success" } });
       }
     } catch (err) {
@@ -7087,7 +7088,9 @@ const Settings = ({ business, dispatch }) => {
     try {
       const { error } = await db("businesses").eq("id", business.id).update(updates);
       if (error) throw error;
-      dispatch({ type: "SET_BUSINESS", payload: { ...business, ...updates } });
+      const updatedBusiness = { ...business, ...updates };
+      dispatch({ type: "SET_BUSINESS", payload: updatedBusiness });
+      setCookie("wynflow_business", updatedBusiness, 43200);
       dispatch({ type: "NOTIFY", payload: { message: "Settings saved!", type: "success" } });
     } catch (err) {
       reportError(err, "save_settings");
@@ -7136,12 +7139,10 @@ const Settings = ({ business, dispatch }) => {
           </button>
         )}
       </div>
-      {/* Sticky save bar on mobile */}
-      {isMobile && (
-        <div style={{ position: "sticky", top: -16, zIndex: 10, margin: "0 -14px", padding: "10px 14px", background: "rgba(10,14,23,0.92)", borderBottom: "1px solid rgba(255,255,255,0.06)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", marginBottom: 12 }}>
-          <Button onClick={saveSettings} disabled={saving} style={{ width: "100%", justifyContent: "center" }}>{saving ? "Saving..." : "Save Changes"}</Button>
-        </div>
-      )}
+      {/* Sticky save bar */}
+      <div style={{ position: "sticky", top: isMobile ? -16 : 0, zIndex: 10, margin: isMobile ? "0 -14px" : "0 0 0 0", padding: isMobile ? "10px 14px" : "12px 0", background: "rgba(10,14,23,0.92)", borderBottom: "1px solid rgba(255,255,255,0.06)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", marginBottom: 12 }}>
+        <Button onClick={saveSettings} disabled={saving} style={{ width: isMobile ? "100%" : "auto", justifyContent: "center" }}>{saving ? "Saving..." : "Save All Changes"}</Button>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 10 : 24 }}>
         <Card style={isMobile ? { padding: 16 } : {}}>
           <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 14px", letterSpacing: "0.01em" }}>Business Profile</h3>
@@ -7158,7 +7159,6 @@ const Settings = ({ business, dispatch }) => {
                 {TRADE_CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-            {!isMobile && <Button onClick={saveSettings} disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>}
           </div>
         </Card>
         <Card style={isMobile ? { padding: 16 } : {}}>
