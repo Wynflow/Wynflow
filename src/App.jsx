@@ -1,6 +1,6 @@
 import { useState, useEffect, useReducer, useCallback, Component } from "react";
 import { jsPDF } from "jspdf";
-import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History } from "lucide-react";
+import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History, Eye } from "lucide-react";
 
 // ─── Error Tracking System ───
 const ERROR_WEBHOOK = "https://wynfallautomation.app.n8n.cloud/webhook/error-report";
@@ -6107,11 +6107,168 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
 };
 
 // ─── Invoice Detail ───
+const InvoicePreviewModal = ({ invoice, business, onClose }) => {
+  const isMobile = useIsMobile();
+  const isGST = !!business.gst_number;
+  const amount = parseFloat(invoice.amount || 0);
+  const gst = parseFloat(invoice.gst_amount || 0);
+  const total = amount + gst;
+
+  let bd = null;
+  const raw = invoice.breakdown;
+  if (raw) {
+    if (typeof raw === "string") { try { bd = JSON.parse(raw); } catch { bd = null; } }
+    else bd = raw;
+  }
+
+  const lineItems = [];
+  if (bd && bd.lineItems) bd.lineItems.filter(i => i.description?.trim()).forEach(i => lineItems.push({ desc: i.description, amt: i.price }));
+  if (bd && bd.materialsCost && parseFloat(bd.materialsCost) > 0) lineItems.push({ desc: "Materials", amt: bd.materialsCost });
+  if (bd && bd.labourHours && bd.labourRate) lineItems.push({ desc: `Labour (${bd.labourHours} hrs @ $${bd.labourRate}/hr)`, amt: parseFloat(bd.labourHours) * parseFloat(bd.labourRate) });
+  if (bd && bd.includeCallout && bd.calloutFee && parseFloat(bd.calloutFee) > 0) lineItems.push({ desc: "Callout Fee", amt: bd.calloutFee });
+  if (invoice.is_deposit) lineItems.push({ desc: `Deposit (${invoice.deposit_percentage || 0}%${invoice.linkedQuoteAmount ? " of " + fmtNZD(invoice.linkedQuoteAmount) : ""})`, amt: amount });
+  if (lineItems.length === 0 && !invoice.is_deposit) lineItems.push({ desc: invoice.job_title || "Services", amt: amount });
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)", padding: 16 }} onClick={onClose}>
+      <div style={{ width: "100%", maxWidth: 680, maxHeight: "90vh", overflow: "auto", borderRadius: 16, background: "#ffffff", boxShadow: "0 24px 80px rgba(0,0,0,0.4)" }} onClick={e => e.stopPropagation()}>
+        {/* Close button */}
+        <div style={{ position: "sticky", top: 0, zIndex: 1, display: "flex", justifyContent: "flex-end", padding: "12px 16px 0" }}>
+          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 16, border: "1px solid #e5e7eb", background: "#fff", color: "#6b7280", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+        </div>
+
+        <div style={{ padding: isMobile ? "16px 20px 32px" : "16px 40px 40px", fontFamily: "'DM Sans', Arial, sans-serif" }}>
+          {/* Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 24 }}>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: "#0A0E17" }}>{business.business_name}</div>
+              {business.address && <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{business.address}</div>}
+              {business.phone && <div style={{ fontSize: 12, color: "#6b7280" }}>{business.phone}</div>}
+              {business.email && <div style={{ fontSize: 12, color: "#6b7280" }}>{business.email}</div>}
+              {isGST && <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>GST: {business.gst_number}</div>}
+              {business.license_number && <div style={{ fontSize: 11, color: "#9ca3af" }}>{business.license_number}</div>}
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#14B8A6" }}>{isGST ? "TAX INVOICE" : "INVOICE"}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginTop: 2 }}>{invoice.invoice_number}</div>
+              <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{fmtDate(invoice.sent_at || invoice.created_at)}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>Due: {fmtDate(invoice.due_date)}</div>
+            </div>
+          </div>
+
+          {/* Teal line */}
+          <div style={{ height: 2, background: "#14B8A6", borderRadius: 1, marginBottom: 24 }} />
+
+          {/* Bill To */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", letterSpacing: 1, marginBottom: 6 }}>BILL TO</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{invoice.customer_name}</div>
+            {invoice.customer_email && <div style={{ fontSize: 12, color: "#6b7280" }}>{invoice.customer_email}</div>}
+            {invoice.customer_phone && <div style={{ fontSize: 12, color: "#6b7280" }}>{invoice.customer_phone}</div>}
+          </div>
+
+          {/* Job */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", letterSpacing: 1, marginBottom: 6 }}>JOB</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#111827" }}>{invoice.job_title || ""}</div>
+          </div>
+
+          {/* Scope */}
+          {invoice.description && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", letterSpacing: 1, marginBottom: 6 }}>SCOPE OF WORK</div>
+              <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{invoice.description}</div>
+            </div>
+          )}
+
+          {/* Line Items */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", letterSpacing: 1, marginBottom: 8 }}>ITEMS</div>
+            <div style={{ background: "#f3f4f6", borderRadius: 8, padding: "8px 12px", display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#6b7280" }}>Description</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#6b7280" }}>Amount</span>
+            </div>
+            {lineItems.map((item, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 12px", borderBottom: "1px solid #e5e7eb" }}>
+                <span style={{ fontSize: 13, color: "#374151", flex: 1, paddingRight: 16 }}>{item.desc}</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: "#111827", whiteSpace: "nowrap" }}>{fmtNZD(item.amt)}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Totals */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", marginBottom: 24 }}>
+            {isGST && (
+              <>
+                <div style={{ display: "flex", gap: 24, marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, color: "#6b7280" }}>Subtotal (ex GST)</span>
+                  <span style={{ fontSize: 13, color: "#111827" }}>{fmtNZD(amount)}</span>
+                </div>
+                <div style={{ display: "flex", gap: 24, marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, color: "#6b7280" }}>GST (15%)</span>
+                  <span style={{ fontSize: 13, color: "#111827" }}>{fmtNZD(gst)}</span>
+                </div>
+                <div style={{ width: 180, height: 1, background: "#111827", marginBottom: 8 }} />
+              </>
+            )}
+            <div style={{ display: "flex", gap: 24, alignItems: "baseline" }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>{isGST ? "Total (incl. GST)" : "Total"}</span>
+              <span style={{ fontSize: 20, fontWeight: 700, color: "#14B8A6" }}>{fmtNZD(total)}</span>
+            </div>
+            {invoice.is_deposit && invoice.linkedQuoteAmount && (
+              <div style={{ display: "flex", gap: 24, marginTop: 4 }}>
+                <span style={{ fontSize: 11, color: "#9ca3af" }}>Balance remaining</span>
+                <span style={{ fontSize: 11, color: "#6b7280" }}>{fmtNZD(parseFloat(invoice.linkedQuoteAmount) - amount)}</span>
+              </div>
+            )}
+            {!isGST && <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4 }}>This business is not registered for GST</div>}
+          </div>
+
+          {/* Payment Details */}
+          {business.bank_account_number && (
+            <div style={{ background: "#f0fdfa", border: "1px solid #ccfbf1", borderRadius: 10, padding: "16px 20px", marginBottom: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#0d9488", letterSpacing: 1, marginBottom: 10 }}>PAYMENT DETAILS</div>
+              {business.bank_name && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 12, color: "#6b7280" }}>Bank</span><span style={{ fontSize: 12, color: "#111827" }}>{business.bank_name}</span></div>}
+              {business.bank_account_name && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 12, color: "#6b7280" }}>Account Name</span><span style={{ fontSize: 12, color: "#111827" }}>{business.bank_account_name}</span></div>}
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 12, color: "#6b7280" }}>Account Number</span><span style={{ fontSize: 12, fontWeight: 700, color: "#111827" }}>{business.bank_account_number}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 12, color: "#6b7280" }}>Reference</span><span style={{ fontSize: 12, color: "#111827" }}>{invoice.invoice_number}</span></div>
+            </div>
+          )}
+
+          {/* Payment Terms */}
+          <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 16 }}>
+            Payment Terms: {invoice.payment_terms || "7 days"} &nbsp;•&nbsp; Due: {fmtDate(invoice.due_date)}
+          </div>
+
+          {/* Notes */}
+          {invoice.notes && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", letterSpacing: 1, marginBottom: 6 }}>NOTES</div>
+              <div style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{invoice.notes}</div>
+            </div>
+          )}
+
+          {/* Footer */}
+          {business.quote_footer && (
+            <div style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.5, whiteSpace: "pre-wrap", marginBottom: 16 }}>{business.quote_footer}</div>
+          )}
+
+          <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>Thank you for your business</div>
+            <div style={{ fontSize: 10, color: "#9ca3af" }}>Powered by Wynflow</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) => {
   const isMobile = useIsMobile();
   const invoice = invoices.find((i) => i.id === invoiceId);
   const [steps, setSteps] = useState([]);
   const [sending, setSending] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     if (!invoice?.reminder_sequence_id) return;
@@ -6219,9 +6376,14 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
             <h1 style={{ fontSize: isMobile ? 20 : 28, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontDisplay }}>{invoice.job_title || "Invoice"}</h1>
             <p style={{ fontSize: isMobile ? 12 : 14, color: theme.textMuted, margin: "4px 0 0" }}>Invoice #{invoice.invoice_number} • {new Date(invoice.created_at).toLocaleDateString()}</p>
           </div>
-          <InvoiceBadge status={invoice.status} dueDate={invoice.due_date} />
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Button variant="secondary" size="sm" onClick={() => setShowPreview(true)} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Eye size={14} /> View Invoice</Button>
+            <InvoiceBadge status={invoice.status} dueDate={invoice.due_date} />
+          </div>
         </div>
       </div>
+
+      {showPreview && <InvoicePreviewModal invoice={invoice} business={business} onClose={() => setShowPreview(false)} />}
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 24 }}>
         {/* Customer */}
