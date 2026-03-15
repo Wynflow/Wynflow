@@ -1,6 +1,98 @@
-import { useState, useEffect, useReducer, useCallback } from "react";
+import { useState, useEffect, useReducer, useCallback, Component } from "react";
 import { jsPDF } from "jspdf";
 import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History, Users, Target, ExternalLink, Phone, MapPin, Filter } from "lucide-react";
+
+// ─── Error Tracking System ───
+const ERROR_WEBHOOK = "https://wynfallautomation.app.n8n.cloud/webhook/error-report";
+
+const reportError = (error, context = {}) => {
+  const payload = {
+    message: error?.message || String(error),
+    stack: error?.stack?.split("\n").slice(0, 5).join("\n") || "",
+    context: typeof context === "string" ? context : JSON.stringify(context),
+    url: window.location.href,
+    screen: window.__wynflow_screen || "unknown",
+    user_email: window.__wynflow_user_email || "anonymous",
+    business_id: window.__wynflow_business_id || "",
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent,
+  };
+  // Send to N8N webhook (fire-and-forget)
+  fetch(ERROR_WEBHOOK, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }).catch(() => {}); // Don't let error reporting cause more errors
+  // Also log locally
+  console.error(`[Wynflow Error] ${payload.message}`, { context, error });
+};
+
+// Global error handlers
+if (typeof window !== "undefined") {
+  window.addEventListener("error", (event) => {
+    reportError(event.error || event.message, "global_error");
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    reportError(event.reason, "unhandled_promise_rejection");
+  });
+}
+
+// React Error Boundary
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    reportError(error, { type: "react_crash", componentStack: errorInfo?.componentStack?.split("\n").slice(0, 8).join("\n") });
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0A0E17", fontFamily: "'DM Sans', sans-serif", padding: 24 }}>
+          <div style={{ textAlign: "center", maxWidth: 440 }}>
+            <div style={{ width: 72, height: 72, borderRadius: 18, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+              <AlertTriangle size={32} color="#EF4444" />
+            </div>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: "#FFFFFF", marginBottom: 8 }}>Something went wrong</h1>
+            <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, marginBottom: 32 }}>
+              An unexpected error occurred. This has been automatically reported. Try refreshing the page.
+            </p>
+            <button onClick={() => window.location.reload()} style={{
+              padding: "14px 32px", borderRadius: 10, background: "#14B8A6", color: "#000",
+              fontSize: 15, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "inherit",
+            }}>Refresh Page</button>
+            <details style={{ marginTop: 32, textAlign: "left" }}>
+              <summary style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", cursor: "pointer" }}>Error details</summary>
+              <pre style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginTop: 8, padding: 16, background: "rgba(255,255,255,0.03)", borderRadius: 8, overflow: "auto", maxHeight: 200, whiteSpace: "pre-wrap" }}>
+                {this.state.error?.message}{"\n"}{this.state.error?.stack}
+              </pre>
+            </details>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ─── Safe Fetch (with error reporting) ───
+const safeFetch = async (url, options = {}, context = "") => {
+  try {
+    const res = await fetch(url, options);
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      reportError(new Error(`HTTP ${res.status}: ${body.slice(0, 200)}`), { context: context || url, status: res.status });
+    }
+    return res;
+  } catch (err) {
+    reportError(err, { context: context || url, type: "fetch_error" });
+    throw err;
+  }
+};
 
 // ─── SEO Helper ───
 const SEO_CONFIG = {
@@ -4459,6 +4551,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         dispatch({ type: "NOTIFY", payload: { message: "AI generation failed — try again", type: "error" } });
       }
     } catch (err) {
+      reportError(err, "ai_quote_generation");
       dispatch({ type: "NOTIFY", payload: { message: "Failed to generate quote", type: "error" } });
     } finally {
       setGenerating(false);
@@ -5048,6 +5141,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
         dispatch({ type: "NOTIFY", payload: { message: "AI generation failed — try again", type: "error" } });
       }
     } catch (err) {
+      reportError(err, "ai_quote_generation");
       dispatch({ type: "NOTIFY", payload: { message: "Failed to generate quote", type: "error" } });
     } finally {
       setGenerating(false);
@@ -5148,6 +5242,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
       dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${quote.customer_name}! Follow-ups scheduled.`, type: "success" } });
       dispatch({ type: "GO_BACK" });
     } catch (err) {
+      reportError(err, "send_quote");
       dispatch({ type: "NOTIFY", payload: { message: "Failed to send quote", type: "error" } });
     } finally {
       setSending(false);
@@ -5991,6 +6086,7 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
 
       dispatch({ type: "NOTIFY", payload: { message: "Invoice sent!", type: "success" } });
     } catch (err) {
+      reportError(err, "send_invoice");
       dispatch({ type: "NOTIFY", payload: { message: "Failed to send invoice — try again", type: "error" } });
     }
     setSending(false);
@@ -6389,6 +6485,7 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
       });
       dispatch({ type: "NOTIFY", payload: { message: isDraft ? "Invoice sent!" : "Invoice resent!", type: "success" } });
     } catch (err) {
+      reportError(err, "resend_invoice");
       dispatch({ type: "NOTIFY", payload: { message: "Failed to send invoice", type: "error" } });
     }
     setSending(false);
@@ -7276,6 +7373,7 @@ const Settings = ({ business, dispatch }) => {
       dispatch({ type: "SET_BUSINESS", payload: { ...business, ...updates } });
       dispatch({ type: "NOTIFY", payload: { message: "Settings saved!", type: "success" } });
     } catch (err) {
+      reportError(err, "save_settings");
       dispatch({ type: "NOTIFY", payload: { message: "Failed to save settings. Please try again.", type: "error" } });
     }
     setSaving(false);
@@ -7995,9 +8093,16 @@ const OnboardingTutorial = ({ business, dispatch, onComplete }) => {
 // ─── Main App ───
 // ✅ FIX: useIsMobile() is now called at the TOP of WynflowApp,
 //    before any conditional returns, to comply with React's Rules of Hooks.
-export default function WynflowApp() {
+function WynflowAppInner() {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const { user, business, screen, quotes, sequences, invoices, notification, loading } = state;
+
+  // Update global error context
+  if (typeof window !== "undefined") {
+    window.__wynflow_screen = screen;
+    window.__wynflow_user_email = business?.email || user?.email || "";
+    window.__wynflow_business_id = business?.id || "";
+  }
 
   // ✅ ALL hooks must be called before any conditional returns
   const isMobile = useIsMobile();
@@ -8021,6 +8126,7 @@ export default function WynflowApp() {
       if (invoicesRes.data) dispatch({ type: "SET_INVOICES", payload: invoicesRes.data });
       setDataLoaded(true);
     } catch (err) {
+      reportError(err, "load_dashboard_data");
       dispatch({ type: "NOTIFY", payload: { message: "Failed to load data. Please refresh.", type: "error" } });
     }
     dispatch({ type: "SET_LOADING", payload: false });
@@ -8358,5 +8464,13 @@ export default function WynflowApp() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function WynflowApp() {
+  return (
+    <ErrorBoundary>
+      <WynflowAppInner />
+    </ErrorBoundary>
   );
 }
