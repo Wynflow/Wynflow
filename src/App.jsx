@@ -4150,6 +4150,18 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
           </div>
           {editForm?.notes && <div style={{ marginBottom: 24 }}><div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Terms & Conditions</div><div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-line" }}>{editForm.notes}</div></div>}
           {editForm?.showBusinessDetails && business.quote_footer && <div style={{ marginBottom: 24, padding: "14px 16px", borderRadius: 8, background: "#f9fafb", border: "1px solid #e5e7eb" }}><div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-line" }}>{business.quote_footer}</div></div>}
+          {business.require_deposit && business.bank_account_number && (
+            <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 10, background: "#f0fdfa", border: "1px solid #ccfbf1" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#0d9488", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Deposit Required — {business.deposit_percentage || 25}%</div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 14, color: "#0d9488", fontWeight: 600 }}>Deposit Amount</span><span style={{ fontSize: 16, fontWeight: 700, color: "#0d9488" }}>${(parseFloat(editForm?.amount || 0) * (parseFloat(business.deposit_percentage || 25) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+              <div style={{ borderTop: "1px solid #ccfbf1", paddingTop: 10, marginTop: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Payment Details</div>
+                {business.bank_name && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 13, color: "#6b7280" }}>Bank</span><span style={{ fontSize: 13, color: "#111827" }}>{business.bank_name}</span></div>}
+                {business.bank_account_name && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 13, color: "#6b7280" }}>Account Name</span><span style={{ fontSize: 13, color: "#111827" }}>{business.bank_account_name}</span></div>}
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 13, color: "#6b7280" }}>Account Number</span><span style={{ fontSize: 13, color: "#111827", fontWeight: 600 }}>{business.bank_account_number}</span></div>
+              </div>
+            </div>
+          )}
           <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontSize: 11, color: "#9ca3af" }}>Powered by <span style={{ color: "#14B8A6", fontWeight: 600 }}>Wynflow</span></div><div style={{ fontSize: 11, color: "#9ca3af" }}>Valid for 30 days</div></div>
         </div>
         <div style={{ padding: "16px 40px 24px", background: "#f9fafb", borderTop: "1px solid #e5e7eb", display: "flex", gap: 12, justifyContent: "flex-end" }}>
@@ -4348,6 +4360,18 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         showBreakdown: editForm.showBreakdown,
         showBusinessDetails: editForm.showBusinessDetails,
         notes: editForm.notes,
+        requireDeposit: business.require_deposit,
+        depositPercentage: business.deposit_percentage,
+        depositAmount: business.require_deposit ? parseFloat(editForm.amount || 0) * (parseFloat(business.deposit_percentage || 25) / 100) : null,
+        bankName: business.bank_name,
+        bankAccountName: business.bank_account_name,
+        bankAccountNumber: business.bank_account_number,
+        quoteFooter: business.quote_footer,
+        businessAddress: business.address,
+        gstNumber: business.gst_number,
+        licenseNumber: business.license_number,
+        businessPhone: business.phone,
+        businessEmail: business.email,
       };
       const { data: newQuote, error: quoteErr } = await db("quotes").insert({
         business_id: business.id, quote_number: "", customer_name: form.customerName,
@@ -4588,6 +4612,18 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
                   </div>
                   {editForm?.notes && <div style={{ marginBottom: 18 }}><div style={{ fontSize: 10, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>Terms & Conditions</div><div style={{ fontSize: 11, color: "#6b7280", lineHeight: 1.5, whiteSpace: "pre-line" }}>{editForm.notes}</div></div>}
                   {editForm?.showBusinessDetails && business.quote_footer && <div style={{ marginBottom: 18, padding: "10px 12px", borderRadius: 6, background: "#f9fafb", border: "1px solid #e5e7eb" }}><div style={{ fontSize: 11, color: "#6b7280", lineHeight: 1.5, whiteSpace: "pre-line" }}>{business.quote_footer}</div></div>}
+                  {business.require_deposit && business.bank_account_number && (
+                    <div style={{ marginBottom: 18, padding: "12px 14px", borderRadius: 8, background: "#f0fdfa", border: "1px solid #ccfbf1" }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: "#0d9488", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Deposit Required — {business.deposit_percentage || 25}%</div>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 11, color: "#0d9488", fontWeight: 600 }}>Deposit Amount</span><span style={{ fontSize: 12, fontWeight: 700, color: "#0d9488" }}>${(parseFloat(editForm?.amount || 0) * (parseFloat(business.deposit_percentage || 25) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                      <div style={{ borderTop: "1px solid #ccfbf1", paddingTop: 8, marginTop: 8 }}>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Payment Details</div>
+                        {business.bank_name && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}><span style={{ fontSize: 11, color: "#6b7280" }}>Bank</span><span style={{ fontSize: 11, color: "#111827" }}>{business.bank_name}</span></div>}
+                        {business.bank_account_name && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}><span style={{ fontSize: 11, color: "#6b7280" }}>Account Name</span><span style={{ fontSize: 11, color: "#111827" }}>{business.bank_account_name}</span></div>}
+                        <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 11, color: "#6b7280" }}>Account Number</span><span style={{ fontSize: 11, color: "#111827", fontWeight: 600 }}>{business.bank_account_number}</span></div>
+                      </div>
+                    </div>
+                  )}
                   <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontSize: 9, color: "#9ca3af" }}>Powered by <span style={{ color: "#14B8A6", fontWeight: 600 }}>Wynflow</span></div><div style={{ fontSize: 9, color: "#9ca3af" }}>Valid for 30 days</div></div>
                 </div>
               </div>
@@ -4617,6 +4653,7 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
   });
   const [pdfFile, setPdfFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const update = (key, val) => setForm({ ...form, [key]: val });
 
@@ -4938,6 +4975,18 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
         showBreakdown: editForm.showBreakdown,
         showBusinessDetails: editForm.showBusinessDetails,
         notes: editForm.notes,
+        requireDeposit: business.require_deposit,
+        depositPercentage: business.deposit_percentage,
+        depositAmount: business.require_deposit ? parseFloat(editForm.amount || 0) * (parseFloat(business.deposit_percentage || 25) / 100) : null,
+        bankName: business.bank_name,
+        bankAccountName: business.bank_account_name,
+        bankAccountNumber: business.bank_account_number,
+        quoteFooter: business.quote_footer,
+        businessAddress: business.address,
+        gstNumber: business.gst_number,
+        licenseNumber: business.license_number,
+        businessPhone: business.phone,
+        businessEmail: business.email,
       };
       const quoteUpdates = {
         amount: parseFloat(editForm.amount),
