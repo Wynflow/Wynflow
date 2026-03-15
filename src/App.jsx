@@ -2592,6 +2592,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
             setCookie("wynflow_user", authData.user, 43200);
             setCookie("wynflow_business", existingBiz, 43200);
             dispatch({ type: "NOTIFY", payload: { message: "Welcome to Wynflow!", type: "success" } });
+            dispatch({ type: "SET_SCREEN", payload: "dashboard" });
           } else {
             throw new Error("Account created but business profile failed. Please try logging in.");
           }
@@ -2620,10 +2621,8 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         setCookie("wynflow_refresh", authData.refresh_token, 43200);
         setCookie("wynflow_user", authData.user, 43200);
         setCookie("wynflow_business", bizRecord, 43200);
-        dispatch({ type: "NOTIFY", payload: { message: "Account created! Redirecting to payment...", type: "success" } });
-        // Redirect to Stripe after account creation
-        const stripeUrl = STRIPE_LINKS[plan] || STRIPE_LINKS.starter;
-        window.location.href = stripeUrl + "?prefilled_email=" + encodeURIComponent(email);
+        dispatch({ type: "NOTIFY", payload: { message: "Account created! Welcome to Wynflow.", type: "success" } });
+        dispatch({ type: "SET_SCREEN", payload: "dashboard" });
         fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, trade, hourly_rate: hourlyRate, callout_fee: calloutFee }),
@@ -8064,6 +8063,7 @@ export default function WynflowApp() {
               setCookie("wynflow_user", user, 43200);
               setCookie("wynflow_business", existingBiz, 43200);
               dispatch({ type: "NOTIFY", payload: { message: "Email verified! Welcome to Wynflow.", type: "success" } });
+              dispatch({ type: "SET_SCREEN", payload: "dashboard" });
               return;
             }
             // Create business from pending signup data
@@ -8099,10 +8099,7 @@ export default function WynflowApp() {
               setCookie("wynflow_business", bizRecord, 43200);
               try { localStorage.removeItem("wynflow_pending_signup"); } catch(e) {}
               dispatch({ type: "NOTIFY", payload: { message: "Email verified! Welcome to Wynflow.", type: "success" } });
-              // Redirect to Stripe
-              const plan = pending.plan || "starter";
-              const stripeUrl = STRIPE_LINKS[plan] || STRIPE_LINKS.starter;
-              window.location.href = stripeUrl + "?prefilled_email=" + encodeURIComponent(user.email || pending.email || "");
+              dispatch({ type: "SET_SCREEN", payload: "dashboard" });
             }
           } catch(err) {
             dispatch({ type: "NOTIFY", payload: { message: "Email verified! Please sign in to continue.", type: "success" } });
