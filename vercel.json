@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "api/request.js": {
-      "includeFiles": "dist/index.html"
-    }
-  },
   "rewrites": [
     { "source": "/request/:path*", "destination": "/api/request?id=:path*" },
     { "source": "/((?!api/).*)", "destination": "/" }

@@ -1,58 +1,55 @@
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
+export const config = { runtime: 'edge' };
 
-let cachedHtml = null;
-function getBaseHtml() {
-  if (cachedHtml) return cachedHtml;
-  const paths = [
-    resolve(process.cwd(), 'dist', 'index.html'),
-    resolve(process.cwd(), 'index.html'),
-    resolve('dist', 'index.html'),
-  ];
-  for (const p of paths) {
-    try {
-      cachedHtml = readFileSync(p, 'utf-8');
-      return cachedHtml;
-    } catch { continue; }
+export default async function handler(req) {
+  const url = new URL(req.url);
+  const bizId = url.searchParams.get('id') || '';
+
+  if (!bizId) {
+    return Response.redirect(new URL('/', req.url), 302);
   }
-  return null;
-}
 
-export default async function handler(req, res) {
-  const bizId = req.query.id || '';
-  if (!bizId) { res.redirect(302, '/'); return; }
+  // Fetch the actual homepage HTML from origin
+  const originRes = await fetch(new URL('/', req.url), {
+    headers: { 'Accept': 'text/html' },
+  });
+  let html = await originRes.text();
 
-  let html = getBaseHtml();
-  if (!html) { res.redirect(302, '/'); return; }
+  // Strip ALL OG image / Twitter card image tags so no preview card shows
+  html = html.replace(/<meta\s+property="og:image"[^>]*\/?>/gi, '');
+  html = html.replace(/<meta\s+property="og:image:width"[^>]*\/?>/gi, '');
+  html = html.replace(/<meta\s+property="og:image:height"[^>]*\/?>/gi, '');
+  html = html.replace(/<meta\s+property="og:image:alt"[^>]*\/?>/gi, '');
+  html = html.replace(/<meta\s+name="twitter:image"[^>]*\/?>/gi, '');
+  html = html.replace(/<meta\s+name="twitter:card"[^>]*\/?>/gi, '');
 
-  // Remove the OG image tags so no Wynflow marketing card shows when shared
-  html = html.replace(/<meta\s+property="og:image"[^>]*>/gi, '');
-  html = html.replace(/<meta\s+property="og:image:width"[^>]*>/gi, '');
-  html = html.replace(/<meta\s+property="og:image:height"[^>]*>/gi, '');
-  html = html.replace(/<meta\s+property="og:image:alt"[^>]*>/gi, '');
-  html = html.replace(/<meta\s+name="twitter:image"[^>]*>/gi, '');
-  html = html.replace(/<meta\s+name="twitter:card"[^>]*>/gi, '');
-
-  // Update title/description to be generic
-  html = html.replace(/<title>[^<]*<\/title>/, `<title>Request a Quote — Wynflow</title>`);
+  // Set basic title/description instead of Wynflow marketing copy
+  html = html.replace(/<title>[^<]*<\/title>/, '<title>Request a Quote</title>');
+  html = html.replace(
+    /(<meta\s+name="description"\s+content=")[^"]*(")/i,
+    '$1Fill in your details to request a free quote.$2'
+  );
   html = html.replace(
     /(<meta\s+property="og:title"\s+content=")[^"]*(")/i,
-    `$1Request a Quote$2`
+    '$1Request a Quote$2'
   );
   html = html.replace(
     /(<meta\s+property="og:description"\s+content=")[^"]*(")/i,
-    `$1Fill in your details and get a free quote fast.$2`
+    '$1Fill in your details to request a free quote.$2'
   );
   html = html.replace(
     /(<meta\s+name="twitter:title"\s+content=")[^"]*(")/i,
-    `$1Request a Quote$2`
+    '$1Request a Quote$2'
   );
   html = html.replace(
     /(<meta\s+name="twitter:description"\s+content=")[^"]*(")/i,
-    `$1Fill in your details and get a free quote fast.$2`
+    '$1Fill in your details to request a free quote.$2'
   );
 
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
-  res.status(200).send(html);
+  return new Response(html, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+    },
+  });
 }
