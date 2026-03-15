@@ -4229,6 +4229,18 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         job_title: q.job_title, description: q.description, amount: q.amount,
         status: q.status, source: q.source || "wynflow",
         ...(q.decline_reason ? { decline_reason: q.decline_reason } : {}),
+        ...(q.photos && q.photos.length > 0 ? { has_photos: true } : {}),
+      }));
+      // Find similar past quotes with photos — send up to 3 reference photos so AI learns visually
+      const jobWords = form.jobTitle.toLowerCase().split(/\s+/);
+      const similarWithPhotos = allQuotesWithAmount
+        .filter(q => q.photos && q.photos.length > 0 && q.photos[0] && typeof q.photos[0] === "string" && q.photos[0].startsWith("http"))
+        .map(q => ({ ...q, score: jobWords.filter(w => (q.job_title || "").toLowerCase().includes(w)).length }))
+        .filter(q => q.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3);
+      const referencePhotos = similarWithPhotos.map(q => ({
+        job_title: q.job_title, amount: q.amount, status: q.status, photo_urls: q.photos.slice(0, 2),
       }));
       // Calculate win rate so AI can calibrate pricing aggressiveness
       const responded = wonQuotes.length + declinedQuotes.length;
@@ -4251,6 +4263,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
           callout_fee: business.callout_fee,
           price_list: business.price_list || [],
           quote_history: quoteHistory,
+          reference_photos: referencePhotos,
           learning_context: { win_rate: winRate, avg_won_amount: avgWonAmount, total_quotes: allQuotesWithAmount.length, total_won: wonQuotes.length, total_declined: declinedQuotes.length },
         }),
       });
@@ -4938,6 +4951,18 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
         job_title: q.job_title, description: q.description, amount: q.amount,
         status: q.status, source: q.source || "wynflow",
         ...(q.decline_reason ? { decline_reason: q.decline_reason } : {}),
+        ...(q.photos && q.photos.length > 0 ? { has_photos: true } : {}),
+      }));
+      // Find similar past quotes with photos — send up to 3 reference photos so AI learns visually
+      const jobWords = (quote.job_title || "").toLowerCase().split(/\s+/);
+      const similarWithPhotos = allQ
+        .filter(q => q.photos && q.photos.length > 0 && q.photos[0] && typeof q.photos[0] === "string" && q.photos[0].startsWith("http"))
+        .map(q => ({ ...q, score: jobWords.filter(w => (q.job_title || "").toLowerCase().includes(w)).length }))
+        .filter(q => q.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3);
+      const referencePhotos = similarWithPhotos.map(q => ({
+        job_title: q.job_title, amount: q.amount, status: q.status, photo_urls: q.photos.slice(0, 2),
       }));
       const responded = wonQ.length + declinedQ.length;
       const winRate = responded > 0 ? Math.round((wonQ.length / responded) * 100) : null;
@@ -4960,6 +4985,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
           callout_fee: business.callout_fee,
           price_list: business.price_list || [],
           quote_history: quoteHistory,
+          reference_photos: referencePhotos,
           learning_context: { win_rate: winRate, avg_won_amount: avgWonAmount, total_quotes: allQ.length, total_won: wonQ.length, total_declined: declinedQ.length },
         }),
       });
@@ -7237,48 +7263,9 @@ const HistoricalQuotes = ({ business, dispatch, quotes }) => {
   const isMobile = useIsMobile();
   const [form, setForm] = useState({ jobTitle: "", description: "", amount: "", customerName: "", status: "booked" });
   const [saving, setSaving] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [scanPhotos, setScanPhotos] = useState([]);
   const historicalQuotes = quotes.filter(q => q.source === "historical");
 
   const update = (key, val) => setForm({ ...form, [key]: val });
-
-  // Scan photo of old quote using AI to extract details
-  const handleScanPhotos = async (files) => {
-    const fileList = Array.from(files).slice(0, 3);
-    if (!fileList.length) return;
-    setScanPhotos(fileList);
-    setScanning(true);
-    try {
-      const photoData = [];
-      for (const file of fileList) {
-        const compressed = await compressImage(file);
-        photoData.push({ name: file.name, type: "image/jpeg", data: compressed });
-      }
-      const res = await fetch("https://wynfallautomation.app.n8n.cloud/webhook/scan-quote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ business_id: business.id, photos: photoData, trade: business.trade }),
-      });
-      const result = await res.json();
-      if (result.job_title) {
-        setForm({
-          jobTitle: result.job_title || "",
-          description: result.description || "",
-          amount: result.amount ? String(result.amount) : "",
-          customerName: result.customer_name || "",
-          status: result.status || "booked",
-        });
-        dispatch({ type: "NOTIFY", payload: { message: "Quote scanned — check the details and save", type: "success" } });
-      } else {
-        dispatch({ type: "NOTIFY", payload: { message: "Couldn't read the quote — try a clearer photo", type: "error" } });
-      }
-    } catch (err) {
-      dispatch({ type: "NOTIFY", payload: { message: "Scan failed — try again", type: "error" } });
-    } finally {
-      setScanning(false);
-    }
-  };
 
   const saveQuote = async () => {
     if (!form.jobTitle || !form.amount) {
@@ -7303,7 +7290,6 @@ const HistoricalQuotes = ({ business, dispatch, quotes }) => {
       dispatch({ type: "ADD_QUOTE", payload: data[0] });
       dispatch({ type: "SET_SCREEN", payload: "historicalQuotes" });
       setForm({ jobTitle: "", description: "", amount: "", customerName: "", status: "booked" });
-      setScanPhotos([]);
       dispatch({ type: "NOTIFY", payload: { message: "Historical quote added — AI will use this for future estimates", type: "success" } });
     } catch (err) {
       dispatch({ type: "NOTIFY", payload: { message: "Failed to save quote", type: "error" } });
@@ -7330,22 +7316,9 @@ const HistoricalQuotes = ({ business, dispatch, quotes }) => {
         <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>Add old quotes so the AI learns from your pricing history</p>
       </div>
 
-      {/* Scan old quote from photo */}
-      <Card style={{ marginBottom: 24, border: `1px solid rgba(20,184,166,0.15)`, background: "rgba(20,184,166,0.04)" }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 8 }}><Camera size={18} color={theme.accent} /> Scan an Old Quote</h3>
-        <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 14px" }}>Take a photo of an old paper quote or screenshot — the AI will read it and fill in the details for you.</p>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <label style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 8, background: scanning ? "rgba(255,255,255,0.03)" : theme.accent, color: scanning ? theme.textMuted : "#fff", fontWeight: 600, fontSize: 14, cursor: scanning ? "wait" : "pointer", transition: "all 0.15s" }}>
-            <input type="file" accept="image/*" multiple capture="environment" style={{ display: "none" }} onChange={e => handleScanPhotos(e.target.files)} disabled={scanning} />
-            {scanning ? <><Spinner size={14} /> Scanning...</> : <><Cpu size={15} /> {scanPhotos.length > 0 ? "Scan Another" : "Upload Photo"}</>}
-          </label>
-          {scanPhotos.length > 0 && !scanning && <span style={{ fontSize: 12, color: theme.accent }}>{scanPhotos.length} photo{scanPhotos.length > 1 ? "s" : ""} scanned</span>}
-        </div>
-      </Card>
-
       {/* Add new historical quote */}
       <Card style={{ marginBottom: 24 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px", display: "flex", alignItems: "center", gap: 8 }}><Plus size={18} color={theme.accent} /> {scanPhotos.length > 0 ? "Review Scanned Quote" : "Add a Past Quote"}</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px", display: "flex", alignItems: "center", gap: 8 }}><Plus size={18} color={theme.accent} /> Add a Past Quote</h3>
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14 }}>
           <Input label="Job Title *" placeholder="e.g. Bathroom reno, 3 Elm St" value={form.jobTitle} onChange={v => update("jobTitle", v)} />
           <Input label="Amount (excl. GST) *" type="number" placeholder="e.g. 4500" value={form.amount} onChange={v => update("amount", v)} />
