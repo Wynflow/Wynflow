@@ -775,6 +775,7 @@
       </div>
     </div>
     <button class="restart-btn" id="restartBtn" style="opacity:0" onclick="restart()">Watch Again</button>
+    <button class="restart-btn" id="recordBtn" style="opacity:1; margin-top:8px; background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.3); color:#EF4444;" onclick="recordDemo()">● Record & Download</button>
   </div>
 </div>
 
@@ -959,6 +960,57 @@ const observer = new MutationObserver(() => {
   if (id === 4) animateScene4();
 });
 document.querySelectorAll('.scene').forEach(s => observer.observe(s, { attributes: true, attributeFilter: ['class'] }));
+
+// Record & Download
+async function recordDemo() {
+  const btn = document.getElementById('recordBtn');
+  try {
+    // Ask user to share this tab
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { mediaSource: 'tab', frameRate: 30 },
+      audio: false,
+      preferCurrentTab: true,
+    });
+
+    const chunks = [];
+    const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    recorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'wynflow-demo.webm';
+      a.click();
+      URL.revokeObjectURL(url);
+      btn.textContent = '● Record & Download';
+      btn.style.background = 'rgba(239,68,68,0.15)';
+    };
+
+    // Start recording then restart the demo
+    recorder.start();
+    btn.textContent = '⏹ Recording...';
+    btn.style.background = 'rgba(239,68,68,0.3)';
+
+    // Restart the demo so it records from the beginning
+    restart();
+
+    // Auto-stop after the full demo plays (~25 seconds)
+    setTimeout(() => {
+      if (recorder.state === 'recording') recorder.stop();
+    }, 28000);
+
+    // Also allow manual stop
+    btn.onclick = () => {
+      if (recorder.state === 'recording') recorder.stop();
+      btn.onclick = recordDemo;
+    };
+  } catch (err) {
+    // User cancelled the screen share prompt
+    btn.textContent = '● Record & Download';
+  }
+}
 
 // Start
 setTimeout(animateScene0, 800);
