@@ -4116,9 +4116,10 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
   const [showPreview, setShowPreview] = useState(false);
 
   const QuotePreview = () => (
-    <div onClick={() => setShowPreview(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(4px)" }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 620, maxHeight: "90vh", overflowY: "auto", borderRadius: 12, background: "#fff", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
-        <div style={{ padding: "32px 40px" }}>
+    <div onClick={() => setShowPreview(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? 12 : 20, backdropFilter: "blur(4px)" }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 620, maxHeight: "90vh", overflowY: "auto", borderRadius: 12, background: "#fff", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", position: "relative" }}>
+        <button onClick={() => setShowPreview(false)} style={{ position: "sticky", top: 0, right: 0, float: "right", margin: "12px 12px 0 0", width: 32, height: 32, borderRadius: 8, background: "rgba(0,0,0,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#6b7280", zIndex: 1 }}>×</button>
+        <div style={{ padding: isMobile ? "20px 20px" : "32px 40px", marginTop: -32 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
             <div>
               <div style={{ fontSize: 28, fontWeight: 800, color: "#0A0E17", fontFamily: theme.fontDisplay }}>{business.business_name}</div>
@@ -4156,7 +4157,10 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
               {editForm?.labourHours && business.hourly_rate && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Labour ({editForm.labourHours} hrs @ ${business.hourly_rate}/hr)</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${(parseFloat(editForm.labourHours) * parseFloat(business.hourly_rate)).toLocaleString()}</span></div>}
               {editForm?.includeCallout && parseFloat(business.callout_fee) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Callout Fee</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${parseFloat(business.callout_fee).toLocaleString()}</span></div>}
             </>)}
-            <div style={{ borderTop: editForm?.showBreakdown ? "2px solid #111827" : "none", paddingTop: editForm?.showBreakdown ? 12 : 0, marginTop: editForm?.showBreakdown ? 12 : 0, display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total{business.gst_number ? (business.gst_inclusive !== false ? " (incl. GST)" : " (excl. GST)") : ""}</span><span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(editForm?.amount || 0).toLocaleString()}</span></div>
+            <div style={{ borderTop: editForm?.showBreakdown ? "2px solid #111827" : "none", paddingTop: editForm?.showBreakdown ? 12 : 0, marginTop: editForm?.showBreakdown ? 12 : 0, display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total{business.gst_number ? (business.gst_inclusive !== false ? " (incl. GST)" : " (excl. GST)") : ""}</span>
+              <span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(editForm?.amount || 0).toLocaleString()}</span>
+            </div>
           </div>
           {editForm?.notes && <div style={{ marginBottom: 24 }}><div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Terms & Conditions</div><div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-line" }}>{editForm.notes}</div></div>}
           {editForm?.showBusinessDetails && business.quote_footer && <div style={{ marginBottom: 24, padding: "14px 16px", borderRadius: 8, background: "#f9fafb", border: "1px solid #e5e7eb" }}><div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-line" }}>{business.quote_footer}</div></div>}
@@ -4174,7 +4178,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
           )}
           <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontSize: 11, color: "#9ca3af" }}>Powered by <span style={{ color: "#14B8A6", fontWeight: 600 }}>Wynflow</span></div><div style={{ fontSize: 11, color: "#9ca3af" }}>Valid for 30 days</div></div>
         </div>
-        <div style={{ padding: "16px 40px 24px", background: "#f9fafb", borderTop: "1px solid #e5e7eb", display: "flex", gap: 12, justifyContent: "flex-end" }}>
+        <div style={{ padding: isMobile ? "16px 20px 24px" : "16px 40px 24px", background: "#f9fafb", borderTop: "1px solid #e5e7eb", display: "flex", gap: 12, justifyContent: "flex-end" }}>
           <Button variant="secondary" onClick={() => setShowPreview(false)}>Close</Button>
           <Button onClick={() => { setShowPreview(false); sendQuote(); }} disabled={sending}><Send size={16} /> Send Quote</Button>
         </div>
@@ -4893,9 +4897,10 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
         </Button>
       </div>
       {showPreview && (
-        <div onClick={() => setShowPreview(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(4px)" }}>
-          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 620, maxHeight: "90vh", overflowY: "auto", borderRadius: 12, background: "#fff", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
-            <div style={{ padding: isMobile ? "24px 20px" : "32px 40px" }}>
+        <div onClick={() => setShowPreview(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? 12 : 20, backdropFilter: "blur(4px)" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 620, maxHeight: "90vh", overflowY: "auto", borderRadius: 12, background: "#fff", boxShadow: "0 8px 32px rgba(0,0,0,0.3)", position: "relative" }}>
+            <button onClick={() => setShowPreview(false)} style={{ position: "sticky", top: 0, right: 0, float: "right", margin: "12px 12px 0 0", width: 32, height: 32, borderRadius: 8, background: "rgba(0,0,0,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#6b7280", zIndex: 1 }}>×</button>
+            <div style={{ padding: isMobile ? "20px 20px" : "32px 40px", marginTop: -32 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
                 <div>
                   <div style={{ fontSize: 28, fontWeight: 800, color: "#0A0E17", fontFamily: theme.fontDisplay }}>{business.business_name}</div>
@@ -4968,7 +4973,7 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
                 <div style={{ fontSize: 11, color: "#9ca3af" }}>Valid for 30 days</div>
               </div>
             </div>
-            <div style={{ padding: "16px 40px 24px", background: "#f9fafb", borderTop: "1px solid #e5e7eb", display: "flex", gap: 12, justifyContent: "flex-end" }}>
+            <div style={{ padding: isMobile ? "16px 20px 24px" : "16px 40px 24px", background: "#f9fafb", borderTop: "1px solid #e5e7eb", display: "flex", gap: 12, justifyContent: "flex-end" }}>
               <Button variant="secondary" onClick={() => setShowPreview(false)}>Close</Button>
               <Button onClick={() => { setShowPreview(false); handleCreate(); }} disabled={loading}><Send size={16} /> Send Quote</Button>
             </div>
