@@ -586,7 +586,10 @@
     <img src="/logo.png" alt="Wynflow" />
     <span>Wynflow</span>
   </div>
-  <div class="demo-badge">Interactive Demo</div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <button id="recordBtn" onclick="recordDemo()" style="padding:8px 18px;border-radius:100px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#EF4444;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.2s;">● Record & Download</button>
+    <div class="demo-badge">Interactive Demo</div>
+  </div>
 </div>
 
 <!-- Progress -->
@@ -775,7 +778,6 @@
       </div>
     </div>
     <button class="restart-btn" id="restartBtn" style="opacity:0" onclick="restart()">Watch Again</button>
-    <button class="restart-btn" id="recordBtn" style="opacity:1; margin-top:8px; background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.3); color:#EF4444;" onclick="recordDemo()">● Record & Download</button>
   </div>
 </div>
 
