@@ -958,6 +958,9 @@ const Footer = ({ dispatch }) => {
       <div style={{ paddingTop: 24, textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.2)", letterSpacing: "0.03em" }}>
         2026 Wynflow. All rights reserved.
       </div>
+      <p style={{ textAlign: "center", fontSize: 10, color: "rgba(255,255,255,0.12)", marginTop: 12, lineHeight: 1.6, maxWidth: 600, marginLeft: "auto", marginRight: "auto" }}>
+        AI-generated quotes are estimates only and should be reviewed before sending. Wynflow is a quoting tool — all quotes, pricing, and business decisions remain the responsibility of the business owner. Wynflow accepts no liability for the accuracy of AI-generated content.
+      </p>
     </div>
   </footer>
   );
@@ -2809,6 +2812,11 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
               style={{ width: "100%", justifyContent: "center", marginTop: 8, padding: "14px 24px" }}>
               {loading ? "Please wait..." : isSignup ? `Create Account & Subscribe →` : "Sign In →"}
             </Button>
+            {isSignup && (
+              <p style={{ fontSize: 10, color: theme.textDim, textAlign: "center", lineHeight: 1.6, marginTop: 8 }}>
+                By signing up you agree that AI-generated quotes are estimates only and that you are responsible for reviewing all quotes before sending them to customers.
+              </p>
+            )}
           </div>
           )}
         </Card>
@@ -4117,6 +4125,9 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
               </div>
             </div>
           )}
+          <div style={{ padding: "10px 14px", borderRadius: 8, background: "#fffbeb", border: "1px solid #fef3c7", marginBottom: 16 }}>
+            <p style={{ fontSize: 11, color: "#92400e", margin: 0, lineHeight: 1.5 }}>This quote was generated with AI assistance. All items, quantities, and pricing have been reviewed by {business.business_name}. Final costs may vary based on site conditions.</p>
+          </div>
           <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontSize: 11, color: "#9ca3af" }}>Powered by <span style={{ color: "#14B8A6", fontWeight: 600 }}>Wynflow</span></div><div style={{ fontSize: 11, color: "#9ca3af" }}>Valid for 30 days</div></div>
         </div>
         <div style={{ padding: "16px 40px 24px", background: "#f9fafb", borderTop: "1px solid #e5e7eb", display: "flex", gap: 12, justifyContent: "flex-end" }}>
@@ -4446,6 +4457,10 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
               )}
             </div>
             <p style={{ fontSize: 12, color: theme.textMuted }}>Edit on the left — {isMobile ? "preview below" : "live preview on the right"}</p>
+            <div style={{ marginTop: 8, padding: "8px 12px", borderRadius: 8, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", display: "flex", alignItems: "flex-start", gap: 8 }}>
+              <AlertTriangle size={14} color="#F59E0B" style={{ flexShrink: 0, marginTop: 1 }} />
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", margin: 0, lineHeight: 1.5 }}>AI-generated quotes are estimates only. Always review all items, quantities, and pricing before sending. You are responsible for the final quote.</p>
+            </div>
           </Card>
 
           {/* Left column: Edit form */}
@@ -4605,6 +4620,9 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
                       </div>
                     </div>
                   )}
+                  <div style={{ padding: "8px 10px", borderRadius: 6, background: "#fffbeb", border: "1px solid #fef3c7", marginBottom: 12 }}>
+                    <p style={{ fontSize: 9, color: "#92400e", margin: 0, lineHeight: 1.5 }}>This quote was generated with AI assistance. All items, quantities, and pricing have been reviewed by {business.business_name}. Final costs may vary based on site conditions.</p>
+                  </div>
                   <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontSize: 9, color: "#9ca3af" }}>Powered by <span style={{ color: "#14B8A6", fontWeight: 600 }}>Wynflow</span></div><div style={{ fontSize: 9, color: "#9ca3af" }}>Valid for 30 days</div></div>
                 </div>
               </div>
