@@ -1726,6 +1726,10 @@ const RequestQuotePage = ({ businessId }) => {
           photos: photoData,
         }),
       });
+      if (!res.ok) {
+        setError("Something went wrong — please try again or contact the business directly.");
+        return;
+      }
       setSubmitted(true);
     } catch (err) {
       setError("Something went wrong — please try again or contact the business directly.");
@@ -2659,7 +2663,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
             dispatch({ type: "SET_USER", payload: authData.user });
             dispatch({ type: "SET_BUSINESS", payload: existingBiz });
             setCookie("wynflow_token", supabase.token, 43200);
-            setCookie("wynflow_refresh", authData.refresh_token, 43200);
+            if (authData.refresh_token) setCookie("wynflow_refresh", authData.refresh_token, 43200);
             setCookie("wynflow_user", authData.user, 43200);
             setCookie("wynflow_business", existingBiz, 43200);
             dispatch({ type: "NOTIFY", payload: { message: "Welcome to Wynflow!", type: "success" } });
@@ -2689,7 +2693,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         dispatch({ type: "SET_USER", payload: authData.user });
         dispatch({ type: "SET_BUSINESS", payload: bizRecord });
         setCookie("wynflow_token", supabase.token, 43200);
-        setCookie("wynflow_refresh", authData.refresh_token, 43200);
+        if (authData.refresh_token) setCookie("wynflow_refresh", authData.refresh_token, 43200);
         setCookie("wynflow_user", authData.user, 43200);
         setCookie("wynflow_business", bizRecord, 43200);
         dispatch({ type: "NOTIFY", payload: { message: "Account created! Welcome to Wynflow.", type: "success" } });
@@ -2713,7 +2717,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         if (!biz) throw new Error("No business profile found for this account. Please sign up instead.");
         dispatch({ type: "SET_BUSINESS", payload: biz });
         setCookie("wynflow_token", supabase.token, 43200);
-        setCookie("wynflow_refresh", authData.refresh_token, 43200);
+        if (authData.refresh_token) setCookie("wynflow_refresh", authData.refresh_token, 43200);
         setCookie("wynflow_user", authData.user, 43200);
         setCookie("wynflow_business", biz, 43200);
         dispatch({ type: "SET_SCREEN", payload: "dashboard" });
@@ -4378,6 +4382,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         quoteFooter: business.quote_footer,
         businessAddress: business.address,
         gstNumber: business.gst_number,
+        gstInclusive: business.gst_inclusive !== false,
         licenseNumber: business.license_number,
         businessPhone: business.phone,
         businessEmail: business.email,
@@ -5181,6 +5186,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
         quoteFooter: business.quote_footer,
         businessAddress: business.address,
         gstNumber: business.gst_number,
+        gstInclusive: business.gst_inclusive !== false,
         licenseNumber: business.license_number,
         businessPhone: business.phone,
         businessEmail: business.email,
@@ -5960,9 +5966,12 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
     ? Math.round(parseFloat(linkedQuote.amount || 0) * (form.depositPercentage / 100) * 100) / 100
     : parseFloat(form.amount) || 0;
 
-  // GST: 15% on top of the amount (amount is GST-exclusive)
-  const gstAmount = business?.gst_number ? Math.round(invoiceAmount * 0.15 * 100) / 100 : 0;
-  const totalAmount = invoiceAmount + gstAmount;
+  // GST: if prices are GST-inclusive, GST is already baked in; if exclusive, add 15%
+  const isGstInclusive = business?.gst_inclusive !== false;
+  const gstAmount = business?.gst_number
+    ? (isGstInclusive ? Math.round(invoiceAmount * 3 / 23 * 100) / 100 : Math.round(invoiceAmount * 0.15 * 100) / 100)
+    : 0;
+  const totalAmount = isGstInclusive ? invoiceAmount : invoiceAmount + gstAmount;
 
   // Invoice number: use existing for edits, otherwise derive from highest existing invoice
   const nextNum = isEditing ? null : (() => {
@@ -6001,7 +6010,7 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
   });
 
   const sendInvoice = async () => {
-    if (!form.customerName || !form.customerEmail || !form.amount) {
+    if (!form.customerName || !form.customerEmail || (!form.isDeposit && !form.amount)) {
       dispatch({ type: "NOTIFY", payload: { message: "Please fill in customer name, email, and amount", type: "error" } });
       return;
     }
@@ -6057,7 +6066,7 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
   };
 
   const saveAsDraft = async () => {
-    if (!form.customerName || !form.amount) {
+    if (!form.customerName || (!form.isDeposit && !form.amount)) {
       dispatch({ type: "NOTIFY", payload: { message: "Please fill in customer name and amount", type: "error" } });
       return;
     }
@@ -7405,7 +7414,7 @@ const HistoricalQuotes = ({ business, dispatch, quotes }) => {
             </div>
           </div>
         </div>
-        <Input label="Description / Scope" type="textarea" placeholder="Brief description of the job (helps AI learn your pricing patterns)" value={form.description} onChange={v => update("description", v)} style={{ marginTop: 14 }} />
+        <Input label="Description / Scope" textarea placeholder="Brief description of the job (helps AI learn your pricing patterns)" value={form.description} onChange={v => update("description", v)} style={{ marginTop: 14 }} />
         <Button onClick={saveQuote} disabled={saving} style={{ marginTop: 16 }}><Plus size={14} /> {saving ? "Saving..." : "Add Quote"}</Button>
       </Card>
 
@@ -8351,6 +8360,7 @@ function WynflowAppInner() {
               business_name: pending.businessName || "My Business",
               contact_name: pending.contactName || "",
               email: user.email || pending.email || "",
+              phone: pending.phone || "",
               trade: pending.trade || null,
               trade_category: pending.trade || null,
               hourly_rate: parseFloat(pending.hourlyRate) || 0,
@@ -8377,6 +8387,9 @@ function WynflowAppInner() {
               try { localStorage.removeItem("wynflow_pending_signup"); } catch(e) {}
               dispatch({ type: "NOTIFY", payload: { message: "Email verified! Welcome to Wynflow.", type: "success" } });
               dispatch({ type: "SET_SCREEN", payload: "dashboard" });
+            } else {
+              dispatch({ type: "NOTIFY", payload: { message: "Account setup failed — please sign in and try again, or contact support.", type: "error" } });
+              dispatch({ type: "SET_SCREEN", payload: "login" });
             }
           } catch(err) {
             dispatch({ type: "NOTIFY", payload: { message: "Email verified! Please sign in to continue.", type: "success" } });
@@ -8417,7 +8430,7 @@ function WynflowAppInner() {
             const { data: freshBiz } = await db("businesses").eq("user_id", refreshed.user.id).single().select();
             const bizData = freshBiz || savedBusiness;
             setCookie("wynflow_token", refreshed.access_token, 43200);
-            setCookie("wynflow_refresh", refreshed.refresh_token, 43200);
+            if (refreshed.refresh_token) setCookie("wynflow_refresh", refreshed.refresh_token, 43200);
             setCookie("wynflow_user", refreshed.user, 43200);
             setCookie("wynflow_business", bizData, 43200);
             dispatch({ type: "SET_USER", payload: refreshed.user });
@@ -8475,9 +8488,6 @@ function WynflowAppInner() {
       loadData();
     }
   }, [business?.id, sessionReady, dataLoaded, loadData]);
-
-  // Also reload when loadData reference changes (covers edge cases)
-  useEffect(() => { loadData(); }, [loadData]);
 
   // Show onboarding for new users
   useEffect(() => {
