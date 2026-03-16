@@ -4899,7 +4899,7 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
                   <div style={{ fontSize: 12, fontWeight: 700, color: "#0d9488", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Deposit Required — {business.deposit_percentage || 25}%</div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                     <span style={{ fontSize: 14, color: "#0d9488", fontWeight: 600 }}>Deposit Amount</span>
-                    <span style={{ fontSize: 16, fontWeight: 700, color: "#0d9488" }}>${(parseFloat(form.amount || 0) * (parseFloat(business.deposit_percentage || 25) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: "#0d9488" }}>${(totalAmount * (parseFloat(business.deposit_percentage || 25) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div style={{ borderTop: "1px solid #ccfbf1", paddingTop: 10, marginTop: 10 }}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Payment Details</div>
