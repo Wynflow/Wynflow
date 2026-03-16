@@ -2525,7 +2525,7 @@ const TRADE_CATEGORIES = [
   "Plumber", "Electrician", "Builder", "Painter", "Roofer", "Landscaper",
   "Carpet Layer", "Tiler", "Cleaner", "Handyman", "Mechanic", "Fencer",
   "Locksmith", "Gasfitter", "Drainlayer", "Plasterer", "Concreter",
-  "Pest Control", "Arborist", "Interior Designer", "Other",
+  "Pest Control", "Arborist", "Scaffolding", "Interior Designer", "Other",
 ];
 
 // ─── Reset Password Screen ───
@@ -4262,6 +4262,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
           hourly_rate: business.hourly_rate,
           callout_fee: business.callout_fee,
           price_list: business.price_list || [],
+          ai_pricing_mode: business.ai_pricing_mode || "flexible",
           quote_history: quoteHistory,
           reference_photos: referencePhotos,
           learning_context: { win_rate: winRate, avg_won_amount: avgWonAmount, total_quotes: allQuotesWithAmount.length, total_won: wonQuotes.length, total_declined: declinedQuotes.length },
@@ -4984,6 +4985,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
           hourly_rate: business.hourly_rate,
           callout_fee: business.callout_fee,
           price_list: business.price_list || [],
+          ai_pricing_mode: business.ai_pricing_mode || "flexible",
           quote_history: quoteHistory,
           reference_photos: referencePhotos,
           learning_context: { win_rate: winRate, avg_won_amount: avgWonAmount, total_quotes: allQ.length, total_won: wonQ.length, total_declined: declinedQ.length },
@@ -7398,6 +7400,7 @@ const Settings = ({ business, dispatch }) => {
   const [licenseNumber, setLicenseNumber] = useState(business?.license_number || "");
   const [quoteFooter, setQuoteFooter] = useState(business?.quote_footer || "");
   const [defaultPaymentTerms, setDefaultPaymentTerms] = useState(business?.default_payment_terms || "7 days");
+  const [aiPricingMode, setAiPricingMode] = useState(business?.ai_pricing_mode || "flexible");
   const [saving, setSaving] = useState(false);
   const [declineReasons, setDeclineReasons] = useState(business?.decline_reasons || DEFAULT_DECLINE_REASONS);
   const [newReason, setNewReason] = useState("");
@@ -7414,6 +7417,7 @@ const Settings = ({ business, dispatch }) => {
       hourly_rate: parseFloat(hourlyRate) || 0,
       callout_fee: parseFloat(calloutFee) || 0,
       price_list: priceList,
+      ai_pricing_mode: aiPricingMode,
       decline_reasons: declineReasons,
       bank_name: bankName,
       bank_account_name: bankAccountName,
@@ -7521,6 +7525,26 @@ const Settings = ({ business, dispatch }) => {
             <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 10 : 12 }}>
               <div style={{ flex: 1 }}><Input label="Hourly Rate ($)" value={hourlyRate} onChange={setHourlyRate} type="number" /></div>
               <div style={{ flex: 1 }}><Input label="Callout Fee ($)" value={calloutFee} onChange={setCalloutFee} type="number" /></div>
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 6 }}>AI Pricing Mode</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {[
+                  { id: "flexible", label: "Flexible", desc: "AI estimates items & pricing based on the job" },
+                  { id: "strict", label: "Price List Only", desc: "AI only uses your price list & quote history" },
+                ].map(mode => (
+                  <div key={mode.id} onClick={() => setAiPricingMode(mode.id)}
+                    style={{
+                      flex: 1, minWidth: 140, padding: "12px 14px", borderRadius: 10, cursor: "pointer",
+                      background: aiPricingMode === mode.id ? "rgba(20,184,166,0.08)" : "rgba(255,255,255,0.03)",
+                      border: `1px solid ${aiPricingMode === mode.id ? "rgba(20,184,166,0.3)" : "rgba(255,255,255,0.06)"}`,
+                      transition: "all 0.15s ease",
+                    }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: aiPricingMode === mode.id ? theme.accent : theme.text, marginBottom: 2 }}>{mode.label}</div>
+                    <div style={{ fontSize: 11, color: theme.textDim, lineHeight: 1.4 }}>{mode.desc}</div>
+                  </div>
+                ))}
+              </div>
             </div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 4 }}>Your Price List</div>
