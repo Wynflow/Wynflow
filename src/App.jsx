@@ -4125,9 +4125,6 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
               </div>
             </div>
           )}
-          <div style={{ padding: "10px 14px", borderRadius: 8, background: "#fffbeb", border: "1px solid #fef3c7", marginBottom: 16 }}>
-            <p style={{ fontSize: 11, color: "#92400e", margin: 0, lineHeight: 1.5 }}>This quote was generated with AI assistance. All items, quantities, and pricing have been reviewed by {business.business_name}. Final costs may vary based on site conditions.</p>
-          </div>
           <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontSize: 11, color: "#9ca3af" }}>Powered by <span style={{ color: "#14B8A6", fontWeight: 600 }}>Wynflow</span></div><div style={{ fontSize: 11, color: "#9ca3af" }}>Valid for 30 days</div></div>
         </div>
         <div style={{ padding: "16px 40px 24px", background: "#f9fafb", borderTop: "1px solid #e5e7eb", display: "flex", gap: 12, justifyContent: "flex-end" }}>
@@ -4620,9 +4617,6 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
                       </div>
                     </div>
                   )}
-                  <div style={{ padding: "8px 10px", borderRadius: 6, background: "#fffbeb", border: "1px solid #fef3c7", marginBottom: 12 }}>
-                    <p style={{ fontSize: 9, color: "#92400e", margin: 0, lineHeight: 1.5 }}>This quote was generated with AI assistance. All items, quantities, and pricing have been reviewed by {business.business_name}. Final costs may vary based on site conditions.</p>
-                  </div>
                   <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontSize: 9, color: "#9ca3af" }}>Powered by <span style={{ color: "#14B8A6", fontWeight: 600 }}>Wynflow</span></div><div style={{ fontSize: 9, color: "#9ca3af" }}>Valid for 30 days</div></div>
                 </div>
               </div>
