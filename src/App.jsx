@@ -2308,9 +2308,28 @@ const PricingPage = ({ dispatch }) => {
               <h3 style={{ fontSize: 22, fontWeight: 700, color: "#FFFFFF", marginBottom: 8, fontFamily: theme.font, letterSpacing: "-0.02em" }}>{plan.name}</h3>
               <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 24, lineHeight: 1.6 }}>{plan.desc}</p>
 
-              <div style={{ marginBottom: 32, display: "flex", alignItems: "baseline", gap: 4 }}>
-                <span style={{ fontSize: 52, fontWeight: 800, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.03em" }}>${plan.price}</span>
-                <span style={{ fontSize: 16, color: "rgba(255,255,255,0.35)" }}>/month</span>
+              <div style={{ marginBottom: 32 }}>
+                {plan.highlighted && (
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 100, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", marginBottom: 16 }}>
+                    <Zap size={13} color={theme.green} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: theme.green, letterSpacing: "0.02em" }}>Free for 14 days</span>
+                  </div>
+                )}
+                <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                  {plan.highlighted ? (
+                    <>
+                      <span style={{ fontSize: 32, fontWeight: 600, color: "rgba(255,255,255,0.25)", fontFamily: theme.font, textDecoration: "line-through", textDecorationColor: "rgba(239,68,68,0.5)", marginRight: 8 }}>${plan.price}</span>
+                      <span style={{ fontSize: 52, fontWeight: 800, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.03em" }}>$0</span>
+                      <span style={{ fontSize: 16, color: "rgba(255,255,255,0.35)" }}>/first 14 days</span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ fontSize: 52, fontWeight: 800, color: "#FFFFFF", fontFamily: theme.font, letterSpacing: "-0.03em" }}>${plan.price}</span>
+                      <span style={{ fontSize: 16, color: "rgba(255,255,255,0.35)" }}>/month</span>
+                    </>
+                  )}
+                </div>
+                {plan.highlighted && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 6 }}>Then ${plan.price}/mo — cancel anytime</div>}
               </div>
 
               {plan.comingSoon ? (
@@ -2721,7 +2740,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
             <WynflowLogo size={48} showText textSize={28} />
           </div>
           <div style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", lineHeight: 1.5 }}>
-            {isSignup ? "Set up your account — Starter $29/mo" : "Welcome back — your quotes are waiting"}
+            {isSignup ? "Start your free 14-day trial — no credit card needed" : "Welcome back — your quotes are waiting"}
           </div>
         </div>
         <Card style={{ padding: 32 }}>
@@ -2810,7 +2829,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
             )}
             <Button onClick={handleSubmit} disabled={loading}
               style={{ width: "100%", justifyContent: "center", marginTop: 8, padding: "14px 24px" }}>
-              {loading ? "Please wait..." : isSignup ? `Create Account & Subscribe →` : "Sign In →"}
+              {loading ? "Please wait..." : isSignup ? "Start Free Trial →" : "Sign In →"}
             </Button>
             {isSignup && (
               <p style={{ fontSize: 10, color: theme.textDim, textAlign: "center", lineHeight: 1.6, marginTop: 8 }}>
