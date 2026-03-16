@@ -1607,6 +1607,30 @@ const HomePage = ({ dispatch }) => {
       </div>
     </div>
 
+    {/* ── Divider ── */}
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
+    </div>
+
+    {/* ── Interactive Demo ── */}
+    <div style={{ padding: isMobile ? "80px 24px" : "120px 48px", position: "relative" }}>
+      <div style={{ position: "absolute", top: "30%", left: "-10%", width: "50%", height: "50%", background: "radial-gradient(circle, rgba(20,184,166,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative", zIndex: 1 }}>
+        <FadeIn>
+          <div style={{ textAlign: "center", marginBottom: isMobile ? 32 : 48 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: theme.accent, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 16 }}>See it in action</p>
+            <h2 style={{ fontSize: isMobile ? 30 : 44, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Try the interactive demo</h2>
+            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", maxWidth: 560, margin: "0 auto", lineHeight: 1.6 }}>See how Wynflow turns job site photos into professional quotes — no signup needed.</p>
+          </div>
+        </FadeIn>
+        <FadeIn delay={0.15}>
+          <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 8px 40px rgba(0,0,0,0.4), 0 0 60px rgba(20,184,166,0.05)", background: "rgba(255,255,255,0.02)" }}>
+            <iframe src="/demo.html" title="Wynflow Interactive Demo" style={{ width: "100%", height: isMobile ? 480 : 640, border: "none", display: "block" }} loading="lazy" />
+          </div>
+        </FadeIn>
+      </div>
+    </div>
+
     {/* ── CTA ── */}
     <div style={{ padding: isMobile ? "80px 24px" : "120px 48px", textAlign: "center", position: "relative" }}>
       {/* Glow behind CTA */}
