@@ -4210,6 +4210,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
       const quoteHistory = sortedHistory.map(q => ({
         job_title: q.job_title, description: q.description, amount: q.amount,
         status: q.status, source: q.source || "wynflow",
+        date: q.sent_at || q.created_at || null,
         ...(q.decline_reason ? { decline_reason: q.decline_reason } : {}),
         ...(q.photos && q.photos.length > 0 ? { has_photos: true } : {}),
       }));
@@ -4222,7 +4223,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         .sort((a, b) => b.score - a.score)
         .slice(0, 3);
       const referencePhotos = similarWithPhotos.map(q => ({
-        job_title: q.job_title, amount: q.amount, status: q.status, photo_urls: q.photos.slice(0, 2),
+        job_title: q.job_title, amount: q.amount, status: q.status, date: q.sent_at || q.created_at || null, photo_urls: q.photos.slice(0, 2),
       }));
       // Calculate win rate so AI can calibrate pricing aggressiveness
       const responded = wonQuotes.length + declinedQuotes.length;
@@ -5015,6 +5016,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
       const quoteHistory = sortedHistory.map(q => ({
         job_title: q.job_title, description: q.description, amount: q.amount,
         status: q.status, source: q.source || "wynflow",
+        date: q.sent_at || q.created_at || null,
         ...(q.decline_reason ? { decline_reason: q.decline_reason } : {}),
         ...(q.photos && q.photos.length > 0 ? { has_photos: true } : {}),
       }));
@@ -5027,7 +5029,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
         .sort((a, b) => b.score - a.score)
         .slice(0, 3);
       const referencePhotos = similarWithPhotos.map(q => ({
-        job_title: q.job_title, amount: q.amount, status: q.status, photo_urls: q.photos.slice(0, 2),
+        job_title: q.job_title, amount: q.amount, status: q.status, date: q.sent_at || q.created_at || null, photo_urls: q.photos.slice(0, 2),
       }));
       const responded = wonQ.length + declinedQ.length;
       const winRate = responded > 0 ? Math.round((wonQ.length / responded) * 100) : null;
