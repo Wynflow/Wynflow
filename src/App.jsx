@@ -1397,36 +1397,6 @@ const HomePage = ({ dispatch }) => {
           </div>
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", marginTop: 24, letterSpacing: "0.04em" }}>No credit card required  ·  14-day free trial  ·  Cancel anytime</p>
         </FadeIn>
-
-        {/* ── Limited Offer Banner ── */}
-        <FadeIn delay={0.32}>
-          <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })} style={{
-            marginTop: 40, padding: "16px 24px", borderRadius: 14,
-            background: "linear-gradient(135deg, rgba(20,184,166,0.08), rgba(20,184,166,0.03))",
-            border: "1px solid rgba(20,184,166,0.2)",
-            cursor: "pointer", transition: "all 0.2s ease-out", maxWidth: 440, marginLeft: "auto", marginRight: "auto",
-            display: "flex", alignItems: "center", gap: 16,
-          }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.4)"; e.currentTarget.style.background = "linear-gradient(135deg, rgba(20,184,166,0.12), rgba(20,184,166,0.05))"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.2)"; e.currentTarget.style.background = "linear-gradient(135deg, rgba(20,184,166,0.08), rgba(20,184,166,0.03))"; }}
-          >
-            <div style={{
-              width: 40, height: 40, borderRadius: 10,
-              background: "rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-            }}>
-              <Zap size={20} color="#14B8A6" />
-            </div>
-            <div style={{ flex: 1, textAlign: "left" }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#FFFFFF", marginBottom: 2 }}>
-                First 10 sign-ups get <span style={{ color: "#14B8A6" }}>3 months free</span>
-              </div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
-                <span style={{ color: "#14B8A6", fontWeight: 600 }}>7 spots left</span> — limited early adopter offer
-              </div>
-            </div>
-            <ArrowRight size={16} color="rgba(255,255,255,0.3)" />
-          </div>
-        </FadeIn>
       </div>
 
       {/* Bottom gradient fade */}
@@ -2280,21 +2250,6 @@ const PricingPage = ({ dispatch }) => {
         </FadeIn>
         <FadeIn delay={0.16}>
           <p style={{ fontSize: isMobile ? 16 : 19, color: "rgba(255,255,255,0.45)", maxWidth: 480, margin: "0 auto", lineHeight: 1.7, fontWeight: 400, letterSpacing: "0.01em" }}>No hidden fees. No lock-in contracts. Start free for 14 days, no credit card needed.</p>
-        </FadeIn>
-        <FadeIn delay={0.24}>
-          <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })} style={{
-            marginTop: 32, padding: "14px 24px", borderRadius: 12,
-            background: "linear-gradient(135deg, rgba(20,184,166,0.1), rgba(20,184,166,0.04))",
-            border: "1px solid rgba(20,184,166,0.25)",
-            cursor: "pointer", transition: "all 0.2s ease-out", display: "inline-flex", alignItems: "center", gap: 12,
-          }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.4)"; e.currentTarget.style.background = "linear-gradient(135deg, rgba(20,184,166,0.15), rgba(20,184,166,0.06))"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.25)"; e.currentTarget.style.background = "linear-gradient(135deg, rgba(20,184,166,0.1), rgba(20,184,166,0.04))"; }}
-          >
-            <Zap size={18} color="#14B8A6" />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#FFFFFF" }}>First 10 sign-ups get <span style={{ color: "#14B8A6" }}>3 months free</span></span>
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginLeft: 4 }}>· <span style={{ color: "#14B8A6", fontWeight: 600 }}>7 spots left</span></span>
-          </div>
         </FadeIn>
       </div>
 
@@ -4146,7 +4101,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
               {editForm?.labourHours && business.hourly_rate && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Labour ({editForm.labourHours} hrs @ ${business.hourly_rate}/hr)</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${(parseFloat(editForm.labourHours) * parseFloat(business.hourly_rate)).toLocaleString()}</span></div>}
               {editForm?.includeCallout && parseFloat(business.callout_fee) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Callout Fee</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${parseFloat(business.callout_fee).toLocaleString()}</span></div>}
             </>)}
-            <div style={{ borderTop: editForm?.showBreakdown ? "2px solid #111827" : "none", paddingTop: editForm?.showBreakdown ? 12 : 0, marginTop: editForm?.showBreakdown ? 12 : 0, display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total (incl. GST)</span><span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(editForm?.amount || 0).toLocaleString()}</span></div>
+            <div style={{ borderTop: editForm?.showBreakdown ? "2px solid #111827" : "none", paddingTop: editForm?.showBreakdown ? 12 : 0, marginTop: editForm?.showBreakdown ? 12 : 0, display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total{business.gst_number ? (business.gst_inclusive !== false ? " (incl. GST)" : " (excl. GST)") : ""}</span><span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(editForm?.amount || 0).toLocaleString()}</span></div>
           </div>
           {editForm?.notes && <div style={{ marginBottom: 24 }}><div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Terms & Conditions</div><div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-line" }}>{editForm.notes}</div></div>}
           {editForm?.showBusinessDetails && business.quote_footer && <div style={{ marginBottom: 24, padding: "14px 16px", borderRadius: 8, background: "#f9fafb", border: "1px solid #e5e7eb" }}><div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-line" }}>{business.quote_footer}</div></div>}
@@ -4553,7 +4508,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
                   </label>
                 )}
                 <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 12, marginTop: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total (incl. GST)</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total{business.gst_number ? (business.gst_inclusive !== false ? " (incl. GST)" : " (excl. GST)") : ""}</span>
                   <span style={{ fontSize: 22, fontWeight: 700, color: theme.accent }}>${parseFloat(editForm.amount || 0).toLocaleString()}</span>
                 </div>
                 <div style={{ marginTop: -4 }}><Input label="Override Total ($)" value={editForm.amount} onChange={v => setEditForm(prev => ({ ...prev, amount: v }))} type="number" /></div>
@@ -4634,7 +4589,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
                       {editForm?.labourHours && business.hourly_rate && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 12, color: "#6b7280" }}>Labour ({editForm.labourHours} hrs @ ${business.hourly_rate}/hr)</span><span style={{ fontSize: 12, color: "#111827", fontWeight: 500 }}>${(parseFloat(editForm.labourHours) * parseFloat(business.hourly_rate)).toLocaleString()}</span></div>}
                       {editForm?.includeCallout && parseFloat(business.callout_fee) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 12, color: "#6b7280" }}>Callout Fee</span><span style={{ fontSize: 12, color: "#111827", fontWeight: 500 }}>${parseFloat(business.callout_fee).toLocaleString()}</span></div>}
                     </>)}
-                    <div style={{ borderTop: editForm?.showBreakdown ? "2px solid #111827" : "none", paddingTop: editForm?.showBreakdown ? 10 : 0, marginTop: editForm?.showBreakdown ? 8 : 0, display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Total (incl. GST)</span><span style={{ fontSize: 18, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(editForm?.amount || 0).toLocaleString()}</span></div>
+                    <div style={{ borderTop: editForm?.showBreakdown ? "2px solid #111827" : "none", paddingTop: editForm?.showBreakdown ? 10 : 0, marginTop: editForm?.showBreakdown ? 8 : 0, display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Total{business.gst_number ? (business.gst_inclusive !== false ? " (incl. GST)" : " (excl. GST)") : ""}</span><span style={{ fontSize: 18, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(editForm?.amount || 0).toLocaleString()}</span></div>
                   </div>
                   {editForm?.notes && <div style={{ marginBottom: 18 }}><div style={{ fontSize: 10, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>Terms & Conditions</div><div style={{ fontSize: 11, color: "#6b7280", lineHeight: 1.5, whiteSpace: "pre-line" }}>{editForm.notes}</div></div>}
                   {editForm?.showBusinessDetails && business.quote_footer && <div style={{ marginBottom: 18, padding: "10px 12px", borderRadius: 6, background: "#f9fafb", border: "1px solid #e5e7eb" }}><div style={{ fontSize: 11, color: "#6b7280", lineHeight: 1.5, whiteSpace: "pre-line" }}>{business.quote_footer}</div></div>}
@@ -4675,17 +4630,33 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
   const isMobile = useIsMobile();
   const [form, setForm] = useState({
     customerName: "", customerEmail: "", customerPhone: "",
-    jobTitle: "", description: "", amount: "", sequenceId: sequences.find(s => s.is_default)?.id || sequences[0]?.id || "",
+    jobTitle: "", description: "", sequenceId: sequences.find(s => s.is_default)?.id || sequences[0]?.id || "",
   });
+  const [lineItems, setLineItems] = useState([{ description: "", price: "" }]);
   const [pdfFile, setPdfFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
   const update = (key, val) => setForm({ ...form, [key]: val });
 
+  const totalAmount = lineItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+
+  const updateLineItem = (index, field, value) => {
+    setLineItems(prev => {
+      const items = [...prev];
+      items[index] = { ...items[index], [field]: value };
+      return items;
+    });
+  };
+
+  const addLineItem = () => setLineItems(prev => [...prev, { description: "", price: "" }]);
+
+  const removeLineItem = (index) => setLineItems(prev => prev.filter((_, i) => i !== index));
+
   const handleCreate = async () => {
-    if (!form.customerName || !form.customerEmail || !form.customerPhone || !form.jobTitle || !form.amount) {
-      dispatch({ type: "NOTIFY", payload: { message: "Please fill in all required fields (name, email, phone, job title, and amount)", type: "error" } });
+    const filledItems = lineItems.filter(i => i.description.trim());
+    if (!form.customerName || !form.customerEmail || !form.customerPhone || !form.jobTitle || filledItems.length === 0) {
+      dispatch({ type: "NOTIFY", payload: { message: "Please fill in all required fields (name, email, phone, job title, and at least one line item)", type: "error" } });
       return;
     }
     setLoading(true);
@@ -4707,6 +4678,27 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
           nextFollowUp = d.toISOString();
         }
       }
+      const materialsText = filledItems.map(i => i.description + (i.price ? " — $" + i.price : "")).join("\n");
+      const breakdown = {
+        lineItems: filledItems,
+        materialsCost: String(totalAmount),
+        showBreakdown: true,
+        showBusinessDetails: !!(business.address || business.gst_number || business.license_number),
+        notes: "",
+        requireDeposit: business.require_deposit,
+        depositPercentage: business.deposit_percentage,
+        depositAmount: business.require_deposit ? totalAmount * (parseFloat(business.deposit_percentage || 25) / 100) : null,
+        bankName: business.bank_name,
+        bankAccountName: business.bank_account_name,
+        bankAccountNumber: business.bank_account_number,
+        quoteFooter: business.quote_footer,
+        businessAddress: business.address,
+        gstNumber: business.gst_number,
+        gstInclusive: business.gst_inclusive !== false,
+        licenseNumber: business.license_number,
+        businessPhone: business.phone,
+        businessEmail: business.email,
+      };
       const { data: newQuote, error: quoteErr } = await db("quotes").insert({
         business_id: business.id,
         quote_number: "",
@@ -4714,19 +4706,20 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
         customer_email: form.customerEmail,
         customer_phone: form.customerPhone,
         job_title: form.jobTitle,
-        description: form.description || null,
-        amount: parseFloat(form.amount),
+        description: (form.description ? form.description + "\n\n" : "") + "Items:\n" + materialsText,
+        amount: totalAmount,
         pdf_url: pdfUrl,
         pdf_filename: pdfFilename,
         status: "sent",
         sent_at: new Date().toISOString(),
         sequence_id: form.sequenceId || null,
         next_follow_up_at: nextFollowUp,
+        ai_estimate_notes: JSON.stringify(breakdown),
       });
       if (quoteErr || !newQuote?.[0]) throw new Error("Failed to create quote");
       await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quote_id: newQuote[0].id }),
+        body: JSON.stringify({ quote_id: newQuote[0].id, breakdown }),
       });
       dispatch({ type: "ADD_QUOTE", payload: newQuote[0] });
       dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${form.customerName}! Follow-ups scheduled.`, type: "success" } });
@@ -4758,7 +4751,41 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <Input label="Job Title *" value={form.jobTitle} onChange={(v) => update("jobTitle", v)} />
             <Input label="Description" value={form.description} onChange={(v) => update("description", v)} textarea />
-            <Input label="Quote Amount ($) *" value={form.amount} onChange={(v) => update("amount", v)} type="number" />
+          </div>
+        </Card>
+        <Card style={{ ...(isMobile ? { padding: 16 } : {}), gridColumn: isMobile ? "1" : "1 / -1" }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 12px" }}>Line Items *</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {lineItems.map((item, idx) => (
+              <div key={idx} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div style={{ flex: 1 }}>
+                  <input value={item.description} onChange={e => updateLineItem(idx, "description", e.target.value)} placeholder="Item description"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none" }}
+                    onFocus={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }} />
+                </div>
+                <div style={{ width: isMobile ? 90 : 120 }}>
+                  <input value={item.price} onChange={e => updateLineItem(idx, "price", e.target.value)} placeholder="$0" type="number"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", textAlign: "right" }}
+                    onFocus={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }} />
+                </div>
+                {lineItems.length > 1 && (
+                  <button onClick={() => removeLineItem(idx)} style={{ padding: "8px", background: "none", border: "none", color: theme.textDim, cursor: "pointer", fontSize: 16, lineHeight: 1, flexShrink: 0, borderRadius: 6, transition: "all 0.15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = theme.textDim; e.currentTarget.style.background = "none"; }}>×</button>
+                )}
+              </div>
+            ))}
+            <button onClick={addLineItem} style={{ padding: "8px 16px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px dashed rgba(255,255,255,0.1)", color: theme.textMuted, fontSize: 13, cursor: "pointer", fontFamily: theme.font, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6 }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; e.currentTarget.style.color = theme.accent; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = theme.textMuted; }}>
+              <Plus size={14} /> Add line item
+            </button>
+            <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 12, marginTop: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 16, fontWeight: 600, color: theme.text }}>Total{business.gst_inclusive !== false && business.gst_number ? " (incl. GST)" : business.gst_number ? " (excl. GST)" : ""}</span>
+              <span style={{ fontSize: 24, fontWeight: 700, color: theme.accent }}>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
           </div>
         </Card>
         <Card style={isMobile ? { padding: 16 } : {}}>
@@ -4797,7 +4824,7 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
       <div style={{ display: "flex", gap: 12, marginTop: isMobile ? 16 : 24, justifyContent: "flex-end" }}>
         <Button variant="secondary" onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}>Cancel</Button>
         <Button variant="secondary" onClick={() => {
-          if (!form.customerName || !form.jobTitle || !form.amount) { dispatch({ type: "NOTIFY", payload: { message: "Fill in customer name, job title, and amount to preview", type: "error" } }); return; }
+          if (!form.customerName || !form.jobTitle || lineItems.filter(i => i.description.trim()).length === 0) { dispatch({ type: "NOTIFY", payload: { message: "Fill in customer name, job title, and at least one line item to preview", type: "error" } }); return; }
           setShowPreview(true);
         }} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Eye size={16} /> Preview</Button>
         <Button onClick={handleCreate} disabled={loading}>
@@ -4844,9 +4871,15 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
                 </div>
               )}
               <div style={{ background: "#f9fafb", borderRadius: 10, padding: 20, marginBottom: 24 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total{business.gst_number ? " (incl. GST)" : ""}</span>
-                  <span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(form.amount || 0).toLocaleString()}</span>
+                {lineItems.filter(i => i.description.trim()).map((item, idx) => (
+                  <div key={idx} style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, paddingBottom: 8, borderBottom: idx < lineItems.filter(i => i.description.trim()).length - 1 ? "1px solid #e5e7eb" : "none" }}>
+                    <span style={{ fontSize: 14, color: "#374151" }}>{item.description}</span>
+                    <span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>{parseFloat(item.price) ? "$" + parseFloat(item.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}</span>
+                  </div>
+                ))}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "2px solid #111827", paddingTop: 12, marginTop: 4 }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total{business.gst_inclusive !== false && business.gst_number ? " (incl. GST)" : business.gst_number ? " (excl. GST)" : ""}</span>
+                  <span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
               {business.require_deposit && business.bank_account_number && (
@@ -5246,7 +5279,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
             )}
             </>)}
             <div style={{ borderTop: editForm.showBreakdown ? `1px solid ${theme.border}` : "none", paddingTop: editForm.showBreakdown ? 10 : 0, marginTop: editForm.showBreakdown ? 8 : 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total (incl. GST)</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total{business.gst_number ? (business.gst_inclusive !== false ? " (incl. GST)" : " (excl. GST)") : ""}</span>
               <span style={{ fontSize: 20, fontWeight: 700, color: theme.accent }}>${parseFloat(editForm.amount || 0).toLocaleString()}</span>
             </div>
             <div style={{ marginTop: 8 }}><Input label="Override Total ($)" value={editForm.amount} onChange={v => setEditForm(prev => ({ ...prev, amount: v }))} type="number" /></div>
@@ -7397,6 +7430,7 @@ const Settings = ({ business, dispatch }) => {
   const [requireDeposit, setRequireDeposit] = useState(business?.require_deposit || false);
   const [address, setAddress] = useState(business?.address || "");
   const [gstNumber, setGstNumber] = useState(business?.gst_number || "");
+  const [gstInclusive, setGstInclusive] = useState(business?.gst_inclusive !== false);
   const [licenseNumber, setLicenseNumber] = useState(business?.license_number || "");
   const [quoteFooter, setQuoteFooter] = useState(business?.quote_footer || "");
   const [defaultPaymentTerms, setDefaultPaymentTerms] = useState(business?.default_payment_terms || "7 days");
@@ -7426,6 +7460,7 @@ const Settings = ({ business, dispatch }) => {
       require_deposit: requireDeposit,
       address: address,
       gst_number: gstNumber,
+      gst_inclusive: gstInclusive,
       license_number: licenseNumber,
       quote_footer: quoteFooter,
       default_payment_terms: defaultPaymentTerms,
@@ -7515,6 +7550,27 @@ const Settings = ({ business, dispatch }) => {
               <div style={{ flex: 1 }}><Input label="GST Number" value={gstNumber} onChange={setGstNumber} placeholder="e.g. 123-456-789" /></div>
               <div style={{ flex: 1 }}><Input label="License / Rego Number" value={licenseNumber} onChange={setLicenseNumber} placeholder="e.g. LBP 12345" /></div>
             </div>
+            {gstNumber && (
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 6 }}>GST Display on Quotes</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {[
+                    { id: true, label: "Inclusive", desc: "Prices include GST" },
+                    { id: false, label: "Exclusive", desc: "Prices exclude GST" },
+                  ].map(opt => (
+                    <div key={String(opt.id)} onClick={() => setGstInclusive(opt.id)}
+                      style={{
+                        flex: 1, padding: "12px 14px", borderRadius: 10, cursor: "pointer",
+                        background: gstInclusive === opt.id ? "rgba(20,184,166,0.08)" : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${gstInclusive === opt.id ? "rgba(20,184,166,0.3)" : "rgba(255,255,255,0.06)"}`,
+                      }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: gstInclusive === opt.id ? theme.accent : theme.text }}>{opt.label}</div>
+                      <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>{opt.desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <Input label="Custom Quote Footer" value={quoteFooter} onChange={setQuoteFooter} textarea placeholder="e.g. All work guaranteed for 12 months. Pricing valid for 30 days." />
           </div>
         </Card>
