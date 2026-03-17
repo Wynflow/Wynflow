@@ -1025,267 +1025,6 @@ const FadeIn = ({ children, delay = 0, style = {} }) => {
   );
 };
 
-// ─── Product Demo Walkthrough ───
-const ProductDemo = () => {
-  const isMobile = useIsMobile();
-  const [active, setActive] = useState(0);
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-
-  const demoSteps = [
-    { label: "Snap Photos", icon: Camera, accent: "#14B8A6" },
-    { label: "AI Quote", icon: Sparkles, accent: "#8B5CF6" },
-    { label: "Send Email", icon: Send, accent: "#3B82F6" },
-    { label: "Follow-Up", icon: RefreshCw, accent: "#F59E0B" },
-    { label: "Get Paid", icon: Receipt, accent: "#22C55E" },
-  ];
-
-  useEffect(() => {
-    if (!isAutoPlaying) return;
-    const timer = setInterval(() => setActive(p => (p + 1) % 5), 4000);
-    return () => clearInterval(timer);
-  }, [isAutoPlaying]);
-
-  const handleStepClick = (i) => { setActive(i); setIsAutoPlaying(false); };
-
-  // Mock screen for each step
-  const screens = [
-    // Step 1: Snap Photos
-    <div key="photos" style={{ padding: isMobile ? 16 : 24 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22C55E" }} />
-        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 1 — On Site</span>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
-        {[
-          { caption: "Bathroom — tiled, no vanity yet", img: "/demo-photo-1.jpg" },
-          { caption: "Exposed pipework — hot & cold roughed in", img: "/demo-photo-2.jpg" },
-          { caption: "Bath surround — tiling complete", img: "/demo-photo-3.jpg" },
-          { caption: "Ceiling & walls — gibbed, ready for paint", img: "/demo-photo-4.jpg" },
-        ].map((photo, i) => (
-          <div key={i} style={{ borderRadius: 10, overflow: "hidden", position: "relative" }}>
-            <img src={photo.img} alt={photo.caption} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block" }} loading="lazy" />
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "8px 8px", background: "linear-gradient(transparent, rgba(0,0,0,0.7))", fontSize: 10, color: "rgba(255,255,255,0.7)" }}>{photo.caption}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ padding: 12, borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 8, fontWeight: 500 }}>Job Notes</div>
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>Bathroom reno — replace vanity, fix water damage to subfloor, install new mixer tap. Tight access behind wall panel. Customer wants it done within 2 weeks.</div>
-      </div>
-    </div>,
-
-    // Step 2: AI Quote
-    <div key="quote" style={{ padding: isMobile ? 16 : 24 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#8B5CF6" }} />
-        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 2 — AI generates your quote</span>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-        <div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 2 }}>Quote #WF-0047</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "#fff" }}>Bathroom Renovation — Smith Residence</div>
-        </div>
-        <div style={{ padding: "4px 12px", borderRadius: 20, background: "rgba(139,92,246,0.15)", color: "#8B5CF6", fontSize: 11, fontWeight: 600 }}>AI Generated</div>
-      </div>
-      {[
-        { item: "Remove existing vanity & dispose", qty: "1", price: "$180" },
-        { item: "Repair water-damaged subfloor", qty: "1.5m\u00B2", price: "$420" },
-        { item: "Supply & install new vanity unit", qty: "1", price: "$1,850" },
-        { item: "Supply & install mixer tap", qty: "1", price: "$380" },
-        { item: "Labour — plumbing & fitout", qty: "6 hrs", price: "$510" },
-      ].map((row, i) => (
-        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>{row.item}</div>
-          </div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", width: 60, textAlign: "center" }}>{row.qty}</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", width: 70, textAlign: "right" }}>{row.price}</div>
-        </div>
-      ))}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0", marginTop: 8, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>Total (incl. GST)</span>
-        <span style={{ fontSize: 20, fontWeight: 700, color: "#14B8A6" }}>$3,340.00</span>
-      </div>
-    </div>,
-
-    // Step 3: Send Email
-    <div key="email" style={{ padding: isMobile ? 16 : 24 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#3B82F6" }} />
-        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 3 — Customer receives email</span>
-      </div>
-      <div style={{ borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", overflow: "hidden" }}>
-        <div style={{ padding: "16px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
-          <Mail size={14} color="rgba(255,255,255,0.3)" />
-          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>From: <span style={{ color: "rgba(255,255,255,0.6)" }}>quotes@wynflow.co.nz</span></span>
-        </div>
-        <div style={{ padding: 16 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 16 }}>Your quote for Bathroom Renovation</div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, marginBottom: 24 }}>
-            Hi Sarah,<br /><br />
-            Thanks for having me out to take a look at the bathroom. I've put together a detailed quote for the work we discussed — vanity replacement, subfloor repair, and new mixer tap.<br /><br />
-            <strong style={{ color: "rgba(255,255,255,0.7)" }}>Total: $3,340.00 (incl. GST)</strong>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1, padding: "12px 16px", borderRadius: 8, background: "#22C55E", textAlign: "center", fontSize: 14, fontWeight: 600, color: "#fff", cursor: "default" }}>Accept Quote</div>
-            <div style={{ flex: 1, padding: "12px 16px", borderRadius: 8, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.2)", textAlign: "center", fontSize: 14, fontWeight: 600, color: "#EF4444", cursor: "default" }}>Decline</div>
-          </div>
-        </div>
-      </div>
-    </div>,
-
-    // Step 4: Auto Follow-up
-    <div key="followup" style={{ padding: isMobile ? 16 : 24 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B" }} />
-        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 4 — Wynflow chases for you</span>
-      </div>
-      <div style={{ position: "relative", paddingLeft: 24 }}>
-        <div style={{ position: "absolute", left: 7, top: 8, bottom: 8, width: 2, background: "linear-gradient(to bottom, rgba(245,158,11,0.4), rgba(245,158,11,0.05))" }} />
-        {[
-          { day: "Day 0", title: "Quote sent", desc: "Bathroom Renovation — $3,340", status: "sent", color: "#3B82F6" },
-          { day: "Day 1", title: "Email opened", desc: "Sarah opened your quote at 8:14am", status: "opened", color: "#8B5CF6" },
-          { day: "Day 3", title: "Follow-up #1 sent", desc: "\"Hi Sarah, just checking in on the quote I sent through...\"", status: "auto", color: "#F59E0B" },
-          { day: "Day 6", title: "Follow-up #2 sent", desc: "\"Any questions about the bathroom quote?\"", status: "auto", color: "#F59E0B" },
-          { day: "Day 7", title: "Quote accepted!", desc: "Sarah clicked Accept — time to book the job", status: "won", color: "#22C55E" },
-        ].map((event, i) => (
-          <div key={i} style={{ display: "flex", gap: 16, marginBottom: i < 4 ? 24 : 0, position: "relative" }}>
-            <div style={{ width: 16, height: 16, borderRadius: "50%", background: event.color, border: "3px solid #0A0E17", position: "absolute", left: -24, top: 2, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {event.status === "won" && <Check size={8} color="#fff" strokeWidth={3} />}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 600, minWidth: 40 }}>{event.day}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: event.status === "won" ? "#22C55E" : "#fff" }}>{event.title}</span>
-                {event.status === "auto" && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "rgba(245,158,11,0.12)", color: "#F59E0B", fontWeight: 600 }}>AUTO</span>}
-              </div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", lineHeight: 1.5 }}>{event.desc}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>,
-
-    // Step 5: Get Paid
-    <div key="invoice" style={{ padding: isMobile ? 16 : 24 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22C55E" }} />
-        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 5 — Job done, get paid</span>
-      </div>
-      <div style={{ borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", padding: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-          <div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 2 }}>INVOICE #INV-0023</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: "#fff" }}>Bathroom Renovation</div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>Sarah Smith • 14 March 2026</div>
-          </div>
-          <div style={{ padding: "4px 12px", borderRadius: 20, background: "rgba(34,197,94,0.12)", color: "#22C55E", fontSize: 11, fontWeight: 600 }}>Paid</div>
-        </div>
-        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 0 16px" }} />
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Subtotal</span>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>$2,904.35</span>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>GST (15%)</span>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>$435.65</span>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>Total Paid</span>
-          <span style={{ fontSize: 20, fontWeight: 700, color: "#22C55E" }}>$3,340.00</span>
-        </div>
-        <div style={{ marginTop: 16, padding: "8px 16px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.1)", display: "flex", alignItems: "center", gap: 8 }}>
-          <CheckCircle2 size={14} color="#22C55E" />
-          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>Payment received via bank transfer • 20 March 2026</span>
-        </div>
-      </div>
-    </div>,
-  ];
-
-  return (
-    <div style={{ padding: isMobile ? "80px 24px" : "120px 48px", position: "relative" }}>
-      <div style={{ position: "absolute", top: "30%", left: "-10%", width: "40%", height: "50%", background: `radial-gradient(circle, ${demoSteps[active].accent}11 0%, transparent 70%)`, pointerEvents: "none", transition: "background 0.6s ease" }} />
-      <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative", zIndex: 1 }}>
-        <FadeIn>
-          <div style={{ textAlign: "center", marginBottom: isMobile ? 40 : 56 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: theme.accent, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 16 }}>See it in action</p>
-            <h2 style={{ fontSize: isMobile ? 28 : 44, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>From photos to payment<br />in five steps</h2>
-          </div>
-        </FadeIn>
-
-        {/* Step tabs */}
-        <div style={{ display: "flex", gap: isMobile ? 4 : 8, marginBottom: isMobile ? 24 : 32, justifyContent: "center", flexWrap: "wrap" }}>
-          {demoSteps.map((step, i) => {
-            const Icon = step.icon;
-            const isActive = i === active;
-            return (
-              <button key={i} onClick={() => handleStepClick(i)}
-                style={{ display: "flex", alignItems: "center", gap: 6, padding: isMobile ? "8px 16px" : "8px 16px", borderRadius: 10,
-                  background: isActive ? `${step.accent}18` : "rgba(255,255,255,0.03)",
-                  border: `1px solid ${isActive ? `${step.accent}40` : "rgba(255,255,255,0.06)"}`,
-                  color: isActive ? step.accent : "rgba(255,255,255,0.4)",
-                  cursor: "pointer", transition: "all 0.3s ease", fontFamily: theme.font, fontSize: isMobile ? 11 : 13, fontWeight: 600,
-                  transform: isActive ? "translateY(-2px)" : "none",
-                  boxShadow: isActive ? `0 4px 20px ${step.accent}20` : "none",
-                }}>
-                <Icon size={isMobile ? 12 : 14} strokeWidth={2} />
-                {step.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Progress bar */}
-        <div style={{ maxWidth: 600, margin: "0 auto 24px", height: 2, background: "rgba(255,255,255,0.04)", borderRadius: 1, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${((active + 1) / 5) * 100}%`, background: `linear-gradient(90deg, ${demoSteps[0].accent}, ${demoSteps[active].accent})`, borderRadius: 1, transition: "width 0.6s cubic-bezier(0.16,1,0.3,1)" }} />
-        </div>
-
-        {/* Mock device frame */}
-        <div style={{ maxWidth: 600, margin: "0 auto", position: "relative" }}>
-          <div style={{
-            borderRadius: 16, overflow: "hidden",
-            background: "rgba(255,255,255,0.02)",
-            border: `1px solid ${demoSteps[active].accent}25`,
-            boxShadow: `0 0 80px ${demoSteps[active].accent}08, 0 20px 60px rgba(0,0,0,0.3)`,
-            transition: "border-color 0.6s ease, box-shadow 0.6s ease",
-          }}>
-            {/* Title bar */}
-            <div style={{ padding: "8px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ display: "flex", gap: 4 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                </div>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginLeft: 8 }}>wynflow.co.nz</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center" }}>
-                <WynflowLogo size={16} showText textSize={11} textColor="rgba(255,255,255,0.35)" />
-              </div>
-            </div>
-
-            {/* Screen content with transition */}
-            <div style={{ minHeight: isMobile ? 320 : 380, position: "relative" }}>
-              {screens.map((screen, i) => (
-                <div key={i} style={{
-                  position: i === active ? "relative" : "absolute",
-                  top: 0, left: 0, right: 0,
-                  opacity: i === active ? 1 : 0,
-                  transform: i === active ? "translateX(0)" : i < active ? "translateX(-20px)" : "translateX(20px)",
-                  transition: "opacity 0.4s ease, transform 0.4s ease",
-                  pointerEvents: i === active ? "auto" : "none",
-                }}>
-                  {screen}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const HomePage = ({ dispatch }) => {
   const isMobile = useIsMobile();
 
@@ -1409,14 +1148,6 @@ const HomePage = ({ dispatch }) => {
     {/* ── Divider line ── */}
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
       <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(20,184,166,0.3), transparent)" }} />
-    </div>
-
-    {/* ── Product Demo ── */}
-    <ProductDemo />
-
-    {/* ── Divider ── */}
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
-      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
     </div>
 
     {/* ── Features Bento Grid ── */}
@@ -1604,30 +1335,6 @@ const HomePage = ({ dispatch }) => {
             </div>
           </div>
         )}
-      </div>
-    </div>
-
-    {/* ── Divider ── */}
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px" }}>
-      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)" }} />
-    </div>
-
-    {/* ── Interactive Demo ── */}
-    <div style={{ padding: isMobile ? "80px 24px" : "120px 48px", position: "relative" }}>
-      <div style={{ position: "absolute", top: "30%", left: "-10%", width: "50%", height: "50%", background: "radial-gradient(circle, rgba(20,184,166,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
-      <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative", zIndex: 1 }}>
-        <FadeIn>
-          <div style={{ textAlign: "center", marginBottom: isMobile ? 32 : 48 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: theme.accent, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 16 }}>See it in action</p>
-            <h2 style={{ fontSize: isMobile ? 30 : 44, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Try the interactive demo</h2>
-            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", maxWidth: 560, margin: "0 auto", lineHeight: 1.6 }}>See how Wynflow turns job site photos into professional quotes — no signup needed.</p>
-          </div>
-        </FadeIn>
-        <FadeIn delay={0.15}>
-          <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 8px 40px rgba(0,0,0,0.4), 0 0 60px rgba(20,184,166,0.05)", background: "rgba(255,255,255,0.02)" }}>
-            <iframe src="/demo.html" title="Wynflow Interactive Demo" style={{ width: "100%", height: isMobile ? 480 : 640, border: "none", display: "block" }} loading="lazy" />
-          </div>
-        </FadeIn>
       </div>
     </div>
 
@@ -3556,9 +3263,12 @@ const Dashboard = ({ quotes, dispatch, invoices = [] }) => {
                       <div style={{ fontSize: 11, color: theme.textDim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.job_title}</div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: "'DM Sans', sans-serif" }}>${parseFloat(q.amount || 0).toLocaleString()}</span>
                     <Badge status={q.status} size="sm" />
+                    <span onClick={(e) => { e.stopPropagation(); dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + q.id }); }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 500, color: theme.accent, padding: "3px 8px", borderRadius: 5, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.12)", cursor: "pointer" }}
+                    ><Eye size={10} /> View</span>
                   </div>
                 </div>
               ))}
@@ -3786,7 +3496,7 @@ const QuotesList = ({ quotes, dispatch, sequences, invoices = [] }) => {
         <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
           {!isMobile && (
           <div style={{
-            display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 40px",
+            display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 70px",
             padding: "10px 18px", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: 11,
             fontWeight: 600, color: theme.textDim, textTransform: "uppercase", letterSpacing: 0.5,
           }}>
@@ -3804,7 +3514,7 @@ const QuotesList = ({ quotes, dispatch, sequences, invoices = [] }) => {
                 borderLeft: urgency ? `3px solid ${urgency}` : "3px solid transparent",
                 transition: "background 0.1s",
               } : {
-                display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 40px",
+                display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 70px",
                 padding: "12px 18px", borderBottom: "1px solid rgba(255,255,255,0.03)", cursor: "pointer",
                 borderLeft: urgency ? `3px solid ${urgency}` : "3px solid transparent",
                 transition: "background 0.1s",
@@ -3821,9 +3531,12 @@ const QuotesList = ({ quotes, dispatch, sequences, invoices = [] }) => {
                       {followUpLabel && <div style={{ fontSize: 10, color: theme.accent, fontWeight: 500, marginTop: 2 }}>{followUpLabel}</div>}
                       {isNoResponse(q) && <div style={{ fontSize: 10, color: theme.red, fontWeight: 500, marginTop: 2 }}>No response — all follow-ups sent</div>}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>${parseFloat(q.amount || 0).toLocaleString()}</span>
                       <Badge status={q.status} size="sm" />
+                      <span onClick={(e) => { e.stopPropagation(); dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + q.id }); }}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 500, color: theme.accent, padding: "3px 8px", borderRadius: 5, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.12)", cursor: "pointer" }}
+                      ><Eye size={10} /> View</span>
                     </div>
                   </div>
                   {filter === "archived" && <ArchiveAction quote={q} invoices={invoices} dispatch={dispatch} />}
@@ -3843,7 +3556,11 @@ const QuotesList = ({ quotes, dispatch, sequences, invoices = [] }) => {
                   <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, display: "flex", alignItems: "center", fontFamily: "'DM Sans', sans-serif" }}>${parseFloat(q.amount || 0).toLocaleString()}</div>
                   <div style={{ display: "flex", alignItems: "center" }}><Badge status={q.status} /></div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-                    <ChevronRight size={14} color={theme.textDim} />
+                    <span onClick={(e) => { e.stopPropagation(); dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + q.id }); }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 500, color: theme.accent, padding: "4px 10px", borderRadius: 6, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.12)", cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(20,184,166,0.15)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(20,184,166,0.08)"; }}
+                    ><Eye size={12} /> View</span>
                   </div>
                 </>
               )}
@@ -4221,8 +3938,8 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
   });
 
   const generateQuote = async () => {
-    if (!form.customerName || !form.customerEmail || !form.customerPhone || !form.jobTitle) {
-      dispatch({ type: "NOTIFY", payload: { message: "Please fill in customer name, email, phone, and job title", type: "error" } });
+    if (!form.customerName || !form.customerEmail || !form.customerPhone || !form.jobTitle || !form.description.trim()) {
+      dispatch({ type: "NOTIFY", payload: { message: "Please fill in all fields including the job description — the more detail, the better the quote", type: "error" } });
       return;
     }
     setGenerating(true);
@@ -4461,7 +4178,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
             <h3 style={{ fontSize: 15, fontWeight: 600, color: theme.text, margin: "0 0 12px" }}>Job Details</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <Input label="Job Title *" value={form.jobTitle} onChange={v => update("jobTitle", v)} placeholder="e.g. Fix leaking tap, bathroom reno" />
-              <Input label="Description" value={form.description} onChange={v => update("description", v)} textarea placeholder="What needs doing?" />
+              <Input label="Job Description *" value={form.description} onChange={v => update("description", v)} textarea placeholder="Give as much detail as possible! e.g. Replace shower mixer, retile 3m² floor, new vanity install..." />
               <Input label="Your Site Notes" value={siteNotes} onChange={setSiteNotes} textarea placeholder="e.g. Access is tight, old pipework, customer wants premium..." />
             </div>
           </Card>
@@ -7934,15 +7651,15 @@ const OnboardingTutorial = ({ business, dispatch, onComplete }) => {
   );
 
   const steps = [
-    // 0 — Welcome
+    // 0 — Welcome — emphasis on getting started immediately
     {
       icon: Sparkles, iconBg: "rgba(20,184,166,0.15)", iconColor: "#14B8A6",
-      title: `Welcome, ${business?.contact_name || "legend"}`,
-      subtitle: "Let's get you winning more jobs in 2 minutes",
+      title: `Welcome, ${(business?.contact_name || "").split(" ")[0] || "legend"}`,
+      subtitle: "You're ready to send your first quote",
       content: (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <p style={{ fontSize: 15, color: theme.textMuted, lineHeight: 1.7, margin: 0 }}>
-            Wynflow turns job site photos into professional quotes — then chases your customers automatically so you don't have to.
+            Wynflow lets you create a professional AI quote in under a minute — no setup needed. Just add your customer, snap some photos, and hit send.
           </p>
           {/* Animated flow diagram */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: isMobile ? 8 : 12, padding: "20px 0" }}>
@@ -7967,61 +7684,16 @@ const OnboardingTutorial = ({ business, dispatch, onComplete }) => {
             ))}
           </div>
           <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(20,184,166,0.06)", border: "1px solid rgba(20,184,166,0.12)", textAlign: "center" }}>
-            <p style={{ fontSize: 13, color: theme.accent, margin: 0, fontWeight: 500 }}>Quick walkthrough — we'll show you exactly where everything is</p>
+            <p style={{ fontSize: 13, color: theme.accent, margin: 0, fontWeight: 500 }}>No pricing setup required — create your first quote right now</p>
           </div>
         </div>
       ),
     },
-    // 1 — Dashboard overview with animated mock
-    {
-      icon: LayoutDashboard, iconBg: "rgba(20,184,166,0.15)", iconColor: "#14B8A6",
-      title: "Your Dashboard",
-      subtitle: "Stats, alerts, and quick actions",
-      content: (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <MockScreen activeNav="dashboard">
-            {/* Mock stat cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
-              {[
-                { label: "Total Quotes", val: "0", color: theme.accent },
-                { label: "Accepted", val: "0", color: "#22C55E" },
-                { label: "Revenue", val: "$0", color: "#3B82F6" },
-              ].map((s, i) => (
-                <div key={i} style={{ padding: "10px 8px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", animation: `onb-card-in 0.4s ${i * 0.15}s ease both` }}>
-                  <div style={{ fontSize: 8, color: theme.textDim, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{s.label}</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: s.color }}>{s.val}</div>
-                </div>
-              ))}
-            </div>
-            {/* Mock action buttons with click pulse on AI Quote */}
-            <div style={{ display: "flex", gap: 8 }}>
-              <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(20,184,166,0.12)", border: "1px solid rgba(20,184,166,0.2)", display: "flex", alignItems: "center", gap: 6, position: "relative", animation: "onb-glow-btn 2s 1s ease-in-out infinite" }}>
-                <Cpu size={12} color="#14B8A6" />
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#14B8A6" }}>AI Quote</span>
-                <ClickPulse top={-4} left={-4} delay={1.2} label="Click here" />
-              </div>
-              <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 6 }}>
-                <Plus size={12} color={theme.textDim} />
-                <span style={{ fontSize: 11, fontWeight: 600, color: theme.textDim }}>Manual Quote</span>
-              </div>
-            </div>
-            {/* Mock alert */}
-            <div style={{ marginTop: 12, padding: "8px 10px", borderRadius: 8, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)", display: "flex", alignItems: "center", gap: 8, animation: `onb-card-in 0.4s 0.6s ease both` }}>
-              <Bell size={12} color="#F59E0B" />
-              <span style={{ fontSize: 11, color: theme.textMuted }}>Alerts appear here when customers respond</span>
-            </div>
-          </MockScreen>
-          <p style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.5, margin: 0 }}>
-            Your home base — stats, new requests, and quick actions. Hit <strong style={{ color: theme.accent }}>AI Quote</strong> to create your first quote.
-          </p>
-        </div>
-      ),
-    },
-    // 2 — AI Quoting walkthrough with animated mock
+    // 1 — Create your first AI quote
     {
       icon: Cpu, iconBg: "rgba(20,184,166,0.15)", iconColor: "#14B8A6",
-      title: "AI Photo Quoting",
-      subtitle: "Photos in, quote out — in seconds",
+      title: "Create Your First Quote",
+      subtitle: "Customer details + photos = done",
       content: (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <MockScreen activeNav="quotes">
@@ -8072,97 +7744,125 @@ const OnboardingTutorial = ({ business, dispatch, onComplete }) => {
               </div>
             ))}
           </div>
-        </div>
-      ),
-    },
-    // 3 — Follow-ups with animated timeline
-    {
-      icon: RefreshCw, iconBg: "rgba(59,130,246,0.15)", iconColor: "#3B82F6",
-      title: "Automated Follow-Ups",
-      subtitle: "Wynflow chases so you don't have to",
-      content: (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <MockScreen activeNav="sequences">
-            <div style={{ fontSize: 10, fontWeight: 600, color: "#3B82F6", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Standard Follow-Up Sequence</div>
-            {/* Animated timeline */}
-            <div style={{ position: "relative", paddingLeft: 20 }}>
-              {/* Timeline line */}
-              <div style={{ position: "absolute", left: 6, top: 8, bottom: 8, width: 2, background: "rgba(59,130,246,0.15)", borderRadius: 1 }}>
-                <div style={{ width: "100%", background: "#3B82F6", borderRadius: 1, animation: "onb-timeline-fill 2s 0.5s ease both", height: 0 }} />
-              </div>
-              {[
-                { day: "Day 2", subject: "Following up on your quote", desc: "Friendly check-in", delay: 0.5 },
-                { day: "Day 5", subject: "Any questions about your quote?", desc: "Gentle reminder", delay: 1.2 },
-                { day: "Day 10", subject: "Last chance — your quote expires soon", desc: "Final nudge with urgency", delay: 1.9 },
-              ].map((f, i) => (
-                <div key={i} style={{ display: "flex", gap: 10, marginBottom: i < 2 ? 12 : 0, position: "relative", animation: `onb-card-in 0.4s ${f.delay}s ease both` }}>
-                  <div style={{ position: "absolute", left: -17, top: 6, width: 10, height: 10, borderRadius: 5, background: "#3B82F6", border: "2px solid rgba(10,14,23,0.9)", zIndex: 1, animation: `onb-dot-pop 0.3s ${f.delay + 0.2}s ease both`, opacity: 0 }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: "#3B82F6" }}>{f.day}</span>
-                      <Mail size={10} color={theme.textDim} />
-                    </div>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: theme.text, marginBottom: 2 }}>{f.subject}</div>
-                    <div style={{ fontSize: 10, color: theme.textDim }}>{f.desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div style={{ marginTop: 12, position: "relative" }}>
-              <ClickPulse top={0} left={isMobile ? 60 : 80} delay={2.5} label="Customise these" />
-            </div>
-          </MockScreen>
-          <p style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.5, margin: 0 }}>
-            Emails go out automatically when customers don't respond. Edit the wording, timing, and number of steps in <strong style={{ color: theme.text }}>Follow-Ups</strong>.
+          <p style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.5, margin: 0, textAlign: "center" }}>
+            The AI will estimate pricing based on your trade. You can always edit the quote before sending.
           </p>
         </div>
       ),
     },
-    // 4 — Settings with animated mock
+    // 2 — See the generated quote
     {
-      icon: SettingsIcon, iconBg: "rgba(245,158,11,0.15)", iconColor: "#F59E0B",
-      title: "Settings & AI Accuracy",
-      subtitle: "Better data = better quotes",
+      icon: FileText, iconBg: "rgba(59,130,246,0.15)", iconColor: "#3B82F6",
+      title: "Your Quote, Ready to Go",
+      subtitle: "AI builds a full professional quote for you",
       content: (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)" }}>
-            <p style={{ fontSize: 13, color: "#F59E0B", margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
-              Fill these in first — the AI uses your rates and price list to generate accurate quotes.
-            </p>
-          </div>
-          <MockScreen activeNav="settings">
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {[
-                { label: "Hourly Rate", val: "$85/hr", important: true, delay: 0.2 },
-                { label: "Callout Fee", val: "$50", important: true, delay: 0.4 },
-                { label: "Price List", val: "Add your materials & prices", important: true, delay: 0.6 },
-                { label: "Business Details", val: "Name, address, GST...", important: false, delay: 0.8 },
-              ].map((item, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: `1px solid ${item.important ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.06)"}`, animation: `onb-card-in 0.3s ${item.delay}s ease both`, position: "relative" }}>
-                  {item.important ? <Zap size={12} color="#F59E0B" /> : <Check size={12} color={theme.textDim} />}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>{item.label}</div>
-                  </div>
-                  <div style={{ fontSize: 10, color: item.important ? "rgba(245,158,11,0.6)" : theme.textDim, fontStyle: item.important ? "normal" : "italic" }}>{item.val}</div>
-                  {i === 0 && <ClickPulse top={-2} left={-2} delay={1.2} label="Set your rate" />}
+          {/* Mock generated quote document */}
+          <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "#fff", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>
+            <div style={{ padding: isMobile ? "14px 16px" : "20px 24px" }}>
+              {/* Quote header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, animation: `onb-card-in 0.3s 0.2s ease both` }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: "#0A0E17" }}>{business?.business_name || "Your Business"}</div>
+                  <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>{business?.phone || "021 123 4567"}</div>
                 </div>
-              ))}
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1 }}>Quote</div>
+                  <div style={{ fontSize: 10, color: "#6b7280", marginTop: 2 }}>{new Date().toLocaleDateString("en-NZ", { day: "numeric", month: "short", year: "numeric" })}</div>
+                </div>
+              </div>
+              <div style={{ height: 2, background: "#14B8A6", borderRadius: 1, marginBottom: 14, animation: `onb-line-in 0.4s 0.4s ease both` }} />
+              {/* Customer + Job */}
+              <div style={{ marginBottom: 12, animation: `onb-card-in 0.3s 0.5s ease both` }}>
+                <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 0.5, marginBottom: 3 }}>Prepared For</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>Sarah Johnson</div>
+              </div>
+              <div style={{ marginBottom: 12, animation: `onb-card-in 0.3s 0.6s ease both` }}>
+                <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 0.5, marginBottom: 3 }}>Job</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>Bathroom renovation</div>
+              </div>
+              {/* Scope */}
+              <div style={{ marginBottom: 12, animation: `onb-card-in 0.3s 0.7s ease both` }}>
+                <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 0.5, marginBottom: 3 }}>Scope of Work</div>
+                <div style={{ fontSize: 10, color: "#374151", lineHeight: 1.6 }}>Remove existing shower, retile walls and floor, install new mixer and vanity unit, waterproof membrane...</div>
+              </div>
+              {/* Line items */}
+              <div style={{ background: "#f9fafb", borderRadius: 8, padding: "10px 12px", marginBottom: 12, animation: `onb-card-in 0.3s 0.9s ease both` }}>
+                {[
+                  { item: "Tiles (floor & walls)", price: "$680" },
+                  { item: "Vanity unit + basin", price: "$520" },
+                  { item: "Labour (16 hrs)", price: "$1,250" },
+                ].map((row, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: i < 2 ? "1px solid #e5e7eb" : "none" }}>
+                    <span style={{ fontSize: 10, color: "#6b7280" }}>{row.item}</span>
+                    <span style={{ fontSize: 10, color: "#111827", fontWeight: 600 }}>{row.price}</span>
+                  </div>
+                ))}
+                <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 8, marginTop: 6, borderTop: "2px solid #111827" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#111827" }}>Total</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: "#14B8A6" }}>$2,450</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.5, margin: 0, textAlign: "center" }}>
+            The AI breaks down scope, materials, and labour into a professional quote. <strong style={{ color: theme.text }}>Edit anything you like</strong> — it's fully customisable.
+          </p>
+        </div>
+      ),
+    },
+    // 3 — Happy? Hit send
+    {
+      icon: Send, iconBg: "rgba(139,92,246,0.15)", iconColor: "#8B5CF6",
+      title: "Happy? Hit Send",
+      subtitle: "Once you're happy with the quote, send it off",
+      content: (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <MockScreen activeNav="quotes">
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {/* Mock quote summary */}
+              <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", animation: `onb-card-in 0.3s 0.2s ease both` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>Bathroom renovation</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: theme.accent }}>$2,450</span>
+                </div>
+                <div style={{ fontSize: 10, color: theme.textDim }}>Sarah Johnson · 3 line items</div>
+              </div>
+              {/* Mock send button */}
+              <div style={{ display: "flex", gap: 8, animation: `onb-card-in 0.3s 0.5s ease both` }}>
+                <div style={{ flex: 1, padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
+                  <Eye size={12} color={theme.textMuted} />
+                  <span style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted }}>Preview</span>
+                </div>
+                <div style={{ flex: 1, padding: "8px 12px", borderRadius: 8, background: "rgba(20,184,166,0.15)", border: "1px solid rgba(20,184,166,0.25)", display: "flex", alignItems: "center", gap: 6, justifyContent: "center", position: "relative", animation: "onb-glow-btn 2s 1s ease-in-out infinite" }}>
+                  <Send size={12} color="#14B8A6" />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#14B8A6" }}>Send Quote</span>
+                  <ClickPulse top={-4} left={-4} delay={1.5} label="Send it!" />
+                </div>
+              </div>
+              {/* What happens next */}
+              <div style={{ marginTop: 6, padding: "8px 10px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.1)", animation: `onb-card-in 0.3s 0.8s ease both` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <CheckCircle2 size={12} color="#22C55E" />
+                  <span style={{ fontSize: 10, color: "#22C55E", fontWeight: 600 }}>Customer gets a professional email with your quote attached</span>
+                </div>
+              </div>
             </div>
           </MockScreen>
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1, padding: "10px 12px", borderRadius: 10, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.1)", textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: theme.textDim, marginBottom: 4 }}>Without rates</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#EF4444" }}>Generic quotes</div>
+          {/* Follow-up teaser */}
+          <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.12)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <RefreshCw size={14} color="#3B82F6" />
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#3B82F6" }}>Then follow-ups kick in automatically</span>
             </div>
-            <div style={{ flex: 1, padding: "10px 12px", borderRadius: 10, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.1)", textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: theme.textDim, marginBottom: 4 }}>With your rates</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#22C55E" }}>Accurate quotes</div>
-            </div>
+            <p style={{ fontSize: 12, color: theme.textMuted, lineHeight: 1.5, margin: 0 }}>
+              If the customer doesn't respond, Wynflow sends friendly follow-up emails on your behalf — Day 2, Day 5, Day 10. No chasing needed.
+            </p>
           </div>
         </div>
       ),
     },
-    // 5 — Quote Request Link
+    // 3 — Share your quote request link
     {
       icon: Link, iconBg: "rgba(34,197,94,0.15)", iconColor: "#22C55E",
       title: "Your Quote Request Link",
@@ -8208,7 +7908,7 @@ const OnboardingTutorial = ({ business, dispatch, onComplete }) => {
 
   const goNext = () => {
     if (isLast) {
-      dispatch({ type: "SET_SCREEN", payload: "settings" });
+      dispatch({ type: "SET_SCREEN", payload: "aiQuote" });
       onComplete();
     } else {
       setStep(step + 1);
@@ -8282,7 +7982,7 @@ const OnboardingTutorial = ({ business, dispatch, onComplete }) => {
               onMouseDown={e => { e.currentTarget.style.transform = "scale(0.97)"; }}
               onMouseUp={e => { e.currentTarget.style.transform = "scale(1.02)"; }}
               style={{ flex: step > 0 ? 2 : 1, padding: "14px 20px", borderRadius: 12, background: isLast ? theme.accent : "rgba(20,184,166,0.15)", border: `1px solid ${isLast ? theme.accent : "rgba(20,184,166,0.25)"}`, color: isLast ? "#000" : theme.accent, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: theme.font, transition: "all 0.2s", boxShadow: isLast ? "0 0 20px rgba(20,184,166,0.25)" : "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              {isLast ? <><SettingsIcon size={16} /> Set Up My Settings</> : <>Next <ArrowRight size={15} /></>}
+              {isLast ? <><Cpu size={16} /> Create My First Quote</> : <>Next <ArrowRight size={15} /></>}
             </button>
           </div>
           {!isLast && (
