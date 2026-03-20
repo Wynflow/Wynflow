@@ -4149,7 +4149,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
               {editForm?.labourHours && business.hourly_rate && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Labour ({editForm.labourHours} hrs @ ${business.hourly_rate}/hr)</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${(parseFloat(editForm.labourHours) * parseFloat(business.hourly_rate)).toLocaleString()}</span></div>}
               {editForm?.includeCallout && parseFloat(business.callout_fee) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Callout Fee</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${parseFloat(business.callout_fee).toLocaleString()}</span></div>}
             </>)}
-            {business.gst_number ? (() => {
+            {editForm?.showGST && business.gst_number ? (() => {
               const amt = parseFloat(editForm?.amount || 0);
               const isInc = business.gst_inclusive !== false;
               const subtotal = isInc ? Math.round((amt / 1.15) * 100) / 100 : amt;
@@ -4322,6 +4322,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
           amount: result.quote.total || "",
           notes: result.quote.notes || "",
           showBreakdown: business.default_show_breakdown !== undefined ? business.default_show_breakdown : true,
+          showGST: !!business.gst_number,
           includeCallout: parseFloat(business.callout_fee) > 0,
           showBusinessDetails: !!(business.address || business.gst_number || business.license_number),
         });
@@ -4406,6 +4407,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         includeCallout: editForm.includeCallout,
         calloutFee: business.callout_fee,
         showBreakdown: editForm.showBreakdown,
+        showGST: editForm.showGST,
         showBusinessDetails: editForm.showBusinessDetails,
         notes: editForm.notes,
         requireDeposit: business.require_deposit,
@@ -4532,16 +4534,24 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
             <div style={{ marginTop: 20, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 600, color: theme.text, margin: 0 }}>Pricing</h3>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
-                  <input type="checkbox" checked={editForm.showBreakdown} onChange={e => {
-                    const c = e.target.checked;
-                    setEditForm(prev => ({ ...prev, showBreakdown: c }));
-                    if (confirm(c ? "Always show pricing breakdown on future quotes?" : "Always hide pricing breakdown on future quotes?")) {
-                      db("businesses").eq("id", business.id).update({ default_show_breakdown: c });
-                    }
-                  }} style={{ accentColor: theme.accent }} />
-                  Show breakdown on invoice
-                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {business.gst_number && (
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
+                      <input type="checkbox" checked={editForm.showGST} onChange={e => setEditForm(prev => ({ ...prev, showGST: e.target.checked }))} style={{ accentColor: theme.accent }} />
+                      Show GST
+                    </label>
+                  )}
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
+                    <input type="checkbox" checked={editForm.showBreakdown} onChange={e => {
+                      const c = e.target.checked;
+                      setEditForm(prev => ({ ...prev, showBreakdown: c }));
+                      if (confirm(c ? "Always show pricing breakdown on future quotes?" : "Always hide pricing breakdown on future quotes?")) {
+                        db("businesses").eq("id", business.id).update({ default_show_breakdown: c });
+                      }
+                    }} style={{ accentColor: theme.accent }} />
+                    Show breakdown
+                  </label>
+                </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>Line Items</div>
@@ -4689,7 +4699,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
                       {editForm?.labourHours && business.hourly_rate && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 12, color: "#6b7280" }}>Labour ({editForm.labourHours} hrs @ ${business.hourly_rate}/hr)</span><span style={{ fontSize: 12, color: "#111827", fontWeight: 500 }}>${(parseFloat(editForm.labourHours) * parseFloat(business.hourly_rate)).toLocaleString()}</span></div>}
                       {editForm?.includeCallout && parseFloat(business.callout_fee) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 12, color: "#6b7280" }}>Callout Fee</span><span style={{ fontSize: 12, color: "#111827", fontWeight: 500 }}>${parseFloat(business.callout_fee).toLocaleString()}</span></div>}
                     </>)}
-                    {business.gst_number ? (() => {
+                    {editForm?.showGST && business.gst_number ? (() => {
                       const amt = parseFloat(editForm?.amount || 0);
                       const isInc = business.gst_inclusive !== false;
                       const subtotal = isInc ? Math.round((amt / 1.15) * 100) / 100 : amt;
@@ -5222,6 +5232,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
           amount: result.quote.total || "",
           notes: result.quote.notes || "",
           showBreakdown: business.default_show_breakdown !== undefined ? business.default_show_breakdown : true,
+          showGST: !!business.gst_number,
           includeCallout: parseFloat(business.callout_fee) > 0,
           showBusinessDetails: !!(business.address || business.gst_number || business.license_number),
         });
@@ -5306,6 +5317,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
         includeCallout: editForm.includeCallout,
         calloutFee: business.callout_fee,
         showBreakdown: editForm.showBreakdown,
+        showGST: editForm.showGST,
         showBusinessDetails: editForm.showBusinessDetails,
         notes: editForm.notes,
         requireDeposit: business.require_deposit,
@@ -5412,16 +5424,24 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
           <div style={{ padding: 14, borderRadius: 10, background: theme.surfaceLight, border: `1px solid ${theme.border}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>Pricing</div>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
-                <input type="checkbox" checked={editForm.showBreakdown} onChange={e => {
-                  const c = e.target.checked;
-                  setEditForm(prev => ({ ...prev, showBreakdown: c }));
-                  if (confirm(c ? "Always show pricing breakdown on future quotes?" : "Always hide pricing breakdown on future quotes?")) {
-                    db("businesses").eq("id", business.id).update({ default_show_breakdown: c });
-                  }
-                }} style={{ accentColor: theme.accent }} />
-                Show on invoice
-              </label>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                {business.gst_number && (
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
+                    <input type="checkbox" checked={editForm.showGST} onChange={e => setEditForm(prev => ({ ...prev, showGST: e.target.checked }))} style={{ accentColor: theme.accent }} />
+                    Show GST
+                  </label>
+                )}
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted }}>
+                  <input type="checkbox" checked={editForm.showBreakdown} onChange={e => {
+                    const c = e.target.checked;
+                    setEditForm(prev => ({ ...prev, showBreakdown: c }));
+                    if (confirm(c ? "Always show pricing breakdown on future quotes?" : "Always hide pricing breakdown on future quotes?")) {
+                      db("businesses").eq("id", business.id).update({ default_show_breakdown: c });
+                    }
+                  }} style={{ accentColor: theme.accent }} />
+                  Show breakdown
+                </label>
+              </div>
             </div>
             {editForm.showBreakdown && (<>
             <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Materials</div>
