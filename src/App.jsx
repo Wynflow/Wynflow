@@ -4149,10 +4149,25 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
               {editForm?.labourHours && business.hourly_rate && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Labour ({editForm.labourHours} hrs @ ${business.hourly_rate}/hr)</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${(parseFloat(editForm.labourHours) * parseFloat(business.hourly_rate)).toLocaleString()}</span></div>}
               {editForm?.includeCallout && parseFloat(business.callout_fee) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Callout Fee</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${parseFloat(business.callout_fee).toLocaleString()}</span></div>}
             </>)}
-            <div style={{ borderTop: editForm?.showBreakdown ? "2px solid #111827" : "none", paddingTop: editForm?.showBreakdown ? 12 : 0, marginTop: editForm?.showBreakdown ? 12 : 0, display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total{business.gst_number ? (business.gst_inclusive !== false ? " (incl. GST)" : " (excl. GST)") : ""}</span>
-              <span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(editForm?.amount || 0).toLocaleString()}</span>
-            </div>
+            {business.gst_number ? (() => {
+              const amt = parseFloat(editForm?.amount || 0);
+              const isInc = business.gst_inclusive !== false;
+              const subtotal = isInc ? Math.round((amt / 1.15) * 100) / 100 : amt;
+              const gst = isInc ? Math.round((amt - subtotal) * 100) / 100 : Math.round(amt * 0.15 * 100) / 100;
+              const total = isInc ? amt : Math.round((amt + gst) * 100) / 100;
+              return (<>
+                <div style={{ borderTop: editForm?.showBreakdown ? "2px solid #111827" : "none", paddingTop: editForm?.showBreakdown ? 12 : 0, marginTop: editForm?.showBreakdown ? 12 : 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Subtotal (excl. GST)</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>GST (15%)</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${gst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", borderTop: "2px solid #111827", paddingTop: 10 }}><span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total (incl. GST)</span><span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                </div>
+              </>);
+            })() : (
+              <div style={{ borderTop: editForm?.showBreakdown ? "2px solid #111827" : "none", paddingTop: editForm?.showBreakdown ? 12 : 0, marginTop: editForm?.showBreakdown ? 12 : 0, display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total</span>
+                <span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(editForm?.amount || 0).toLocaleString()}</span>
+              </div>
+            )}
           </div>
           {editForm?.notes && <div style={{ marginBottom: 24 }}><div style={{ fontSize: 12, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>Terms & Conditions</div><div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-line" }}>{editForm.notes}</div></div>}
           {editForm?.showBusinessDetails && business.quote_footer && <div style={{ marginBottom: 24, padding: "14px 16px", borderRadius: 8, background: "#f9fafb", border: "1px solid #e5e7eb" }}><div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, whiteSpace: "pre-line" }}>{business.quote_footer}</div></div>}
@@ -4568,10 +4583,34 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
                     Include callout fee (${parseFloat(business.callout_fee).toLocaleString()})
                   </label>
                 )}
+                {business.gst_number ? (() => {
+                  const amt = parseFloat(editForm.amount || 0);
+                  const isInc = business.gst_inclusive !== false;
+                  const subtotal = isInc ? Math.round((amt / 1.15) * 100) / 100 : amt;
+                  const gst = isInc ? Math.round((amt - subtotal) * 100) / 100 : Math.round(amt * 0.15 * 100) / 100;
+                  const total = isInc ? amt : Math.round((amt + gst) * 100) / 100;
+                  return (
+                    <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 12, marginTop: 4 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                        <span style={{ fontSize: 12, color: theme.textMuted }}>Subtotal (excl. GST)</span>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: theme.text }}>${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                        <span style={{ fontSize: 12, color: theme.textMuted }}>GST (15%)</span>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: theme.text }}>${gst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `1px solid ${theme.border}`, paddingTop: 8 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total (incl. GST)</span>
+                        <span style={{ fontSize: 22, fontWeight: 700, color: theme.accent }}>${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  );
+                })() : (
                 <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 12, marginTop: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total{business.gst_number ? (business.gst_inclusive !== false ? " (incl. GST)" : " (excl. GST)") : ""}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total</span>
                   <span style={{ fontSize: 22, fontWeight: 700, color: theme.accent }}>${parseFloat(editForm.amount || 0).toLocaleString()}</span>
                 </div>
+                )}
                 <div style={{ marginTop: -4 }}><Input label="Override Total ($)" value={editForm.amount} onChange={v => setEditForm(prev => ({ ...prev, amount: v }))} type="number" /></div>
               </div>
             </div>
@@ -4650,7 +4689,22 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
                       {editForm?.labourHours && business.hourly_rate && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 12, color: "#6b7280" }}>Labour ({editForm.labourHours} hrs @ ${business.hourly_rate}/hr)</span><span style={{ fontSize: 12, color: "#111827", fontWeight: 500 }}>${(parseFloat(editForm.labourHours) * parseFloat(business.hourly_rate)).toLocaleString()}</span></div>}
                       {editForm?.includeCallout && parseFloat(business.callout_fee) > 0 && <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 12, color: "#6b7280" }}>Callout Fee</span><span style={{ fontSize: 12, color: "#111827", fontWeight: 500 }}>${parseFloat(business.callout_fee).toLocaleString()}</span></div>}
                     </>)}
-                    <div style={{ borderTop: editForm?.showBreakdown ? "2px solid #111827" : "none", paddingTop: editForm?.showBreakdown ? 10 : 0, marginTop: editForm?.showBreakdown ? 8 : 0, display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Total{business.gst_number ? (business.gst_inclusive !== false ? " (incl. GST)" : " (excl. GST)") : ""}</span><span style={{ fontSize: 18, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(editForm?.amount || 0).toLocaleString()}</span></div>
+                    {business.gst_number ? (() => {
+                      const amt = parseFloat(editForm?.amount || 0);
+                      const isInc = business.gst_inclusive !== false;
+                      const subtotal = isInc ? Math.round((amt / 1.15) * 100) / 100 : amt;
+                      const gst = isInc ? Math.round((amt - subtotal) * 100) / 100 : Math.round(amt * 0.15 * 100) / 100;
+                      const total = isInc ? amt : Math.round((amt + gst) * 100) / 100;
+                      return (
+                        <div style={{ borderTop: editForm?.showBreakdown ? "2px solid #111827" : "none", paddingTop: editForm?.showBreakdown ? 8 : 0, marginTop: editForm?.showBreakdown ? 8 : 0 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontSize: 11, color: "#6b7280" }}>Subtotal (excl. GST)</span><span style={{ fontSize: 11, color: "#111827", fontWeight: 500 }}>${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 11, color: "#6b7280" }}>GST (15%)</span><span style={{ fontSize: 11, color: "#111827", fontWeight: 500 }}>${gst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                          <div style={{ display: "flex", justifyContent: "space-between", borderTop: "2px solid #111827", paddingTop: 6 }}><span style={{ fontSize: 12, fontWeight: 700, color: "#111827" }}>Total (incl. GST)</span><span style={{ fontSize: 16, fontWeight: 800, color: "#14B8A6" }}>${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                        </div>
+                      );
+                    })() : (
+                      <div style={{ borderTop: editForm?.showBreakdown ? "2px solid #111827" : "none", paddingTop: editForm?.showBreakdown ? 10 : 0, marginTop: editForm?.showBreakdown ? 8 : 0, display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Total</span><span style={{ fontSize: 18, fontWeight: 800, color: "#14B8A6" }}>${parseFloat(editForm?.amount || 0).toLocaleString()}</span></div>
+                    )}
                   </div>
                   {editForm?.notes && <div style={{ marginBottom: 18 }}><div style={{ fontSize: 10, color: "#9ca3af", textTransform: "uppercase", fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>Terms & Conditions</div><div style={{ fontSize: 11, color: "#6b7280", lineHeight: 1.5, whiteSpace: "pre-line" }}>{editForm.notes}</div></div>}
                   {editForm?.showBusinessDetails && business.quote_footer && <div style={{ marginBottom: 18, padding: "10px 12px", borderRadius: 6, background: "#f9fafb", border: "1px solid #e5e7eb" }}><div style={{ fontSize: 11, color: "#6b7280", lineHeight: 1.5, whiteSpace: "pre-line" }}>{business.quote_footer}</div></div>}
@@ -4852,10 +4906,33 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
               onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = theme.textMuted; }}>
               <Plus size={14} /> Add line item
             </button>
+            {business.gst_number ? (() => {
+              const isInc = business.gst_inclusive !== false;
+              const subtotal = isInc ? Math.round((totalAmount / 1.15) * 100) / 100 : totalAmount;
+              const gst = isInc ? Math.round((totalAmount - subtotal) * 100) / 100 : Math.round(totalAmount * 0.15 * 100) / 100;
+              const total = isInc ? totalAmount : Math.round((totalAmount + gst) * 100) / 100;
+              return (
+                <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 12, marginTop: 4 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, color: theme.textMuted }}>Subtotal (excl. GST)</span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, color: theme.textMuted }}>GST (15%)</span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>${gst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `1px solid ${theme.border}`, paddingTop: 8 }}>
+                    <span style={{ fontSize: 16, fontWeight: 600, color: theme.text }}>Total (incl. GST)</span>
+                    <span style={{ fontSize: 24, fontWeight: 700, color: theme.accent }}>${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+              );
+            })() : (
             <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 12, marginTop: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 16, fontWeight: 600, color: theme.text }}>Total{business.gst_inclusive !== false && business.gst_number ? " (incl. GST)" : business.gst_number ? " (excl. GST)" : ""}</span>
+              <span style={{ fontSize: 16, fontWeight: 600, color: theme.text }}>Total</span>
               <span style={{ fontSize: 24, fontWeight: 700, color: theme.accent }}>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
+            )}
             <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12, color: theme.textMuted, marginTop: 12 }}>
               <input type="checkbox" checked={showBreakdown} onChange={e => {
                 setShowBreakdown(e.target.checked);
@@ -4954,10 +5031,24 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
                     <span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>{parseFloat(item.price) ? "$" + parseFloat(item.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}</span>
                   </div>
                 ))}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: showBreakdown ? "2px solid #111827" : "none", paddingTop: showBreakdown ? 12 : 0, marginTop: showBreakdown ? 4 : 0 }}>
-                  <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total{business.gst_inclusive !== false && business.gst_number ? " (incl. GST)" : business.gst_number ? " (excl. GST)" : ""}</span>
-                  <span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
+                {business.gst_number ? (() => {
+                  const isInc = business.gst_inclusive !== false;
+                  const subtotal = isInc ? Math.round((totalAmount / 1.15) * 100) / 100 : totalAmount;
+                  const gst = isInc ? Math.round((totalAmount - subtotal) * 100) / 100 : Math.round(totalAmount * 0.15 * 100) / 100;
+                  const total = isInc ? totalAmount : Math.round((totalAmount + gst) * 100) / 100;
+                  return (<>
+                    <div style={{ borderTop: showBreakdown ? "2px solid #111827" : "none", paddingTop: showBreakdown ? 12 : 0, marginTop: showBreakdown ? 4 : 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontSize: 14, color: "#6b7280" }}>Subtotal (excl. GST)</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><span style={{ fontSize: 14, color: "#6b7280" }}>GST (15%)</span><span style={{ fontSize: 14, color: "#111827", fontWeight: 500 }}>${gst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                      <div style={{ display: "flex", justifyContent: "space-between", borderTop: "2px solid #111827", paddingTop: 10 }}><span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total (incl. GST)</span><span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                    </div>
+                  </>);
+                })() : (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: showBreakdown ? "2px solid #111827" : "none", paddingTop: showBreakdown ? 12 : 0, marginTop: showBreakdown ? 4 : 0 }}>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>Total</span>
+                    <span style={{ fontSize: 24, fontWeight: 800, color: "#14B8A6" }}>${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
               </div>
               {business.require_deposit && business.bank_account_number && (
                 <div style={{ marginBottom: 24, padding: "16px 20px", borderRadius: 10, background: "#f0fdfa", border: "1px solid #ccfbf1" }}>
@@ -5361,10 +5452,34 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
               </label>
             )}
             </>)}
+            {business.gst_number ? (() => {
+              const amt = parseFloat(editForm.amount || 0);
+              const isInc = business.gst_inclusive !== false;
+              const subtotal = isInc ? Math.round((amt / 1.15) * 100) / 100 : amt;
+              const gst = isInc ? Math.round((amt - subtotal) * 100) / 100 : Math.round(amt * 0.15 * 100) / 100;
+              const total = isInc ? amt : Math.round((amt + gst) * 100) / 100;
+              return (
+                <div style={{ borderTop: editForm.showBreakdown ? `1px solid ${theme.border}` : "none", paddingTop: editForm.showBreakdown ? 10 : 0, marginTop: editForm.showBreakdown ? 8 : 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: theme.textMuted }}>Subtotal (excl. GST)</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: theme.text }}>${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: theme.textMuted }}>GST (15%)</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: theme.text }}>${gst.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `1px solid ${theme.border}`, paddingTop: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total (incl. GST)</span>
+                    <span style={{ fontSize: 20, fontWeight: 700, color: theme.accent }}>${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+              );
+            })() : (
             <div style={{ borderTop: editForm.showBreakdown ? `1px solid ${theme.border}` : "none", paddingTop: editForm.showBreakdown ? 10 : 0, marginTop: editForm.showBreakdown ? 8 : 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total{business.gst_number ? (business.gst_inclusive !== false ? " (incl. GST)" : " (excl. GST)") : ""}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>Total</span>
               <span style={{ fontSize: 20, fontWeight: 700, color: theme.accent }}>${parseFloat(editForm.amount || 0).toLocaleString()}</span>
             </div>
+            )}
             <div style={{ marginTop: 8 }}><Input label="Override Total ($)" value={editForm.amount} onChange={v => setEditForm(prev => ({ ...prev, amount: v }))} type="number" /></div>
           </div>
           <Input label="Additional Notes" value={editForm.notes} onChange={v => setEditForm(prev => ({ ...prev, notes: v }))} textarea placeholder="Any terms, conditions, or notes for the customer" />
