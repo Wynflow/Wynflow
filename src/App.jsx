@@ -4587,7 +4587,22 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {marginPct === 0 && editForm.lineItems?.some(i => i.costPrice || i.price) && (
+                  <div style={{ padding: "12px 16px", borderRadius: 10, background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.2)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+                    <div style={{ fontSize: 13, color: "rgba(234,179,8,0.9)" }}>No materials markup set — these prices are at cost.</div>
+                    <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "settings" })} style={{ fontSize: 12, color: theme.accent, background: "none", border: "none", cursor: "pointer", fontFamily: theme.font, fontWeight: 600, whiteSpace: "nowrap", textDecoration: "underline" }}>Set in Settings</button>
+                  </div>
+                )}
                 <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>Line Items</div>
+                {marginPct > 0 && (
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", paddingBottom: 4 }}>
+                    <div style={{ flex: 1, fontSize: 11, color: theme.textDim }}>Description</div>
+                    <div style={{ width: isMobile ? 80 : 100, fontSize: 11, color: theme.textDim, textAlign: "right" }}>Cost</div>
+                    <span style={{ fontSize: 12, color: "transparent" }}>→</span>
+                    <div style={{ width: isMobile ? 80 : 100, fontSize: 11, color: theme.textDim, textAlign: "right" }}>Customer</div>
+                    <div style={{ width: 30 }} />
+                  </div>
+                )}
                 {(editForm.lineItems || []).map((item, idx) => (
                   <div key={idx} style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <div style={{ flex: 1 }}>
@@ -4596,12 +4611,30 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
                         onFocus={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; }}
                         onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }} />
                     </div>
-                    <div style={{ width: isMobile ? 90 : 110 }}>
-                      <input value={item.price} onChange={e => updateLineItem(idx, "price", e.target.value)} placeholder="$0" type="number"
-                        style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", textAlign: "right" }}
-                        onFocus={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; }}
-                        onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }} />
-                    </div>
+                    {marginPct > 0 ? (
+                      <>
+                        <div style={{ width: isMobile ? 80 : 100 }}>
+                          <input value={item.costPrice || ""} onChange={e => updateLineItem(idx, "costPrice", e.target.value)} placeholder="Cost" type="number"
+                            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.textMuted, fontSize: 13, fontFamily: theme.font, outline: "none", textAlign: "right" }}
+                            onFocus={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; }}
+                            onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }} />
+                        </div>
+                        <span style={{ fontSize: 12, color: theme.textDim }}>→</span>
+                        <div style={{ width: isMobile ? 80 : 100 }}>
+                          <input value={item.price} onChange={e => updateLineItem(idx, "price", e.target.value)} placeholder="$0" type="number"
+                            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", textAlign: "right" }}
+                            onFocus={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; }}
+                            onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }} />
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ width: isMobile ? 90 : 110 }}>
+                        <input value={item.price} onChange={e => updateLineItem(idx, "price", e.target.value)} placeholder="$0" type="number"
+                          style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", textAlign: "right" }}
+                          onFocus={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }} />
+                      </div>
+                    )}
                     {(editForm.lineItems || []).length > 1 && (
                       <button onClick={() => removeLineItem(idx)} style={{ padding: "8px", background: "none", border: "none", color: theme.textDim, cursor: "pointer", fontSize: 16, lineHeight: 1, flexShrink: 0, borderRadius: 6, transition: "all 0.15s" }}
                         onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
@@ -4618,6 +4651,15 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
                   <span style={{ fontSize: 12, color: theme.textMuted }}>Materials subtotal</span>
                   <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>${parseFloat(editForm.materialsCost || 0).toLocaleString()}</span>
                 </div>
+                {marginPct > 0 && (editForm.lineItems || []).some(i => parseFloat(i.costPrice) > 0) && (() => {
+                  const markupTotal = (editForm.lineItems || []).reduce((sum, item) => sum + ((parseFloat(item.price) || 0) - (parseFloat(item.costPrice) || 0)), 0);
+                  return markupTotal > 0 ? (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0" }}>
+                      <span style={{ fontSize: 12, color: theme.accent }}>Materials markup</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: theme.accent }}>+${Math.round(markupTotal).toLocaleString()}</span>
+                    </div>
+                  ) : null;
+                })()}
                 <div style={{ marginTop: 4 }}><Input label="Labour Hours" value={editForm.labourHours} onChange={v => updatePricing("labourHours", v)} type="number" /></div>
                 {business.hourly_rate && <div style={{ fontSize: 12, color: theme.textMuted, marginTop: -4 }}>Labour: {editForm.labourHours || 0} hrs × ${business.hourly_rate}/hr = ${((parseFloat(editForm.labourHours) || 0) * parseFloat(business.hourly_rate)).toLocaleString()}</div>}
                 {parseFloat(business.callout_fee) > 0 && (
