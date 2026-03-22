@@ -4327,20 +4327,21 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
           const priceMatch = line.match(/\$?([\d,.]+)\s*$/);
           const price = priceMatch ? priceMatch[1].replace(",", "") : "";
           const desc = priceMatch ? line.replace(priceMatch[0], "").replace(/[-–—:]\s*$/, "").trim() : line.trim();
-          return { description: desc, price };
+          return { description: desc, costPrice: price, price: String(applyMargin(price)) };
         });
         // If no items parsed or no prices found, create one item with the total materials cost
-        const lineItems = parsedItems.length > 0 ? parsedItems : [{ description: materialsText || "Materials", price: matCost ? String(Math.round(matCost * 100) / 100) : "" }];
-        // Calculate materials cost from line items if prices were parsed
-        const itemsTotal = lineItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
-        const finalMatCost = itemsTotal > 0 ? itemsTotal : matCost;
+        const lineItems = parsedItems.length > 0 ? parsedItems : [{ description: materialsText || "Materials", costPrice: matCost ? String(Math.round(matCost * 100) / 100) : "", price: matCost ? String(applyMargin(matCost)) : "" }];
+        // Calculate marked-up materials cost and total from customer-facing prices
+        const markedUpMatCost = lineItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+        const markedUpTotal = Math.round((markedUpMatCost + labourCost + callout) * 100) / 100;
+        const materialsTextWithMargin = lineItems.filter(i => i.description?.trim()).map(i => i.description + (i.price ? " — $" + i.price : "")).join("\n");
         setEditForm({
           scope: result.quote.scope_of_work || "",
-          materials: materialsText,
+          materials: materialsTextWithMargin,
           lineItems,
           labourHours: result.quote.estimated_hours || "",
-          materialsCost: finalMatCost ? String(Math.round(finalMatCost * 100) / 100) : "",
-          amount: result.quote.total || "",
+          materialsCost: String(Math.round(markedUpMatCost * 100) / 100),
+          amount: String(markedUpTotal),
           notes: result.quote.notes || "",
           showBreakdown: business.default_show_breakdown !== undefined ? business.default_show_breakdown : true,
           showGST: !!business.gst_number,
@@ -4356,6 +4357,12 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const marginPct = parseFloat(business.materials_margin) || 0;
+  const applyMargin = (costPrice) => {
+    const cp = parseFloat(costPrice) || 0;
+    return marginPct > 0 ? Math.round(cp * (1 + marginPct / 100) * 100) / 100 : cp;
   };
 
   const recalcTotal = (fields) => {
@@ -4380,6 +4387,9 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
     setEditForm(prev => {
       const items = [...(prev.lineItems || [])];
       items[index] = { ...items[index], [field]: value };
+      if (field === "costPrice") {
+        items[index].price = String(applyMargin(value));
+      }
       const matCost = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
       const updated = { ...prev, lineItems: items, materialsCost: String(matCost) };
       updated.amount = recalcTotal(updated);
@@ -4388,10 +4398,10 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
   };
 
   const addLineItem = () => {
-    setEditForm(prev => {
-      const items = [...(prev.lineItems || []), { description: "", price: "" }];
-      return { ...prev, lineItems: items };
-    });
+    setEditForm(prev => ({
+      ...prev,
+      lineItems: [...(prev.lineItems || []), { description: "", costPrice: "", price: "" }]
+    }));
   };
 
   const removeLineItem = (index) => {
