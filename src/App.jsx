@@ -2598,6 +2598,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
   const [phone, setPhone] = useState("");
   const [hourlyRate, setHourlyRate] = useState("");
   const [calloutFee, setCalloutFee] = useState("");
+  const [autoFollowUps, setAutoFollowUps] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resetMode, setResetMode] = useState(false);
@@ -2641,7 +2642,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         // If no token but user exists with identities, email confirmation is pending
         if (!authData.access_token) {
           // Store signup details temporarily so we can create business after email confirmation
-          try { localStorage.setItem("wynflow_pending_signup", JSON.stringify({ businessName, contactName, email, phone, trade, hourlyRate, calloutFee, plan })); } catch(e) {}
+          try { localStorage.setItem("wynflow_pending_signup", JSON.stringify({ businessName, contactName, email, phone, trade, hourlyRate, calloutFee, plan, autoFollowUps })); } catch(e) {}
           setEmailSent(true);
           setLoading(false);
           // Notify N8N about new signup
@@ -2651,6 +2652,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
           }).catch(() => {});
           return;
         }
+        const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
         const { data: biz, error: bizErr } = await db("businesses").insert({
           user_id: authData.user.id,
           business_name: businessName,
@@ -2662,6 +2664,8 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
           hourly_rate: parseFloat(hourlyRate) || 0,
           callout_fee: parseFloat(calloutFee) || 0,
           subscription_status: "trialing",
+          trial_ends_at: trialEnd,
+          auto_follow_ups: autoFollowUps,
         });
         if (bizErr || !biz || !biz[0]) {
           const { data: existingBiz } = await db("businesses").eq("user_id", authData.user.id).single().select();
@@ -2819,8 +2823,19 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
                   <div style={{ flex: 1 }}><Input label="Hourly Rate ($)" value={hourlyRate} onChange={setHourlyRate} type="number" placeholder="e.g. 85" /></div>
                   <div style={{ flex: 1 }}><Input label="Callout Fee ($)" value={calloutFee} onChange={setCalloutFee} type="number" placeholder="e.g. 50" /></div>
                 </div>
-                <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", display: "flex", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, color: theme.textMuted }}>Plan: <strong style={{ color: theme.text }}>Starter — $29/mo</strong></span>
+                <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: theme.text }}>Automatic follow-up emails</div>
+                      <div style={{ fontSize: 12, color: theme.textDim, marginTop: 3, lineHeight: 1.4 }}>
+                        {autoFollowUps ? "We'll chase customers who haven't responded to your quotes" : "You'll follow up with customers manually"}
+                      </div>
+                    </div>
+                    <div onClick={() => setAutoFollowUps(!autoFollowUps)}
+                      style={{ width: 44, height: 24, borderRadius: 12, background: autoFollowUps ? theme.accent : "rgba(255,255,255,0.1)", cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+                      <div style={{ width: 20, height: 20, borderRadius: 10, background: "#fff", position: "absolute", top: 2, left: autoFollowUps ? 22 : 2, transition: "left 0.2s" }} />
+                    </div>
+                  </div>
                 </div>
               </>
             )}
@@ -4429,7 +4444,9 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         customer_email: form.customerEmail, customer_phone: form.customerPhone,
         job_title: form.jobTitle, description: editForm.scope + (materialsText ? "\n\nMaterials:\n" + materialsText : "") + (editForm.notes ? "\n\nNotes:\n" + editForm.notes : ""),
         amount: parseFloat(editForm.amount), status: "sent", sent_at: new Date().toISOString(),
-        sequence_id: seqId, next_follow_up_at: nextFollowUp, current_step: 0, follow_up_paused: false,
+        sequence_id: business.auto_follow_ups !== false ? seqId : null,
+        next_follow_up_at: business.auto_follow_ups !== false ? nextFollowUp : null,
+        current_step: 0, follow_up_paused: business.auto_follow_ups === false,
         ai_estimate: parseFloat(editForm.amount), ai_estimate_notes: JSON.stringify(breakdown),
       });
       if (quoteErr || !newQuote?.[0]) throw new Error("Failed to create quote");
@@ -4441,7 +4458,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
       if (!sendRes.ok) {
         dispatch({ type: "NOTIFY", payload: { message: "Quote saved but email failed to send. Try resending from quote details.", type: "error" } });
       } else {
-        dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${form.customerName}! Follow-ups scheduled.`, type: "success" } });
+        dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${form.customerName}!${business.auto_follow_ups !== false ? " Follow-ups scheduled." : ""}`, type: "success" } });
       }
     } catch (err) {
       dispatch({ type: "NOTIFY", payload: { message: err.message, type: "error" } });
@@ -4840,10 +4857,10 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
         pdf_filename: pdfFilename,
         status: "sent",
         sent_at: new Date().toISOString(),
-        sequence_id: form.sequenceId || null,
-        next_follow_up_at: nextFollowUp,
+        sequence_id: business.auto_follow_ups !== false ? (form.sequenceId || null) : null,
+        next_follow_up_at: business.auto_follow_ups !== false ? nextFollowUp : null,
         current_step: 0,
-        follow_up_paused: false,
+        follow_up_paused: business.auto_follow_ups === false,
         ai_estimate_notes: JSON.stringify(breakdown),
       });
       if (quoteErr || !newQuote?.[0]) throw new Error("Failed to create quote");
@@ -4855,7 +4872,7 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
       if (!sendRes.ok) {
         dispatch({ type: "NOTIFY", payload: { message: "Quote saved but email failed to send. Try resending from quote details.", type: "error" } });
       } else {
-        dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${form.customerName}! Follow-ups scheduled.`, type: "success" } });
+        dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${form.customerName}!${business.auto_follow_ups !== false ? " Follow-ups scheduled." : ""}`, type: "success" } });
       }
     } catch (err) {
       dispatch({ type: "NOTIFY", payload: { message: err.message, type: "error" } });
@@ -5339,10 +5356,10 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
         description: editForm.scope + (materialsText ? "\n\nMaterials:\n" + materialsText : "") + (editForm.notes ? "\n\nNotes:\n" + editForm.notes : ""),
         status: "sent",
         sent_at: new Date().toISOString(),
-        sequence_id: seqId,
-        next_follow_up_at: nextFollowUp,
+        sequence_id: business.auto_follow_ups !== false ? seqId : null,
+        next_follow_up_at: business.auto_follow_ups !== false ? nextFollowUp : null,
         current_step: 0,
-        follow_up_paused: false,
+        follow_up_paused: business.auto_follow_ups === false,
         ai_estimate: parseFloat(editForm.amount), ai_estimate_notes: JSON.stringify(breakdown),
       };
       const { error: updateErr } = await db("quotes").eq("id", quote.id).update(quoteUpdates);
@@ -5355,7 +5372,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
       if (!sendRes.ok) {
         dispatch({ type: "NOTIFY", payload: { message: "Quote saved but email failed to send. Try resending from quote details.", type: "error" } });
       } else {
-        dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${quote.customer_name}! Follow-ups scheduled.`, type: "success" } });
+        dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${quote.customer_name}!${business.auto_follow_ups !== false ? " Follow-ups scheduled." : ""}`, type: "success" } });
       }
       dispatch({ type: "GO_BACK" });
     } catch (err) {
@@ -7641,6 +7658,7 @@ const Settings = ({ business, dispatch }) => {
   const [phone, setPhone] = useState(business?.phone || "");
   const [hourlyRate, setHourlyRate] = useState(business?.hourly_rate || "");
   const [calloutFee, setCalloutFee] = useState(business?.callout_fee || "");
+  const [materialsMargin, setMaterialsMargin] = useState(business?.materials_margin || 0);
 
   const [priceList, setPriceList] = useState(business?.price_list || []);
   const [newItem, setNewItem] = useState({ name: "", unit: "each", cost: "" });
@@ -7656,6 +7674,7 @@ const Settings = ({ business, dispatch }) => {
   const [quoteFooter, setQuoteFooter] = useState(business?.quote_footer || "");
   const [defaultPaymentTerms, setDefaultPaymentTerms] = useState(business?.default_payment_terms || "7 days");
   const [aiPricingMode, setAiPricingMode] = useState(business?.ai_pricing_mode || "flexible");
+  const [autoFollowUps, setAutoFollowUps] = useState(business?.auto_follow_ups !== false);
   const [saving, setSaving] = useState(false);
   const [declineReasons, setDeclineReasons] = useState(business?.decline_reasons || DEFAULT_DECLINE_REASONS);
   const [newReason, setNewReason] = useState("");
@@ -7671,6 +7690,7 @@ const Settings = ({ business, dispatch }) => {
       phone: phone,
       hourly_rate: parseFloat(hourlyRate) || 0,
       callout_fee: parseFloat(calloutFee) || 0,
+      materials_margin: Math.max(0, Math.min(200, parseFloat(materialsMargin) || 0)),
       price_list: priceList,
       ai_pricing_mode: aiPricingMode,
       decline_reasons: declineReasons,
@@ -7685,6 +7705,7 @@ const Settings = ({ business, dispatch }) => {
       license_number: licenseNumber,
       quote_footer: quoteFooter,
       default_payment_terms: defaultPaymentTerms,
+      auto_follow_ups: autoFollowUps,
     };
     try {
       const { error } = await db("businesses").eq("id", business.id).update(updates);
@@ -7802,6 +7823,10 @@ const Settings = ({ business, dispatch }) => {
             <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 10 : 12 }}>
               <div style={{ flex: 1 }}><Input label="Hourly Rate ($)" value={hourlyRate} onChange={setHourlyRate} type="number" /></div>
               <div style={{ flex: 1 }}><Input label="Callout Fee ($)" value={calloutFee} onChange={setCalloutFee} type="number" /></div>
+            </div>
+            <div>
+              <Input label="Default Materials Markup %" value={materialsMargin} onChange={v => setMaterialsMargin(v)} type="number" placeholder="e.g. 20" />
+              <div style={{ fontSize: 12, color: theme.textDim, marginTop: -4 }}>How much do you mark up materials? Applied automatically to AI quotes.</div>
             </div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 6 }}>AI Pricing Mode</div>
@@ -7945,6 +7970,20 @@ const Settings = ({ business, dispatch }) => {
             <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>Reply-to:</div>
             <div style={{ fontSize: 14, color: theme.text, fontWeight: 500, marginTop: 4 }}>{email}</div>
           </div>
+          <div style={{ marginTop: 16, padding: "14px 18px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>Automatic follow-up emails</div>
+                <div style={{ fontSize: 12, color: theme.textDim, marginTop: 3, lineHeight: 1.4 }}>
+                  {autoFollowUps ? "Wynflow will automatically chase customers who haven't responded to your quotes" : "Follow-ups are off — you'll need to chase customers manually"}
+                </div>
+              </div>
+              <div onClick={() => setAutoFollowUps(!autoFollowUps)}
+                style={{ width: 44, height: 24, borderRadius: 12, background: autoFollowUps ? theme.accent : "rgba(255,255,255,0.1)", cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+                <div style={{ width: 20, height: 20, borderRadius: 10, background: "#fff", position: "absolute", top: 2, left: autoFollowUps ? 22 : 2, transition: "left 0.2s" }} />
+              </div>
+            </div>
+          </div>
         </Card>
         <Card style={{ gridColumn: "1 / -1", ...(isMobile ? { padding: 16 } : {}) }}>
           <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 8px", letterSpacing: "0.01em" }}>Your Quote Request Link</h3>
@@ -8005,7 +8044,9 @@ const Settings = ({ business, dispatch }) => {
               </div>
               <div style={{ fontSize: isMobile ? 12 : 13, color: theme.textMuted }}>
                 {business?.subscription_status === "trialing"
-                  ? "Upgrade anytime to keep your quotes flowing"
+                  ? (getTrialDaysRemaining(business) !== null
+                      ? `${Math.max(0, getTrialDaysRemaining(business))} days remaining — subscribe anytime`
+                      : "Upgrade anytime to keep your quotes flowing")
                   : "Unlimited quotes • follow-ups • support"}
               </div>
             </div>
@@ -8517,6 +8558,7 @@ function WynflowAppInner() {
             // Create business from pending signup data
             let pending = {};
             try { pending = JSON.parse(localStorage.getItem("wynflow_pending_signup") || "{}"); } catch(e) {}
+            const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
             const { data: biz } = await db("businesses").insert({
               user_id: user.id,
               business_name: pending.businessName || "My Business",
@@ -8528,6 +8570,8 @@ function WynflowAppInner() {
               hourly_rate: parseFloat(pending.hourlyRate) || 0,
               callout_fee: parseFloat(pending.calloutFee) || 0,
               subscription_status: "trialing",
+              trial_ends_at: trialEnd,
+              auto_follow_ups: pending.autoFollowUps !== false,
             });
             const bizRecord = biz && biz[0];
             if (bizRecord) {
@@ -8761,16 +8805,16 @@ function WynflowAppInner() {
     );
   }
 
-  // Trial paywall — DISABLED until Stripe payment flow is fully tested
-  // if (isTrialExpired(business)) {
-  //   return (
-  //     <>
-  //       <style>{globalStyles}</style>
-  //       {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
-  //       <TrialPaywall business={business} dispatch={dispatch} />
-  //     </>
-  //   );
-  // }
+  // Trial paywall — blocks access when trial has expired
+  if (isTrialExpired(business)) {
+    return (
+      <>
+        <style>{globalStyles}</style>
+        {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
+        <TrialPaywall business={business} dispatch={dispatch} />
+      </>
+    );
+  }
 
   const renderContent = () => {
     if (loading) return <Spinner />;
