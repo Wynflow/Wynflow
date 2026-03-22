@@ -5182,6 +5182,12 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
   const [editForm, setEditForm] = useState(null);
   const [sending, setSending] = useState(false);
 
+  const marginPct = parseFloat(business.materials_margin) || 0;
+  const applyMargin = (costPrice) => {
+    const cp = parseFloat(costPrice) || 0;
+    return marginPct > 0 ? Math.round(cp * (1 + marginPct / 100) * 100) / 100 : cp;
+  };
+
   const handlePhotoAdd = (e) => {
     const files = Array.from(e.target.files).slice(0, 5 - sitePhotos.length);
     setSitePhotos(prev => [...prev, ...files]);
@@ -5293,18 +5299,19 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
           const priceMatch = line.match(/\$?([\d,.]+)\s*$/);
           const price = priceMatch ? priceMatch[1].replace(",", "") : "";
           const desc = priceMatch ? line.replace(priceMatch[0], "").replace(/[-–—:]\s*$/, "").trim() : line.trim();
-          return { description: desc, price };
+          return { description: desc, costPrice: price, price: String(applyMargin(price)) };
         });
-        const lineItems = parsedItems.length > 0 ? parsedItems : [{ description: materialsText || "Materials", price: matCost ? String(Math.round(matCost * 100) / 100) : "" }];
-        const itemsTotal = lineItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
-        const finalMatCost = itemsTotal > 0 ? itemsTotal : matCost;
+        const lineItems = parsedItems.length > 0 ? parsedItems : [{ description: materialsText || "Materials", costPrice: matCost ? String(Math.round(matCost * 100) / 100) : "", price: matCost ? String(applyMargin(matCost)) : "" }];
+        const markedUpMatCost = lineItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+        const markedUpTotal = Math.round((markedUpMatCost + labourCost + callout) * 100) / 100;
+        const materialsTextWithMargin = lineItems.filter(i => i.description?.trim()).map(i => i.description + (i.price ? " — $" + i.price : "")).join("\n");
         setEditForm({
           scope: result.quote.scope_of_work || "",
-          materials: materialsText,
+          materials: materialsTextWithMargin,
           lineItems,
           labourHours: result.quote.estimated_hours || "",
-          materialsCost: finalMatCost ? String(Math.round(finalMatCost * 100) / 100) : "",
-          amount: result.quote.total || "",
+          materialsCost: String(Math.round(markedUpMatCost * 100) / 100),
+          amount: String(markedUpTotal),
           notes: result.quote.notes || "",
           showBreakdown: business.default_show_breakdown !== undefined ? business.default_show_breakdown : true,
           showGST: !!business.gst_number,
@@ -5343,6 +5350,9 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
     setEditForm(prev => {
       const items = [...(prev.lineItems || [])];
       items[index] = { ...items[index], [field]: value };
+      if (field === "costPrice") {
+        items[index].price = String(applyMargin(value));
+      }
       const matCost = items.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
       const updated = { ...prev, lineItems: items, materialsCost: String(matCost) };
       updated.amount = recalcTotal(updated);
@@ -5351,7 +5361,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
   };
 
   const addLineItem = () => {
-    setEditForm(prev => ({ ...prev, lineItems: [...(prev.lineItems || []), { description: "", price: "" }] }));
+    setEditForm(prev => ({ ...prev, lineItems: [...(prev.lineItems || []), { description: "", costPrice: "", price: "" }] }));
   };
 
   const removeLineItem = (index) => {
@@ -5519,24 +5529,80 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
               </div>
             </div>
             {editForm.showBreakdown && (<>
-            <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Materials</div>
-            {(editForm.lineItems || []).map((item, idx) => (
-              <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
-                <div style={{ flex: 1 }}>
-                  <input value={item.description} onChange={e => updateLineItem(idx, "description", e.target.value)} placeholder="Item description"
-                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none" }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {marginPct === 0 && editForm.lineItems?.some(i => i.costPrice || i.price) && (
+                <div style={{ padding: "12px 16px", borderRadius: 10, background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.2)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
+                  <div style={{ fontSize: 13, color: "rgba(234,179,8,0.9)" }}>No materials markup set — these prices are at cost.</div>
+                  <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "settings" })} style={{ fontSize: 12, color: theme.accent, background: "none", border: "none", cursor: "pointer", fontFamily: theme.font, fontWeight: 600, whiteSpace: "nowrap", textDecoration: "underline" }}>Set in Settings</button>
                 </div>
-                <div style={{ width: 90 }}>
-                  <input value={item.price} onChange={e => updateLineItem(idx, "price", e.target.value)} placeholder="$0" type="number"
-                    style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", textAlign: "right" }} />
+              )}
+              <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>Materials</div>
+              {marginPct > 0 && (
+                <div style={{ display: "flex", gap: 8, alignItems: "center", paddingBottom: 4 }}>
+                  <div style={{ flex: 1, fontSize: 11, color: theme.textDim }}>Description</div>
+                  <div style={{ width: isMobile ? 80 : 100, fontSize: 11, color: theme.textDim, textAlign: "right" }}>Cost</div>
+                  <span style={{ fontSize: 12, color: "transparent" }}>→</span>
+                  <div style={{ width: isMobile ? 80 : 100, fontSize: 11, color: theme.textDim, textAlign: "right" }}>Customer</div>
+                  <div style={{ width: 30 }} />
                 </div>
-                <button onClick={() => removeLineItem(idx)} style={{ padding: "10px 8px", background: "none", border: "none", color: theme.textDim, cursor: "pointer", fontSize: 16, lineHeight: 1, flexShrink: 0 }}>×</button>
+              )}
+              {(editForm.lineItems || []).map((item, idx) => (
+                <div key={idx} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <div style={{ flex: 1 }}>
+                    <input value={item.description} onChange={e => updateLineItem(idx, "description", e.target.value)} placeholder="Item description"
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none" }}
+                      onFocus={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }} />
+                  </div>
+                  {marginPct > 0 ? (
+                    <>
+                      <div style={{ width: isMobile ? 80 : 100 }}>
+                        <input value={item.costPrice || ""} onChange={e => updateLineItem(idx, "costPrice", e.target.value)} placeholder="Cost" type="number"
+                          style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.textMuted, fontSize: 13, fontFamily: theme.font, outline: "none", textAlign: "right" }}
+                          onFocus={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }} />
+                      </div>
+                      <span style={{ fontSize: 12, color: theme.textDim }}>→</span>
+                      <div style={{ width: isMobile ? 80 : 100 }}>
+                        <input value={item.price} onChange={e => updateLineItem(idx, "price", e.target.value)} placeholder="$0" type="number"
+                          style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", textAlign: "right" }}
+                          onFocus={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }} />
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ width: isMobile ? 90 : 110 }}>
+                      <input value={item.price} onChange={e => updateLineItem(idx, "price", e.target.value)} placeholder="$0" type="number"
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", textAlign: "right" }}
+                        onFocus={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; }}
+                        onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }} />
+                    </div>
+                  )}
+                  {(editForm.lineItems || []).length > 1 && (
+                    <button onClick={() => removeLineItem(idx)} style={{ padding: "8px", background: "none", border: "none", color: theme.textDim, cursor: "pointer", fontSize: 16, lineHeight: 1, flexShrink: 0, borderRadius: 6, transition: "all 0.15s" }}
+                      onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = theme.textDim; e.currentTarget.style.background = "none"; }}>×</button>
+                  )}
+                </div>
+              ))}
+              <button onClick={addLineItem} style={{ padding: "8px 16px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px dashed rgba(255,255,255,0.1)", color: theme.textMuted, fontSize: 13, cursor: "pointer", fontFamily: theme.font, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6 }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; e.currentTarget.style.color = theme.accent; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = theme.textMuted; }}>
+                <Plus size={14} /> Add item
+              </button>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 4 }}>
+                <span style={{ fontSize: 12, color: theme.textMuted }}>Materials subtotal</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>${parseFloat(editForm.materialsCost || 0).toLocaleString()}</span>
               </div>
-            ))}
-            <button onClick={addLineItem} style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px dashed rgba(255,255,255,0.1)", color: theme.textMuted, fontSize: 13, cursor: "pointer", fontFamily: theme.font, marginBottom: 8 }}>+ Add item</button>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderTop: "1px solid rgba(255,255,255,0.06)", marginBottom: 8 }}>
-              <span style={{ fontSize: 12, color: theme.textMuted }}>Materials subtotal</span>
-              <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>${parseFloat(editForm.materialsCost || 0).toLocaleString()}</span>
+              {marginPct > 0 && (editForm.lineItems || []).some(i => parseFloat(i.costPrice) > 0) && (() => {
+                const markupTotal = (editForm.lineItems || []).reduce((sum, item) => sum + ((parseFloat(item.price) || 0) - (parseFloat(item.costPrice) || 0)), 0);
+                return markupTotal > 0 ? (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0" }}>
+                    <span style={{ fontSize: 12, color: theme.accent }}>Materials markup</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: theme.accent }}>+${Math.round(markupTotal).toLocaleString()}</span>
+                  </div>
+                ) : null;
+              })()}
             </div>
             <div style={{ marginBottom: 8 }}><Input label="Labour Hours" value={editForm.labourHours} onChange={v => updatePricing("labourHours", v)} type="number" /></div>
             {business.hourly_rate && <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>Labour: {editForm.labourHours || 0} hrs × ${business.hourly_rate}/hr = ${((parseFloat(editForm.labourHours) || 0) * parseFloat(business.hourly_rate)).toLocaleString()}</div>}
