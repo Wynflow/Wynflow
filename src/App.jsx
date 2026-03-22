@@ -2599,6 +2599,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
   const [hourlyRate, setHourlyRate] = useState("");
   const [calloutFee, setCalloutFee] = useState("");
   const [autoFollowUps, setAutoFollowUps] = useState(true);
+  const [materialsMargin, setMaterialsMargin] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resetMode, setResetMode] = useState(false);
@@ -2642,7 +2643,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         // If no token but user exists with identities, email confirmation is pending
         if (!authData.access_token) {
           // Store signup details temporarily so we can create business after email confirmation
-          try { localStorage.setItem("wynflow_pending_signup", JSON.stringify({ businessName, contactName, email, phone, trade, hourlyRate, calloutFee, plan, autoFollowUps })); } catch(e) {}
+          try { localStorage.setItem("wynflow_pending_signup", JSON.stringify({ businessName, contactName, email, phone, trade, hourlyRate, calloutFee, plan, autoFollowUps, materialsMargin })); } catch(e) {}
           setEmailSent(true);
           setLoading(false);
           // Notify N8N about new signup
@@ -2666,6 +2667,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
           subscription_status: "trialing",
           trial_ends_at: trialEnd,
           auto_follow_ups: autoFollowUps,
+          materials_margin: Math.max(0, Math.min(200, parseFloat(materialsMargin) || 0)),
         });
         if (bizErr || !biz || !biz[0]) {
           const { data: existingBiz } = await db("businesses").eq("user_id", authData.user.id).single().select();
@@ -2822,6 +2824,10 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
                 <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 10 : 12 }}>
                   <div style={{ flex: 1 }}><Input label="Hourly Rate ($)" value={hourlyRate} onChange={setHourlyRate} type="number" placeholder="e.g. 85" /></div>
                   <div style={{ flex: 1 }}><Input label="Callout Fee ($)" value={calloutFee} onChange={setCalloutFee} type="number" placeholder="e.g. 50" /></div>
+                </div>
+                <div>
+                  <Input label="Materials Markup %" value={materialsMargin} onChange={setMaterialsMargin} type="number" placeholder="e.g. 20" />
+                  <div style={{ fontSize: 12, color: theme.textDim, marginTop: -4, marginBottom: 12 }}>How much do you mark up materials? Applied automatically to AI quotes.</div>
                 </div>
                 <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
@@ -8572,6 +8578,7 @@ function WynflowAppInner() {
               subscription_status: "trialing",
               trial_ends_at: trialEnd,
               auto_follow_ups: pending.autoFollowUps !== false,
+              materials_margin: Math.max(0, Math.min(200, parseFloat(pending.materialsMargin) || 0)),
             });
             const bizRecord = biz && biz[0];
             if (bizRecord) {
