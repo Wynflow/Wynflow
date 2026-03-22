@@ -4126,7 +4126,20 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
   const [editForm, setEditForm] = useState(null);
   const [sending, setSending] = useState(false);
 
+  const [hasDraft, setHasDraft] = useState(false);
+  const [savedDraft, setSavedDraft] = useState(null);
+
   const [showPreview, setShowPreview] = useState(false);
+
+  useEffect(() => {
+    try {
+      const draft = JSON.parse(localStorage.getItem("wynflow_quote_draft") || "null");
+      if (draft && (draft.form?.customerName || draft.editForm?.scope)) {
+        setSavedDraft(draft);
+        setHasDraft(true);
+      }
+    } catch (e) {}
+  }, []);
 
   const QuotePreview = () => (
     <div onClick={() => setShowPreview(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? 12 : 20, backdropFilter: "blur(4px)" }}>
@@ -4213,6 +4226,35 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
       </div>
     </div>
   );
+
+  const resumeDraft = () => {
+    if (savedDraft) {
+      setForm(savedDraft.form || form);
+      if (savedDraft.editForm) {
+        setEditForm(savedDraft.editForm);
+        setGenerated(savedDraft.hasGenerated ? {} : null);
+      }
+      setHasDraft(false);
+      setSavedDraft(null);
+      localStorage.removeItem("wynflow_quote_draft");
+    }
+  };
+
+  const discardDraft = () => {
+    setHasDraft(false);
+    setSavedDraft(null);
+    localStorage.removeItem("wynflow_quote_draft");
+  };
+
+  useEffect(() => {
+    return () => {
+      if (form.customerName || form.customerEmail || editForm?.scope) {
+        try {
+          localStorage.setItem("wynflow_quote_draft", JSON.stringify({ form, editForm, hasGenerated: !!generated }));
+        } catch (e) {}
+      }
+    };
+  }, [form, editForm, generated]);
 
   const update = (key, val) => setForm({ ...form, [key]: val });
 
@@ -4471,6 +4513,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         body: JSON.stringify({ quote_id: newQuote[0].id, breakdown }),
       });
       dispatch({ type: "ADD_QUOTE", payload: newQuote[0] });
+      try { localStorage.removeItem("wynflow_quote_draft"); } catch (e) {}
       if (!sendRes.ok) {
         dispatch({ type: "NOTIFY", payload: { message: "Quote saved but email failed to send. Try resending from quote details.", type: "error" } });
       } else {
@@ -4485,6 +4528,18 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
 
   return (
     <div>
+      {hasDraft && (
+        <div style={{ padding: "16px 20px", borderRadius: 12, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.2)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>You have a draft quote</div>
+            <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>{savedDraft?.form?.customerName ? `For ${savedDraft.form.customerName}` : "Resume where you left off?"}</div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button size="sm" onClick={resumeDraft}>Resume</Button>
+            <Button size="sm" variant="ghost" onClick={discardDraft}>Discard</Button>
+          </div>
+        </div>
+      )}
       <div style={{ marginBottom: isMobile ? 16 : 24 }}>
         <span onClick={() => dispatch({ type: "GO_BACK" })} style={{ fontSize: 14, color: theme.textMuted, cursor: "pointer" }}>← Back</span>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
