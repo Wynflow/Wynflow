@@ -5834,9 +5834,20 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
                           {bd.lineItems.filter(i => i.description?.trim()).map((item, idx) => (
                             <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: theme.textMuted, padding: "3px 0", borderBottom: `1px solid ${theme.border}` }}>
                               <span>{item.description}</span>
-                              {item.price && <span style={{ color: theme.text, fontWeight: 500 }}>${parseFloat(item.price).toLocaleString()}</span>}
+                              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                {item.costPrice && parseFloat(item.costPrice) !== parseFloat(item.price) && (
+                                  <span style={{ color: theme.textDim, fontSize: 12 }}>${parseFloat(item.costPrice).toLocaleString()} →</span>
+                                )}
+                                {item.price && <span style={{ color: theme.text, fontWeight: 500 }}>${parseFloat(item.price).toLocaleString()}</span>}
+                              </span>
                             </div>
                           ))}
+                          {bd.lineItems && bd.lineItems.some(i => i.costPrice && parseFloat(i.costPrice) !== parseFloat(i.price)) && (() => {
+                            const markupTotal = bd.lineItems.reduce((sum, item) => sum + ((parseFloat(item.price) || 0) - (parseFloat(item.costPrice) || parseFloat(item.price) || 0)), 0);
+                            return markupTotal > 0 ? (
+                              <div style={{ fontSize: 12, color: theme.accent, marginTop: 4 }}>Materials markup: +${Math.round(markupTotal).toLocaleString()}</div>
+                            ) : null;
+                          })()}
                         </div>
                       )}
                       {(bd.labourHours || bd.materialsCost) && (
