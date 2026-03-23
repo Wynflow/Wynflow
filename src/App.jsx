@@ -3126,9 +3126,11 @@ const TrialBanner = ({ business }) => {
 // ─── Sidebar ───
 const Sidebar = ({ screen, dispatch, business }) => {
   const isMobile = useIsMobile();
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
   const mainNav = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "quotes", label: "Quotes", icon: FileText },
+    { id: "schedule", label: "Schedule", icon: CalendarDays },
     { id: "invoices", label: "Invoices", icon: Receipt },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "sequences", label: "Follow-Ups", icon: RefreshCw },
@@ -3151,31 +3153,119 @@ const Sidebar = ({ screen, dispatch, business }) => {
   const initials = (business?.contact_name || business?.business_name || "W").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 
   if (isMobile) {
+    const bottomTabs = [
+      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { id: "quotes", label: "Quotes", icon: FileText },
+      { id: "schedule", label: "Schedule", icon: CalendarDays },
+    ];
+    const allNav = [...mainNav, ...secondaryNav];
+
     return (
-      <div style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100,
-        background: "rgba(10,14,23,0.92)", borderTop: "1px solid rgba(255,255,255,0.06)",
-        display: "flex", justifyContent: "space-around", padding: "4px 4px env(safe-area-inset-bottom, 6px)",
-        backdropFilter: "blur(20px) saturate(180%)", WebkitBackdropFilter: "blur(20px) saturate(180%)",
-      }}>
-        {allNav.map((item) => {
-          const Icon = item.icon;
-          const isActive = screen === item.id;
-          return (
-          <div key={item.id} onClick={() => dispatch({ type: "SET_SCREEN", payload: item.id })}
-            style={{
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-              cursor: "pointer", padding: "6px 6px 4px", position: "relative",
-              color: isActive ? theme.accent : "rgba(255,255,255,0.35)",
-              transition: "color 0.2s",
+      <>
+        {/* Hamburger header bar */}
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 1001,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "10px 16px",
+          background: "rgba(10,14,23,0.85)",
+          backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+        }}>
+          <span style={{ fontFamily: theme.fontHeading, fontSize: 18, color: theme.text, fontWeight: 700, letterSpacing: "-0.02em" }}>
+            {business?.business_name || "Wynflow"}
+          </span>
+          <button onClick={() => setDrawerOpen(true)} style={{
+            background: "none", border: "none", color: theme.textMuted, cursor: "pointer", padding: 6,
+          }}>
+            <Menu size={22} />
+          </button>
+        </div>
+
+        {/* Slide-out drawer */}
+        {drawerOpen && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 2000 }}>
+            <div
+              onClick={() => setDrawerOpen(false)}
+              style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }}
+            />
+            <div style={{
+              position: "absolute", top: 0, right: 0, bottom: 0, width: 280,
+              background: "rgba(17,24,39,0.97)",
+              backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+              borderLeft: "1px solid rgba(255,255,255,0.06)",
+              padding: "20px 0",
+              animation: "slideInRight 0.2s ease-out",
             }}>
-            {isActive && <div style={{ position: "absolute", top: -4, width: 16, height: 2, borderRadius: 1, background: theme.accent }} />}
-            <Icon size={18} strokeWidth={isActive ? 2.2 : 1.8} />
-            <span style={{ fontSize: 9, fontWeight: isActive ? 700 : 500, letterSpacing: "0.01em" }}>{item.label}</span>
+              <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 16px 16px" }}>
+                <button onClick={() => setDrawerOpen(false)} style={{
+                  background: "none", border: "none", color: theme.textMuted, cursor: "pointer", padding: 4,
+                }}>
+                  <X size={20} />
+                </button>
+              </div>
+              {allNav.map((item) => {
+                const Icon = item.icon;
+                const isActive = screen === item.id || screen?.startsWith(item.id + ":");
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => { dispatch({ type: "SET_SCREEN", payload: item.id }); setDrawerOpen(false); }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 12,
+                      width: "100%", padding: "14px 24px",
+                      background: isActive ? "rgba(20,184,166,0.08)" : "transparent",
+                      border: "none", cursor: "pointer",
+                      color: isActive ? theme.accent : theme.textMuted,
+                      fontSize: 15, fontFamily: theme.font,
+                      borderLeft: isActive ? `3px solid ${theme.accent}` : "3px solid transparent",
+                    }}
+                  >
+                    <Icon size={18} />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          );
-        })}
-      </div>
+        )}
+
+        {/* Bottom tab bar — 3 items only */}
+        <div style={{
+          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000,
+          display: "flex", justifyContent: "space-around", alignItems: "center",
+          padding: `8px 0 calc(8px + env(safe-area-inset-bottom, 6px))`,
+          background: "rgba(10,14,23,0.85)",
+          backdropFilter: "blur(20px) saturate(180%)", WebkitBackdropFilter: "blur(20px) saturate(180%)",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+        }}>
+          {bottomTabs.map((item) => {
+            const Icon = item.icon;
+            const isActive = screen === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => dispatch({ type: "SET_SCREEN", payload: item.id })}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                  background: "none", border: "none", cursor: "pointer",
+                  color: isActive ? theme.accent : theme.textDim,
+                  fontSize: 10, fontFamily: theme.font, padding: "4px 16px",
+                  position: "relative",
+                }}
+              >
+                {isActive && (
+                  <div style={{
+                    position: "absolute", top: -8, width: 20, height: 3,
+                    background: theme.accent, borderRadius: 2,
+                  }} />
+                )}
+                <Icon size={20} />
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      </>
     );
   }
 
@@ -8989,6 +9079,7 @@ function WynflowAppInner() {
     ::-webkit-scrollbar-track { background:transparent; }
     ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08);border-radius:3px; }
     @keyframes slideIn { from{transform:translateX(100px);opacity:0} to{transform:translateX(0);opacity:1} }
+    @keyframes slideInRight { from{transform:translateX(100%)} to{transform:translateX(0)} }
     @keyframes spin { to{transform:rotate(360deg)} }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
     @keyframes successPop { 0%{transform:scale(0.5);opacity:0} 100%{transform:scale(1);opacity:1} }
@@ -9108,7 +9199,7 @@ function WynflowAppInner() {
       {showOnboarding && <OnboardingTutorial business={business} dispatch={dispatch} onComplete={() => { setShowOnboarding(false); try { localStorage.setItem("wynflow_onboarded_" + business.id, "true"); } catch(e) {} setCookie("wynflow_onboarded", "true", 525600); }} />}
       <div style={{ display: "flex", height: "100vh", fontFamily: theme.font, color: "#F1F3F7", background: theme.bg, overflow: "hidden", flexDirection: isMobile ? "column" : "row" }}>
         <Sidebar screen={activeScreen} dispatch={dispatch} business={business} />
-        <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "16px 14px 90px" : "28px 36px", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "56px 14px 90px" : "28px 36px", WebkitOverflowScrolling: "touch" }}>
           <TrialBanner business={business} />
           {renderContent()}
         </div>
