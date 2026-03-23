@@ -6445,9 +6445,11 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
 };
 
 // ─── Quote Detail ───
-const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices = [] }) => {
+const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices = [], jobs }) => {
   const isMobile = useIsMobile();
   const quote = quotes.find((q) => q.id === quoteId);
+  const [showBookingModal, setShowBookingModal] = React.useState(false);
+  const linkedJob = (jobs || []).find((j) => j.quote_id === quote?.id);
   const [steps, setSteps] = useState([]);
   const [responses, setResponses] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -6504,7 +6506,7 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
     dispatch({ type: "NOTIFY", payload: { message: "Quote deleted", type: "success" } });
   };
 
-  return (
+  return (<>
     <div>
       <div style={{ marginBottom: isMobile ? 16 : 32 }}>
         <span onClick={() => dispatch({ type: "GO_BACK" })}
@@ -6670,7 +6672,7 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
             <div style={{ fontSize: 14, color: theme.text }}><strong>Email:</strong> <a href={"mailto:" + quote.customer_email} style={{ color: theme.accent }}>{quote.customer_email}</a></div>
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <Button onClick={() => updateStatus("booked")} style={{ background: theme.green, color: "#fff", display: "inline-flex", alignItems: "center", gap: 6 }}><Check size={16} /> Mark as Booked</Button>
+            <Button onClick={() => setShowBookingModal(true)} style={{ background: theme.green, color: "#fff", display: "inline-flex", alignItems: "center", gap: 6 }}><CalendarDays size={16} /> Book & Schedule</Button>
             {linkedInvoices.length > 0 ? (
               <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "invoiceDetail:" + linkedInvoices[0].id })} style={{ background: theme.accentSoft, color: theme.accent, display: "inline-flex", alignItems: "center", gap: 6 }}><Receipt size={16} /> View Invoice</Button>
             ) : (
@@ -6681,22 +6683,61 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
         </Card>
         )}
         {quote.status === "booked" && (
-        <Card style={{ gridColumn: "1 / -1", background: theme.greenSoft, border: `1px solid ${theme.green}33` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{
+          padding: 16, borderRadius: 12, marginBottom: 16,
+          background: theme.greenSoft,
+          border: `1px solid ${theme.green}33`,
+          gridColumn: "1 / -1",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <CheckCircle2 size={24} color={theme.green} />
+            <strong style={{ color: theme.green, fontSize: 16 }}>Job Booked!</strong>
+          </div>
+          {linkedJob ? (
             <div>
-              <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.green, margin: 0 }}>Job Booked!</h3>
-              <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>
+              <p style={{ color: theme.text, fontSize: 14, margin: "0 0 8px" }}>
+                Scheduled for {format(new Date(linkedJob.starts_at), linkedJob.all_day ? "EEE d MMM yyyy" : "EEE d MMM yyyy 'at' h:mm a")}
+              </p>
+              {(linkedJob.assigned_to || []).length > 0 && (
+                <div style={{ display: "flex", gap: 4, marginBottom: 8, flexWrap: "wrap" }}>
+                  {linkedJob.assigned_to.map((tag) => (
+                    <span key={tag} style={{
+                      padding: "2px 8px", borderRadius: 10, fontSize: 12,
+                      background: "rgba(20,184,166,0.12)", color: theme.accent,
+                    }}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => dispatch({ type: "SET_SCREEN", payload: `schedule:${linkedJob.starts_at.split("T")[0]}` })}
+                style={{
+                  background: "none", border: "none", color: theme.accent, cursor: "pointer",
+                  fontSize: 13, fontFamily: theme.font, padding: 0, textDecoration: "underline",
+                }}
+              >
+                View on Calendar &rarr;
+              </button>
+            </div>
+          ) : (
+            <div>
+              <p style={{ color: theme.textMuted, fontSize: 14, margin: "0 0 10px" }}>
                 {quote.booked_at ? `Booked on ${new Date(quote.booked_at).toLocaleDateString()}` : "This job has been confirmed and booked in."}
               </p>
+              <Button onClick={() => setShowBookingModal(true)} size="sm" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <CalendarDays size={14} /> Schedule this job
+              </Button>
             </div>
-          </div>
-          {linkedInvoices.length > 0 ? (
-            <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "invoiceDetail:" + linkedInvoices[0].id })} style={{ marginTop: 16, background: theme.accentSoft, color: theme.accent, display: "inline-flex", alignItems: "center", gap: 6 }}><Receipt size={16} /> View Invoice</Button>
-          ) : (
-            <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "createInvoice:" + quote.id })} style={{ marginTop: 16, background: theme.accentSoft, color: theme.accent, display: "inline-flex", alignItems: "center", gap: 6 }}><Receipt size={16} /> Generate Invoice</Button>
           )}
-        </Card>
+          <div style={{ marginTop: 12 }}>
+            {linkedInvoices.length > 0 ? (
+              <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "invoiceDetail:" + linkedInvoices[0].id })} style={{ background: theme.accentSoft, color: theme.accent, display: "inline-flex", alignItems: "center", gap: 6 }}><Receipt size={16} /> View Invoice</Button>
+            ) : (
+              <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "createInvoice:" + quote.id })} style={{ background: theme.accentSoft, color: theme.accent, display: "inline-flex", alignItems: "center", gap: 6 }}><Receipt size={16} /> Generate Invoice</Button>
+            )}
+          </div>
+        </div>
         )}
         {quote.status === "declined" && (
         <Card style={{ gridColumn: "1 / -1", background: theme.redSoft, border: `1px solid ${theme.red}33` }}>
@@ -6780,7 +6821,26 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
         )}
       </div>
     </div>
-  );
+    {showBookingModal && (
+      <JobFormModal
+        business={business}
+        dispatch={dispatch}
+        defaults={{}}
+        quote={quote}
+        onClose={() => setShowBookingModal(false)}
+        onBooked={async () => {
+          const updates = {
+            status: "booked",
+            booked_at: new Date().toISOString(),
+            follow_up_paused: true,
+          };
+          await db("quotes").eq("id", quote.id).update(updates);
+          dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, ...updates } });
+          dispatch({ type: "SET_SCREEN", payload: "schedule" });
+        }}
+      />
+    )}
+  </>);
 };
 
 // ─── Invoices List ───
@@ -9761,7 +9821,7 @@ function WynflowAppInner() {
       case "newQuote": return <NewQuoteForm dispatch={dispatch} business={business} sequences={sequences} />;
       case "aiQuote": return <AIQuoteForm dispatch={dispatch} business={business} sequences={sequences} quotes={quotes} />;
       case "sequences": return <SequencesManager sequences={sequences} business={business} dispatch={dispatch} />;
-      case "quoteDetail": return <QuoteDetail quoteId={detailId} quotes={quotes} sequences={sequences} dispatch={dispatch} business={business} invoices={invoices} />;
+      case "quoteDetail": return <QuoteDetail quoteId={detailId} quotes={quotes} sequences={sequences} dispatch={dispatch} business={business} invoices={invoices} jobs={jobs} />;
       case "invoices": return <InvoicesList invoices={invoices} dispatch={dispatch} quotes={quotes} business={business} />;
       case "createInvoice": return <CreateInvoiceForm dispatch={dispatch} business={business} quotes={quotes} sequences={sequences} invoices={invoices} quoteId={detailId} />;
       case "editInvoice": return <CreateInvoiceForm dispatch={dispatch} business={business} quotes={quotes} sequences={sequences} invoices={invoices} editInvoice={invoices.find(i => i.id === detailId)} />;
