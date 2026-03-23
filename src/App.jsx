@@ -1,6 +1,14 @@
 import { useState, useEffect, useReducer, useCallback, Component } from "react";
 import { jsPDF } from "jspdf";
-import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History, Eye } from "lucide-react";
+import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History, Eye, CalendarDays } from "lucide-react";
+import { Calendar, dateFnsLocalizer } from "react-big-calendar";
+import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
+import { format, parse, startOfWeek, getDay, addDays, startOfDay, endOfDay, addHours, isSameDay, startOfISOWeek, endOfISOWeek, subDays } from "date-fns";
+
+// ─── Calendar Localizer (react-big-calendar) ───
+const locales = { "en-NZ": undefined };
+const localizer = dateFnsLocalizer({ format, parse, startOfWeek: (date) => startOfWeek(date, { weekStartsOn: 1 }), getDay, locales });
+const DnDCalendar = withDragAndDrop(Calendar);
 
 // ─── Error Tracking System ───
 const ERROR_WEBHOOK = "https://wynfallautomation.app.n8n.cloud/webhook/error-report";
@@ -366,6 +374,7 @@ const initialState = {
   quotes: [],
   sequences: [],
   invoices: [],
+  jobs: [],
   notification: null,
   loading: false,
 };
@@ -430,6 +439,17 @@ function appReducer(state, action) {
       return { ...state, notification: action.payload };
     case "CLEAR_NOTIFY":
       return { ...state, notification: null };
+    case "SET_JOBS":
+      return { ...state, jobs: action.payload };
+    case "ADD_JOB":
+      return { ...state, jobs: [action.payload, ...state.jobs] };
+    case "UPDATE_JOB":
+      return {
+        ...state,
+        jobs: state.jobs.map((j) =>
+          j.id === action.payload.id ? { ...j, ...action.payload } : j
+        ),
+      };
     default:
       return state;
   }
@@ -8740,14 +8760,16 @@ function WynflowAppInner() {
     if (!business.id) return;
     dispatch({ type: "SET_LOADING", payload: true });
     try {
-      const [quotesRes, seqRes, invoicesRes] = await Promise.all([
+      const [quotesRes, seqRes, invoicesRes, jobsRes] = await Promise.all([
         db("quotes").eq("business_id", business.id).order("created_at", { ascending: false }).select(),
         db("follow_up_sequences").eq("business_id", business.id).select(),
         db("invoices").eq("business_id", business.id).order("created_at", { ascending: false }).select(),
+        db("jobs").eq("business_id", business.id).order("starts_at", { ascending: true }).select(),
       ]);
       if (quotesRes.data) dispatch({ type: "SET_QUOTES", payload: quotesRes.data });
       if (seqRes.data) dispatch({ type: "SET_SEQUENCES", payload: seqRes.data });
       if (invoicesRes.data) dispatch({ type: "SET_INVOICES", payload: invoicesRes.data });
+      if (jobsRes.data) dispatch({ type: "SET_JOBS", payload: jobsRes.data });
       setDataLoaded(true);
     } catch (err) {
       reportError(err, "load_dashboard_data");
