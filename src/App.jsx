@@ -3502,6 +3502,27 @@ const Dashboard = ({ quotes, dispatch, invoices = [], jobs = [] }) => {
         </div>
       )}
 
+      {/* Get started card for empty state */}
+      {quotes.length === 0 && (
+        <div style={{
+          padding: 24, borderRadius: 14, marginBottom: 20,
+          background: "linear-gradient(135deg, rgba(20,184,166,0.08) 0%, rgba(20,184,166,0.02) 100%)",
+          border: "1px solid rgba(20,184,166,0.15)",
+          textAlign: "center",
+        }}>
+          <div style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(20,184,166,0.12)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+            <Cpu size={28} color={theme.accent} />
+          </div>
+          <h3 style={{ fontSize: 18, fontWeight: 700, color: theme.text, margin: "0 0 8px", fontFamily: theme.fontHeading }}>Create your first AI quote</h3>
+          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, margin: "0 0 18px", maxWidth: 400, marginLeft: "auto", marginRight: "auto" }}>
+            Snap some job site photos, add your notes, and let Wynflow's AI generate a professional quote in seconds.
+          </p>
+          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Cpu size={16} /> Create AI Quote
+          </Button>
+        </div>
+      )}
+
       {/* Today's Jobs */}
       {(() => {
         const todayJobs = (jobs || []).filter((j) => {
@@ -5009,6 +5030,13 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
       dispatch({ type: "NOTIFY", payload: { message: "Please fill in all fields including the job description — the more detail, the better the quote", type: "error" } });
       return;
     }
+    if (!business.trade) {
+      dispatch({ type: "NOTIFY", payload: { message: "Please set your trade in Settings before generating a quote.", type: "error" } });
+      return;
+    }
+    if (!business.hourly_rate || parseFloat(business.hourly_rate) === 0) {
+      dispatch({ type: "NOTIFY", payload: { message: "Heads up — your hourly rate isn't set. Labour costs will be $0. Set your rate in Settings.", type: "warning" } });
+    }
     setGenerating(true);
     try {
       const photoData = [];
@@ -6044,6 +6072,13 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
   });
 
   const generateQuote = async () => {
+    if (!business.trade) {
+      dispatch({ type: "NOTIFY", payload: { message: "Please set your trade in Settings before generating a quote.", type: "error" } });
+      return;
+    }
+    if (!business.hourly_rate || parseFloat(business.hourly_rate) === 0) {
+      dispatch({ type: "NOTIFY", payload: { message: "Heads up — your hourly rate isn't set. Labour costs will be $0. Set your rate in Settings.", type: "warning" } });
+    }
     setGenerating(true);
     try {
       const photoData = [];
@@ -9083,6 +9118,56 @@ const Settings = ({ business, dispatch }) => {
   );
 };
 
+// ─── Profile Completion Modal (cross-device email confirmation) ───
+function ProfileCompletionModal({ business, dispatch, onComplete }) {
+  const isMobile = useIsMobile();
+  const [businessName, setBusinessName] = useState(business?.business_name === "My Business" ? "" : (business?.business_name || ""));
+  const [phone, setPhone] = useState(business?.phone || "");
+  const [trade, setTrade] = useState(business?.trade || "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!businessName.trim() || !phone.trim() || !trade) return;
+    setSaving(true);
+    const updates = { business_name: businessName.trim(), phone: phone.trim(), trade, trade_category: trade };
+    const { error } = await db("businesses").eq("id", business.id).update(updates);
+    if (!error) {
+      const updatedBiz = { ...business, ...updates };
+      dispatch({ type: "SET_BUSINESS", payload: updatedBiz });
+      setCookie("wynflow_business", updatedBiz, 43200);
+      onComplete();
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
+      <div style={{ width: isMobile ? "95%" : 440, background: "rgba(17,24,39,0.98)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: 32, boxShadow: "0 24px 80px rgba(0,0,0,0.5)" }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: theme.text, margin: "0 0 6px", fontFamily: theme.fontHeading }}>Complete Your Profile</h2>
+        <p style={{ fontSize: 14, color: theme.textMuted, margin: "0 0 20px", lineHeight: 1.5 }}>
+          Looks like you confirmed your email on a different device. Just fill in these details to get started.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <Input label="Business Name *" value={businessName} onChange={setBusinessName} placeholder="e.g. Smith Plumbing" />
+          <Input label="Mobile Number *" value={phone} onChange={setPhone} type="tel" placeholder="e.g. 021 123 4567" />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 6 }}>Trade / Industry *</div>
+            <select value={trade} onChange={e => setTrade(e.target.value)}
+              style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#F1F3F7", fontSize: 14, fontFamily: theme.font, outline: "none", appearance: "auto" }}>
+              <option value="">Select your trade...</option>
+              {TRADE_CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+        </div>
+        <Button onClick={handleSave} disabled={saving || !businessName.trim() || !phone.trim() || !trade}
+          style={{ width: "100%", marginTop: 20, justifyContent: "center" }}>
+          {saving ? "Saving..." : "Save & Continue"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Onboarding Tutorial ───
 const OnboardingTutorial = ({ business, dispatch, onComplete }) => {
   const [step, setStep] = useState(0);
@@ -9323,6 +9408,7 @@ function WynflowAppInner() {
   const isMobile = useIsMobile();
   useSEO(screen);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showProfileCompletion, setShowProfileCompletion] = useState(false);
   const [sessionReady, setSessionReady] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
 
@@ -9385,6 +9471,9 @@ function WynflowAppInner() {
               if (refreshToken) setCookie("wynflow_refresh", refreshToken, 43200);
               setCookie("wynflow_user", user, 43200);
               setCookie("wynflow_business", existingBiz, 43200);
+              if (!existingBiz.trade || existingBiz.business_name === "My Business") {
+                setShowProfileCompletion(true);
+              }
               dispatch({ type: "NOTIFY", payload: { message: "Email verified! Welcome to Wynflow.", type: "success" } });
               dispatch({ type: "SET_SCREEN", payload: "dashboard" });
               return;
@@ -9426,6 +9515,9 @@ function WynflowAppInner() {
               setCookie("wynflow_user", user, 43200);
               setCookie("wynflow_business", bizRecord, 43200);
               try { localStorage.removeItem("wynflow_pending_signup"); } catch(e) {}
+              if (!bizRecord.trade || bizRecord.business_name === "My Business") {
+                setShowProfileCompletion(true);
+              }
               dispatch({ type: "NOTIFY", payload: { message: "Email verified! Welcome to Wynflow.", type: "success" } });
               dispatch({ type: "SET_SCREEN", payload: "dashboard" });
             } else {
@@ -9531,16 +9623,29 @@ function WynflowAppInner() {
     }
   }, [business?.id, sessionReady, dataLoaded, loadData]);
 
-  // Show onboarding for new users
+  // Show onboarding for new users (device-independent via DB flag)
   useEffect(() => {
-    if (business) {
-      let seen = false;
-      try { seen = localStorage.getItem("wynflow_onboarded_" + business.id) === "true"; } catch(e) {}
-      if (!seen && !getCookie("wynflow_onboarded")) {
-        setShowOnboarding(true);
-      }
+    if (!business || !dataLoaded) return;
+    // Fast-check: localStorage/cookie cache
+    let cached = false;
+    try { cached = localStorage.getItem("wynflow_onboarded_" + business.id) === "true"; } catch(e) {}
+    if (cached || getCookie("wynflow_onboarded")) return;
+    // DB check
+    if (business.onboarded) {
+      try { localStorage.setItem("wynflow_onboarded_" + business.id, "true"); } catch(e) {}
+      setCookie("wynflow_onboarded", "true", 525600);
+      return;
     }
-  }, [business?.id]);
+    // Backward compat: existing user with quotes
+    if (quotes.length > 0) {
+      db("businesses").eq("id", business.id).update({ onboarded: true });
+      try { localStorage.setItem("wynflow_onboarded_" + business.id, "true"); } catch(e) {}
+      setCookie("wynflow_onboarded", "true", 525600);
+      return;
+    }
+    // New user — show wizard
+    setShowOnboarding(true);
+  }, [business?.id, dataLoaded]);
 
   useEffect(() => {
     if (business && (screen === "dashboard" || screen === "quotes" || screen === "invoices")) {
@@ -9702,7 +9807,10 @@ function WynflowAppInner() {
     <>
       <style>{globalStyles}</style>
       {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
-      {showOnboarding && <OnboardingTutorial business={business} dispatch={dispatch} onComplete={() => { setShowOnboarding(false); try { localStorage.setItem("wynflow_onboarded_" + business.id, "true"); } catch(e) {} setCookie("wynflow_onboarded", "true", 525600); }} />}
+      {showProfileCompletion && (
+        <ProfileCompletionModal business={business} dispatch={dispatch} onComplete={() => setShowProfileCompletion(false)} />
+      )}
+      {showOnboarding && <OnboardingTutorial business={business} dispatch={dispatch} onComplete={() => setShowOnboarding(false)} />}
       <div style={{ display: "flex", height: "100vh", fontFamily: theme.font, color: "#F1F3F7", background: theme.bg, overflow: "hidden", flexDirection: isMobile ? "column" : "row" }}>
         <Sidebar screen={activeScreen} dispatch={dispatch} business={business} />
         <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "56px 14px 90px" : "28px 36px", WebkitOverflowScrolling: "touch" }}>
