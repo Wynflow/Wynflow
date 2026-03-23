@@ -2618,10 +2618,6 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
   const [contactName, setContactName] = useState("");
   const [trade, setTrade] = useState("");
   const [phone, setPhone] = useState("");
-  const [hourlyRate, setHourlyRate] = useState("");
-  const [calloutFee, setCalloutFee] = useState("");
-  const [autoFollowUps, setAutoFollowUps] = useState(true);
-  const [materialsMargin, setMaterialsMargin] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resetMode, setResetMode] = useState(false);
@@ -2665,13 +2661,13 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         // If no token but user exists with identities, email confirmation is pending
         if (!authData.access_token) {
           // Store signup details temporarily so we can create business after email confirmation
-          try { localStorage.setItem("wynflow_pending_signup", JSON.stringify({ businessName, contactName, email, phone, trade, hourlyRate, calloutFee, plan, autoFollowUps, materialsMargin })); } catch(e) {}
+          try { localStorage.setItem("wynflow_pending_signup", JSON.stringify({ businessName, contactName, email, phone, trade, plan })); } catch(e) {}
           setEmailSent(true);
           setLoading(false);
           // Notify N8N about new signup
           fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, phone, trade, hourly_rate: hourlyRate, callout_fee: calloutFee }),
+            body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, phone, trade }),
           }).catch(() => {});
           return;
         }
@@ -2684,12 +2680,12 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
           phone: phone.trim(),
           trade: trade || null,
           trade_category: trade || null,
-          hourly_rate: parseFloat(hourlyRate) || 0,
-          callout_fee: parseFloat(calloutFee) || 0,
+          hourly_rate: 0,
+          callout_fee: 0,
           subscription_status: "trialing",
           trial_ends_at: trialEnd,
-          auto_follow_ups: autoFollowUps,
-          materials_margin: Math.max(0, Math.min(200, parseFloat(materialsMargin) || 0)),
+          auto_follow_ups: true,
+          materials_margin: 0,
         });
         if (bizErr || !biz || !biz[0]) {
           const { data: existingBiz } = await db("businesses").eq("user_id", authData.user.id).single().select();
@@ -2734,7 +2730,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         dispatch({ type: "SET_SCREEN", payload: "dashboard" });
         fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, phone, trade, hourly_rate: hourlyRate, callout_fee: calloutFee }),
+          body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, phone, trade }),
         }).catch(() => {});
       } else {
         const authData = await supabase.auth_signIn(email, password);
@@ -2842,28 +2838,6 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
                     <option value="">Select your trade...</option>
                     {TRADE_CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
-                </div>
-                <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 10 : 12 }}>
-                  <div style={{ flex: 1 }}><Input label="Hourly Rate ($)" value={hourlyRate} onChange={setHourlyRate} type="number" placeholder="e.g. 85" /></div>
-                  <div style={{ flex: 1 }}><Input label="Callout Fee ($)" value={calloutFee} onChange={setCalloutFee} type="number" placeholder="e.g. 50" /></div>
-                </div>
-                <div>
-                  <Input label="Materials Markup %" value={materialsMargin} onChange={setMaterialsMargin} type="number" placeholder="e.g. 20" />
-                  <div style={{ fontSize: 12, color: theme.textDim, marginTop: -4, marginBottom: 12 }}>How much do you mark up materials? Applied automatically to AI quotes.</div>
-                </div>
-                <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: theme.text }}>Automatic follow-up emails</div>
-                      <div style={{ fontSize: 12, color: theme.textDim, marginTop: 3, lineHeight: 1.4 }}>
-                        {autoFollowUps ? "We'll chase customers who haven't responded to your quotes" : "You'll follow up with customers manually"}
-                      </div>
-                    </div>
-                    <div onClick={() => setAutoFollowUps(!autoFollowUps)}
-                      style={{ width: 44, height: 24, borderRadius: 12, background: autoFollowUps ? theme.accent : "rgba(255,255,255,0.1)", cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
-                      <div style={{ width: 20, height: 20, borderRadius: 10, background: "#fff", position: "absolute", top: 2, left: autoFollowUps ? 22 : 2, transition: "left 0.2s" }} />
-                    </div>
-                  </div>
                 </div>
               </>
             )}
@@ -9610,12 +9584,12 @@ function WynflowAppInner() {
               phone: pending.phone || "",
               trade: pending.trade || null,
               trade_category: pending.trade || null,
-              hourly_rate: parseFloat(pending.hourlyRate) || 0,
-              callout_fee: parseFloat(pending.calloutFee) || 0,
+              hourly_rate: 0,
+              callout_fee: 0,
               subscription_status: "trialing",
               trial_ends_at: trialEnd,
-              auto_follow_ups: pending.autoFollowUps !== false,
-              materials_margin: Math.max(0, Math.min(200, parseFloat(pending.materialsMargin) || 0)),
+              auto_follow_ups: true,
+              materials_margin: 0,
             });
             const bizRecord = biz && biz[0];
             if (bizRecord) {
