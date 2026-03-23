@@ -9670,6 +9670,7 @@ function WynflowAppInner() {
       setSessionReady(false); // Gate loadData until token is validated
       dispatch({ type: "SET_USER", payload: savedUser });
       dispatch({ type: "SET_BUSINESS", payload: savedBusiness });
+      dispatch({ type: "SET_SCREEN", payload: "dashboard" });
       // Validate token is still valid — if expired, try refreshing
       supabase.auth_getUser().then(async (res) => {
         if (!res && savedRefresh) {
