@@ -813,13 +813,13 @@ const Card = ({ children, style = {}, onClick }) => (
   </div>
 );
 
-const Stat = ({ label, value, accent, icon: Icon, sub }) => {
+const Stat = ({ label, value, accent, icon: Icon, sub, onClick }) => {
   const mob = typeof window !== "undefined" && window.innerWidth < 768;
   return (
-    <div style={{
+    <div onClick={onClick} style={{
       flex: 1, minWidth: 0, padding: mob ? 14 : 18, borderRadius: 10,
       background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)",
-      transition: "border-color 0.2s",
+      transition: "border-color 0.2s", cursor: onClick ? "pointer" : "default",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: mob ? 8 : 10 }}>
         {Icon && <div style={{ width: 28, height: 28, borderRadius: 7, background: accent ? `${accent}12` : "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon size={14} color={accent || theme.textDim} /></div>}
@@ -3355,7 +3355,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
 };
 
 // ─── Dashboard ───
-const Dashboard = ({ quotes, dispatch, invoices = [] }) => {
+const Dashboard = ({ quotes, dispatch, invoices = [], jobs = [] }) => {
   const isMobile = useIsMobile();
   const [bellOpen, setBellOpen] = useState(false);
   const requested = quotes.filter((q) => q.status === "requested").length;
@@ -3408,6 +3408,15 @@ const Dashboard = ({ quotes, dispatch, invoices = [] }) => {
     if (b[0] === "Before follow-ups") return 1;
     return a[0].localeCompare(b[0]);
   });
+
+  // This week's jobs
+  const now = new Date();
+  const weekStart = startOfISOWeek(now);
+  const weekEnd = endOfISOWeek(now);
+  const thisWeekJobs = (jobs || []).filter((j) => {
+    const start = new Date(j.starts_at);
+    return start >= weekStart && start <= weekEnd && j.status !== "cancelled";
+  }).length;
 
   // Activity feed data
   const followUpsSentToday = quotes.filter(q => q.current_step > 0 && q.next_follow_up_at).length;
@@ -3519,6 +3528,63 @@ const Dashboard = ({ quotes, dispatch, invoices = [] }) => {
         </div>
       )}
 
+      {/* Today's Jobs */}
+      {(() => {
+        const todayJobs = (jobs || []).filter((j) => {
+          const start = new Date(j.starts_at);
+          return isSameDay(start, new Date()) && j.status !== "cancelled";
+        }).sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+
+        const tomorrowJobs = (jobs || []).filter((j) => {
+          const start = new Date(j.starts_at);
+          return isSameDay(start, addDays(new Date(), 1)) && j.status !== "cancelled";
+        });
+
+        if (todayJobs.length === 0 && tomorrowJobs.length === 0) return null;
+
+        return (
+          <div style={{
+            padding: 16, borderRadius: 12, marginBottom: 16,
+            background: "rgba(20,184,166,0.04)",
+            border: "1px solid rgba(20,184,166,0.12)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <CalendarDays size={18} color={theme.accent} />
+              <strong style={{ color: theme.text, fontSize: 15 }}>
+                {todayJobs.length > 0 ? "Today's Jobs" : "Tomorrow"}
+              </strong>
+            </div>
+            {todayJobs.length > 0 ? (
+              todayJobs.map((j) => (
+                <button
+                  key={j.id}
+                  onClick={() => dispatch({ type: "SET_SCREEN", payload: "schedule" })}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10, width: "100%",
+                    padding: "8px 10px", marginBottom: 4, borderRadius: 8,
+                    background: "rgba(255,255,255,0.03)", border: "none", cursor: "pointer",
+                    color: theme.text, fontFamily: theme.font, textAlign: "left",
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: theme.accent, fontWeight: 500, minWidth: 60 }}>
+                    {j.all_day ? "All day" : format(new Date(j.starts_at), "h:mm a")}
+                  </span>
+                  <span style={{ fontSize: 14, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {j.title}
+                  </span>
+                  <span style={{ fontSize: 12, color: theme.textDim }}>{j.customer_name}</span>
+                </button>
+              ))
+            ) : (
+              <p style={{ fontSize: 14, color: theme.textMuted, margin: 0 }}>
+                Next job: <strong>{tomorrowJobs[0].title}</strong> tomorrow at{" "}
+                {tomorrowJobs[0].all_day ? "all day" : format(new Date(tomorrowJobs[0].starts_at), "h:mm a")}
+              </p>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Pipeline overview */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : `repeat(${pipeline.length}, 1fr)`, gap: isMobile ? 8 : 10, marginBottom: isMobile ? 16 : 20 }}>
         {pipeline.map(col => (
@@ -3536,7 +3602,7 @@ const Dashboard = ({ quotes, dispatch, invoices = [] }) => {
       </div>
 
       {/* Stats row */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 8 : 10, marginBottom: isMobile ? 16 : 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)", gap: isMobile ? 8 : 10, marginBottom: isMobile ? 16 : 20 }}>
         <Stat label="Win Rate" value={`${winRate}%`} accent={winRate >= 50 ? theme.green : winRate >= 25 ? "#F59E0B" : theme.red} icon={BarChart3} />
         <Stat label="Revenue" value={`$${revenue.toLocaleString()}`} accent={theme.green} icon={DollarSign} />
         <Stat label="Avg Quote" value={`$${avgQuoteValue.toLocaleString()}`} icon={FileText} />
@@ -3547,6 +3613,13 @@ const Dashboard = ({ quotes, dispatch, invoices = [] }) => {
         ) : (
           <Stat label="Total Quotes" value={total} icon={FileText} />
         )}
+        <Stat
+          label="This Week"
+          value={thisWeekJobs}
+          icon={CalendarDays}
+          accent={theme.accent}
+          onClick={() => dispatch({ type: "SET_SCREEN", payload: "schedule" })}
+        />
       </div>
 
       {/* Two-column layout */}
@@ -9814,7 +9887,7 @@ function WynflowAppInner() {
   const renderContent = () => {
     if (loading) return <Spinner />;
     switch (activeScreen) {
-      case "dashboard": return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} />;
+      case "dashboard": return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} jobs={jobs} />;
       case "quotes": return <QuotesList quotes={quotes} dispatch={dispatch} sequences={sequences} invoices={invoices} />;
       case "analytics": return <Analytics quotes={quotes} invoices={invoices} />;
       case "schedule": return <ScheduleView jobs={jobs} dispatch={dispatch} business={business} quotes={quotes} focusDate={detailId} />;
