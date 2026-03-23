@@ -3128,7 +3128,7 @@ const TrialBanner = ({ business }) => {
 // ─── Sidebar ───
 const Sidebar = ({ screen, dispatch, business }) => {
   const isMobile = useIsMobile();
-  const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const mainNav = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "quotes", label: "Quotes", icon: FileText },
@@ -4307,7 +4307,7 @@ const Analytics = ({ quotes, invoices = [] }) => {
 
 function JobFormModal({ business, dispatch, defaults, quote, onClose, onBooked }) {
   const isMobile = useIsMobile();
-  const [form, setForm] = React.useState({
+  const [form, setForm] = useState({
     title: quote?.job_title || defaults?.title || "",
     customer_name: quote?.customer_name || defaults?.customer_name || "",
     customer_phone: quote?.customer_phone || defaults?.customer_phone || "",
@@ -4322,9 +4322,9 @@ function JobFormModal({ business, dispatch, defaults, quote, onClose, onBooked }
     assignedTags: [],
     notes: "",
   });
-  const [saving, setSaving] = React.useState(false);
+  const [saving, setSaving] = useState(false);
   const employeeTags = business?.employee_tags || [];
-  const [tagSuggestions, setTagSuggestions] = React.useState([]);
+  const [tagSuggestions, setTagSuggestions] = useState([]);
 
   const handleAssignedInput = (val) => {
     setForm((f) => ({ ...f, assignedTo: val }));
@@ -4376,7 +4376,7 @@ function JobFormModal({ business, dispatch, defaults, quote, onClose, onBooked }
       assigned_to: form.assignedTags, notes: form.notes || null,
       amount: quote ? parseFloat(quote.amount) || null : null, status: "scheduled",
     };
-    const { data, error } = await db("jobs").insert([jobData]).select();
+    const { data, error } = await db("jobs").insert([jobData]);
     if (error) {
       dispatch({ type: "NOTIFY", payload: { message: "Failed to create job", type: "error" } });
       setSaving(false);
@@ -4413,27 +4413,27 @@ function JobFormModal({ business, dispatch, defaults, quote, onClose, onBooked }
           <button onClick={onClose} style={{ background: "none", border: "none", color: theme.textMuted, cursor: "pointer" }}><X size={20} /></button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Input label="Job Title" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
-          <Input label="Customer Name" value={form.customer_name} onChange={(e) => setForm((f) => ({ ...f, customer_name: e.target.value }))} />
+          <Input label="Job Title" value={form.title} onChange={(val) => setForm((f) => ({ ...f, title: val }))} />
+          <Input label="Customer Name" value={form.customer_name} onChange={(val) => setForm((f) => ({ ...f, customer_name: val }))} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Input label="Phone" value={form.customer_phone} onChange={(e) => setForm((f) => ({ ...f, customer_phone: e.target.value }))} />
-            <Input label="Email" value={form.customer_email} onChange={(e) => setForm((f) => ({ ...f, customer_email: e.target.value }))} />
+            <Input label="Phone" value={form.customer_phone} onChange={(val) => setForm((f) => ({ ...f, customer_phone: val }))} />
+            <Input label="Email" value={form.customer_email} onChange={(val) => setForm((f) => ({ ...f, customer_email: val }))} />
           </div>
-          <Input label="Address" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} placeholder="Job site address" />
+          <Input label="Address" value={form.address} onChange={(val) => setForm((f) => ({ ...f, address: val }))} placeholder="Job site address" />
           <label style={{ display: "flex", alignItems: "center", gap: 8, color: theme.textMuted, fontSize: 14, cursor: "pointer" }}>
             <input type="checkbox" checked={form.allDay} onChange={(e) => setForm((f) => ({ ...f, allDay: e.target.checked }))} />
             Multi-day job (full days, no specific times)
           </label>
           {form.allDay ? (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <Input label="Start Date" type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} />
-              <Input label="End Date" type="date" value={form.endDate || form.date} onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))} />
+              <Input label="Start Date" type="date" value={form.date} onChange={(val) => setForm((f) => ({ ...f, date: val }))} />
+              <Input label="End Date" type="date" value={form.endDate || form.date} onChange={(val) => setForm((f) => ({ ...f, endDate: val }))} />
             </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-              <Input label="Date" type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} />
-              <Input label="Time" type="time" value={form.time} onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))} />
-              <Input label="Hours" type="number" value={form.duration} onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))} />
+              <Input label="Date" type="date" value={form.date} onChange={(val) => setForm((f) => ({ ...f, date: val }))} />
+              <Input label="Time" type="time" value={form.time} onChange={(val) => setForm((f) => ({ ...f, time: val }))} />
+              <Input label="Hours" type="number" value={form.duration} onChange={(val) => setForm((f) => ({ ...f, duration: val }))} />
             </div>
           )}
           <div>
@@ -4457,7 +4457,7 @@ function JobFormModal({ business, dispatch, defaults, quote, onClose, onBooked }
               </div>
             )}
           </div>
-          <Input label="Notes" type="textarea" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Private job notes..." />
+          <Input label="Notes" type="textarea" value={form.notes} onChange={(val) => setForm((f) => ({ ...f, notes: val }))} placeholder="Private job notes..." />
           {quote && (
             <div style={{ padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)" }}>
               <span style={{ fontSize: 13, color: theme.textMuted }}>Quote Amount: </span>
@@ -4487,9 +4487,9 @@ function JobFormModal({ business, dispatch, defaults, quote, onClose, onBooked }
 
 function JobDetailPanel({ job, business, dispatch, onClose, onEdit, quotes }) {
   const isMobile = useIsMobile();
-  const [editingNotes, setEditingNotes] = React.useState(false);
-  const [notes, setNotes] = React.useState(job.notes || "");
-  const [saving, setSaving] = React.useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notes, setNotes] = useState(job.notes || "");
+  const [saving, setSaving] = useState(false);
   const linkedQuote = job.quote_id ? quotes.find((q) => q.id === job.quote_id) : null;
 
   const statusConfig = {
@@ -6521,7 +6521,7 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
 const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices = [], jobs }) => {
   const isMobile = useIsMobile();
   const quote = quotes.find((q) => q.id === quoteId);
-  const [showBookingModal, setShowBookingModal] = React.useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
   const linkedJob = (jobs || []).find((j) => j.quote_id === quote?.id);
   const [steps, setSteps] = useState([]);
   const [responses, setResponses] = useState([]);
