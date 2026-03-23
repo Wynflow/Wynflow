@@ -3,6 +3,8 @@ import { jsPDF } from "jspdf";
 import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History, Eye, CalendarDays } from "lucide-react";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
+import "react-big-calendar/lib/css/react-big-calendar.css";
+import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 import { format, parse, startOfWeek, getDay, addDays, startOfDay, endOfDay, addHours, isSameDay, startOfISOWeek, endOfISOWeek, subDays } from "date-fns";
 
 // ─── Calendar Localizer (react-big-calendar) ───
@@ -4223,6 +4225,193 @@ const Analytics = ({ quotes, invoices = [] }) => {
     </div>
   );
 };
+
+// ─── Schedule View ───
+
+// STUBS — replaced in Tasks 5 & 6
+function JobDetailPanel() { return null; }
+function JobFormModal() { return null; }
+
+const EMPLOYEE_COLORS = ["#3B82F6", "#F97316", "#A855F7", "#EC4899", "#06B6D4", "#84CC16", "#EAB308", "#6366F1"];
+const JOB_STATUS_COLORS = {
+  scheduled: "#14B8A6",
+  in_progress: "#F59E0B",
+  completed: "#22C55E",
+  cancelled: "#EF4444",
+};
+
+function ScheduleView({ jobs, dispatch, business, quotes, focusDate }) {
+  const isMobile = useIsMobile();
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [showJobForm, setShowJobForm] = useState(false);
+  const [jobFormDefaults, setJobFormDefaults] = useState(null);
+  const [employeeFilter, setEmployeeFilter] = useState("all");
+  const [currentDate, setCurrentDate] = useState(focusDate ? new Date(focusDate) : new Date());
+
+  const employeeTags = business?.employee_tags || [];
+
+  const getEmployeeColor = (name) => {
+    const idx = employeeTags.indexOf(name);
+    return idx >= 0 ? EMPLOYEE_COLORS[idx % EMPLOYEE_COLORS.length] : "#8B95A8";
+  };
+
+  const filteredJobs = employeeFilter === "all"
+    ? jobs
+    : jobs.filter((j) => (j.assigned_to || []).includes(employeeFilter));
+
+  const events = filteredJobs.map((job) => ({
+    id: job.id,
+    title: job.title,
+    start: new Date(job.starts_at),
+    end: new Date(job.ends_at),
+    allDay: job.all_day || false,
+    resource: job,
+  }));
+
+  const eventPropGetter = (event) => {
+    const job = event.resource;
+    let bgColor;
+    let opacity = 1;
+    if (employeeFilter !== "all") {
+      const firstAssigned = (job.assigned_to || [])[0];
+      bgColor = firstAssigned ? getEmployeeColor(firstAssigned) : "#8B95A8";
+    } else {
+      bgColor = JOB_STATUS_COLORS[job.status] || "#8B95A8";
+    }
+    if (job.status === "completed") opacity = 0.5;
+    if (job.status === "cancelled") opacity = 0.3;
+    return {
+      style: {
+        backgroundColor: bgColor, opacity, color: "#fff", border: "none",
+        borderRadius: 6, fontSize: 12, fontFamily: "'DM Sans', sans-serif",
+        padding: "2px 6px", position: "relative",
+      },
+    };
+  };
+
+  const EventComponent = ({ event }) => {
+    const job = event.resource;
+    const assignedCount = (job.assigned_to || []).length;
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 4, overflow: "hidden" }}>
+        {employeeFilter !== "all" && (
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: JOB_STATUS_COLORS[job.status] || "#8B95A8", flexShrink: 0 }} />
+        )}
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{event.title}</span>
+        {assignedCount > 1 && <span style={{ fontSize: 10, opacity: 0.7, flexShrink: 0 }}>+{assignedCount - 1}</span>}
+      </div>
+    );
+  };
+
+  const handleEventDrop = async ({ event, start, end }) => {
+    const job = event.resource;
+    const updates = { starts_at: start.toISOString(), ends_at: end.toISOString() };
+    dispatch({ type: "UPDATE_JOB", payload: { id: job.id, ...updates } });
+    const { error } = await db("jobs").eq("id", job.id).update(updates);
+    if (error) {
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to move job", type: "error" } });
+      dispatch({ type: "UPDATE_JOB", payload: { id: job.id, starts_at: job.starts_at, ends_at: job.ends_at } });
+    }
+  };
+
+  const handleEventResize = async ({ event, start, end }) => {
+    const job = event.resource;
+    const updates = { starts_at: start.toISOString(), ends_at: end.toISOString() };
+    dispatch({ type: "UPDATE_JOB", payload: { id: job.id, ...updates } });
+    const { error } = await db("jobs").eq("id", job.id).update(updates);
+    if (error) {
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to resize job", type: "error" } });
+      dispatch({ type: "UPDATE_JOB", payload: { id: job.id, starts_at: job.starts_at, ends_at: job.ends_at } });
+    }
+  };
+
+  const handleSelectEvent = (event) => setSelectedJob(event.resource);
+
+  const handleSelectSlot = ({ start }) => {
+    const endTime = addHours(start, 2);
+    setJobFormDefaults({ starts_at: start.toISOString(), ends_at: endTime.toISOString() });
+    setShowJobForm(true);
+  };
+
+  const handleNewJob = () => {
+    const tomorrow = addDays(new Date(), 1);
+    const start = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 8, 0);
+    const end = addHours(start, 2);
+    setJobFormDefaults({ starts_at: start.toISOString(), ends_at: end.toISOString() });
+    setShowJobForm(true);
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <h2 style={{ fontSize: isMobile ? 22 : 26, fontFamily: theme.fontHeading, color: theme.text, margin: 0 }}>Schedule</h2>
+        <Button onClick={handleNewJob} style={{ display: "flex", alignItems: "center", gap: 6 }}><Plus size={16} /> New Job</Button>
+      </div>
+
+      {employeeTags.length > 0 && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+          <button onClick={() => setEmployeeFilter("all")} style={{
+            padding: "5px 14px", borderRadius: 20, fontSize: 13, cursor: "pointer", fontFamily: theme.font, border: "1px solid",
+            background: employeeFilter === "all" ? "rgba(20,184,166,0.15)" : "rgba(255,255,255,0.04)",
+            color: employeeFilter === "all" ? theme.accent : theme.textMuted,
+            borderColor: employeeFilter === "all" ? "rgba(20,184,166,0.3)" : "rgba(255,255,255,0.08)",
+          }}>All</button>
+          {employeeTags.map((tag, idx) => {
+            const color = EMPLOYEE_COLORS[idx % EMPLOYEE_COLORS.length];
+            const isActive = employeeFilter === tag;
+            return (
+              <button key={tag} onClick={() => setEmployeeFilter(isActive ? "all" : tag)} style={{
+                padding: "5px 14px", borderRadius: 20, fontSize: 13, cursor: "pointer", fontFamily: theme.font,
+                border: "1px solid", display: "flex", alignItems: "center", gap: 6,
+                background: isActive ? `${color}22` : "rgba(255,255,255,0.04)",
+                color: isActive ? color : theme.textMuted,
+                borderColor: isActive ? `${color}55` : "rgba(255,255,255,0.08)",
+              }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: color }} />
+                {tag}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{ height: isMobile ? "calc(100vh - 240px)" : "calc(100vh - 200px)", minHeight: 400 }}>
+        <DnDCalendar
+          localizer={localizer} events={events}
+          defaultView={isMobile ? "day" : "week"} views={isMobile ? ["day"] : ["week", "day"]}
+          date={currentDate} onNavigate={(date) => setCurrentDate(date)}
+          min={new Date(2026, 0, 1, 6, 0)} max={new Date(2026, 0, 1, 20, 0)}
+          step={30} timeslots={2} selectable resizable
+          onEventDrop={handleEventDrop} onEventResize={handleEventResize}
+          onSelectEvent={handleSelectEvent} onSelectSlot={handleSelectSlot}
+          eventPropGetter={eventPropGetter} components={{ event: EventComponent }}
+          formats={{
+            dayHeaderFormat: (date) => format(date, "EEE d MMM"),
+            dayRangeHeaderFormat: ({ start, end }) => `${format(start, "d MMM")} – ${format(end, "d MMM yyyy")}`,
+            timeGutterFormat: (date) => format(date, "h a"),
+          }}
+          style={{ height: "100%" }}
+        />
+      </div>
+
+      {jobs.length === 0 && (
+        <p style={{ textAlign: "center", color: theme.textDim, fontSize: 13, padding: "8px 0" }}>
+          No jobs yet — book a quote or tap "New Job" to get started.
+        </p>
+      )}
+
+      {selectedJob && (
+        <JobDetailPanel job={selectedJob} business={business} dispatch={dispatch}
+          onClose={() => setSelectedJob(null)} onEdit={(updatedJob) => setSelectedJob(updatedJob)} quotes={quotes} />
+      )}
+
+      {showJobForm && (
+        <JobFormModal business={business} dispatch={dispatch} defaults={jobFormDefaults}
+          onClose={() => { setShowJobForm(false); setJobFormDefaults(null); }} />
+      )}
+    </div>
+  );
+}
 
 // ─── AI Quote Form ───
 const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
@@ -8829,7 +9018,7 @@ const OnboardingTutorial = ({ business, dispatch, onComplete }) => {
 //    before any conditional returns, to comply with React's Rules of Hooks.
 function WynflowAppInner() {
   const [state, dispatch] = useReducer(appReducer, initialState);
-  const { user, business, screen, quotes, sequences, invoices, notification, loading } = state;
+  const { user, business, screen, quotes, sequences, invoices, jobs, notification, loading } = state;
 
   // Update global error context
   if (typeof window !== "undefined") {
@@ -9090,6 +9279,29 @@ function WynflowAppInner() {
       body { -webkit-text-size-adjust: 100%; }
       input, textarea, select { font-size: 16px !important; }
     }
+    .rbc-calendar { background: transparent; font-family: 'DM Sans', sans-serif; color: #F1F3F7; }
+    .rbc-toolbar { margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+    .rbc-toolbar button { color: #8B95A8; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+    .rbc-toolbar button:hover { background: rgba(255,255,255,0.08); color: #F1F3F7; }
+    .rbc-toolbar button.rbc-active { background: rgba(20,184,166,0.15); color: #14B8A6; border-color: rgba(20,184,166,0.3); }
+    .rbc-header { background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.06); color: #8B95A8; font-weight: 500; font-size: 13px; padding: 8px 4px; }
+    .rbc-time-view, .rbc-month-view { background: rgba(255,255,255,0.015); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; overflow: hidden; }
+    .rbc-time-header { border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .rbc-time-content { border-top: none; }
+    .rbc-time-slot { border-top: 1px solid rgba(255,255,255,0.03); min-height: 28px; }
+    .rbc-timeslot-group { border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .rbc-day-slot .rbc-time-slot { border-top-color: rgba(255,255,255,0.03); }
+    .rbc-current-time-indicator { background-color: #14B8A6; height: 2px; }
+    .rbc-today { background: rgba(20,184,166,0.03); }
+    .rbc-off-range-bg { background: rgba(0,0,0,0.15); }
+    .rbc-event { border: none !important; border-radius: 6px; padding: 2px 6px; font-size: 12px; cursor: pointer; }
+    .rbc-event-label { font-size: 11px; color: rgba(255,255,255,0.7); }
+    .rbc-event-content { font-weight: 500; }
+    .rbc-addons-dnd .rbc-addons-dnd-resize-ns-icon { display: none; }
+    .rbc-addons-dnd .rbc-addons-dnd-resizable { border-bottom: 3px solid rgba(255,255,255,0.3); }
+    .rbc-allday-cell { min-height: 30px; }
+    .rbc-time-gutter .rbc-label { color: #5C6578; font-size: 11px; padding: 0 8px; }
+    .rbc-show-more { color: #14B8A6; font-size: 12px; }
   `;
 
   // Public pages (conditional returns AFTER all hooks)
@@ -9177,6 +9389,7 @@ function WynflowAppInner() {
       case "dashboard": return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} />;
       case "quotes": return <QuotesList quotes={quotes} dispatch={dispatch} sequences={sequences} invoices={invoices} />;
       case "analytics": return <Analytics quotes={quotes} invoices={invoices} />;
+      case "schedule": return <ScheduleView jobs={jobs} dispatch={dispatch} business={business} quotes={quotes} focusDate={detailId} />;
       case "newQuote": return <NewQuoteForm dispatch={dispatch} business={business} sequences={sequences} />;
       case "aiQuote": return <AIQuoteForm dispatch={dispatch} business={business} sequences={sequences} quotes={quotes} />;
       case "sequences": return <SequencesManager sequences={sequences} business={business} dispatch={dispatch} />;
