@@ -379,6 +379,9 @@ const initialState = {
   jobs: [],
   notification: null,
   loading: false,
+  teamMembers: [],
+  role: "owner",
+  member: null,
 };
 
 function appReducer(state, action) {
@@ -452,6 +455,12 @@ function appReducer(state, action) {
           j.id === action.payload.id ? { ...j, ...action.payload } : j
         ),
       };
+    case "SET_TEAM_MEMBERS":
+      return { ...state, teamMembers: action.payload };
+    case "SET_ROLE":
+      return { ...state, role: action.payload };
+    case "SET_MEMBER":
+      return { ...state, member: action.payload };
     default:
       return state;
   }
@@ -3329,163 +3338,144 @@ const Sidebar = ({ screen, dispatch, business }) => {
 };
 
 // ─── Dashboard ───
-const Dashboard = ({ quotes, dispatch, invoices = [], jobs = [] }) => {
+const Dashboard = ({ quotes, dispatch, invoices = [], jobs = [], business }) => {
   const isMobile = useIsMobile();
   const [bellOpen, setBellOpen] = useState(false);
   const requested = quotes.filter((q) => q.status === "requested").length;
-  const total = quotes.length;
-  const pending = quotes.filter((q) => q.status === "sent" || q.status === "pending" || q.status === "opened").length;
   const accepted = quotes.filter((q) => q.status === "accepted").length;
   const booked = quotes.filter((q) => q.status === "booked").length;
-  const declined = quotes.filter((q) => q.status === "declined").length;
   const won = accepted + booked;
+  const declined = quotes.filter(q => q.status === "declined").length;
   const responded = won + declined;
-  const revenue = quotes.filter((q) => q.status === "accepted" || q.status === "booked").reduce((sum, q) => sum + parseFloat(q.amount || 0), 0);
   const winRate = responded > 0 ? Math.round((won / responded) * 100) : 0;
-  const avgQuoteValue = won > 0 ? Math.round(revenue / won) : 0;
-  const recentQuotes = [...quotes].slice(0, 8);
-
-  // Invoice stats
   const overdueInvoices = invoices.filter(i => (i.status === "sent" || i.status === "viewed") && i.due_date && new Date(i.due_date) < new Date()).length;
-  const outstandingAmount = invoices.filter(i => i.status === "sent" || i.status === "viewed").reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
-
-  // Response time
-  const responseTimes = quotes.filter(q => q.sent_at && q.responded_at).map(q => {
-    const s = new Date(q.sent_at); const r = new Date(q.responded_at);
-    return Math.round((r - s) / (1000 * 60 * 60 * 24));
-  });
-  const avgResponseDays = responseTimes.length > 0 ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length) : null;
-
-  // Monthly data
-  const monthlyData = {};
-  quotes.forEach(q => {
-    if (!q.created_at) return;
-    const d = new Date(q.created_at);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    if (!monthlyData[key]) monthlyData[key] = { sent: 0, won: 0, declined: 0, revenue: 0 };
-    monthlyData[key].sent++;
-    if (q.status === "accepted" || q.status === "booked") { monthlyData[key].won++; monthlyData[key].revenue += parseFloat(q.amount || 0); }
-    if (q.status === "declined") monthlyData[key].declined++;
-  });
-  const months = Object.entries(monthlyData).sort((a, b) => a[0].localeCompare(b[0])).slice(-6);
-
-  // Follow-up effectiveness
-  const acceptedQuotes = quotes.filter(q => q.status === "accepted" || q.status === "booked");
-  const stepCounts = {};
-  acceptedQuotes.forEach(q => {
-    const step = q.current_step || 0;
-    const label = step === 0 ? "Before follow-ups" : `After follow-up ${step}`;
-    stepCounts[label] = (stepCounts[label] || 0) + 1;
-  });
-  const stepData = Object.entries(stepCounts).sort((a, b) => {
-    if (a[0] === "Before follow-ups") return -1;
-    if (b[0] === "Before follow-ups") return 1;
-    return a[0].localeCompare(b[0]);
-  });
-
-  // This week's jobs
-  const now = new Date();
-  const weekStart = startOfISOWeek(now);
-  const weekEnd = endOfISOWeek(now);
-  const thisWeekJobs = (jobs || []).filter((j) => {
-    const start = new Date(j.starts_at);
-    return start >= weekStart && start <= weekEnd && j.status !== "cancelled";
-  }).length;
+  const followUpsDueToday = quotes.filter(q => q.next_follow_up_at && !q.follow_up_paused && new Date(q.next_follow_up_at) <= endOfDay(new Date())).length;
+  const recentQuotes = [...quotes].slice(0, 5);
 
   // Activity feed data
+  const acceptedQuotes = quotes.filter(q => q.status === "accepted" || q.status === "booked");
   const followUpsSentToday = quotes.filter(q => q.current_step > 0 && q.next_follow_up_at).length;
   const openedRecently = quotes.filter(q => q.status === "opened").length;
   const acceptedAfterFollowUp = acceptedQuotes.filter(q => (q.current_step || 0) > 0).length;
 
-  // Pipeline columns
-  const pipeline = [
-    { key: "requested", label: "New Requests", color: theme.accent, count: requested, icon: MessageSquare },
-    { key: "sent", label: "Awaiting", color: "#F59E0B", count: pending, icon: Clock },
-    { key: "accepted", label: "Accepted", color: "#22C55E", count: accepted, icon: CheckCircle2 },
-    { key: "booked", label: "Booked", color: theme.green, count: booked, icon: Check },
-  ];
+  // This month stats
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const quotesThisMonth = quotes.filter(q => q.created_at && new Date(q.created_at) >= monthStart).length;
+  const revenueThisMonth = quotes.filter(q => (q.status === "accepted" || q.status === "booked") && q.created_at && new Date(q.created_at) >= monthStart).reduce((sum, q) => sum + parseFloat(q.amount || 0), 0);
+
+  // Needs attention items
+  const attentionItems = [];
+  if (requested > 0) attentionItems.push({ color: theme.red, icon: MessageSquare, label: `${requested} new quote request${requested > 1 ? "s" : ""}`, sub: "Review and send a quote", screen: "quotes" });
+  if (accepted > 0) attentionItems.push({ color: "#F59E0B", icon: CheckCircle2, label: `${accepted} accepted — ready to book`, sub: `Call your customer${accepted > 1 ? "s" : ""} to confirm`, screen: "quotes" });
+  if (followUpsDueToday > 0) attentionItems.push({ color: "#F59E0B", icon: Send, label: `${followUpsDueToday} follow-up${followUpsDueToday > 1 ? "s" : ""} due today`, sub: "Check your sent quotes", screen: "quotes" });
+  if (overdueInvoices > 0) attentionItems.push({ color: theme.red, icon: AlertTriangle, label: `${overdueInvoices} overdue invoice${overdueInvoices > 1 ? "s" : ""}`, sub: "Chase up payment", screen: "invoices" });
+
+  // Greeting
+  const hour = now.getHours();
+  const greeting = hour < 12 ? "Morning" : hour < 17 ? "Afternoon" : "Evening";
+  const name = business?.contact_name?.split(" ")[0] || "";
+
+  // Relative time helper
+  const relTime = (dateStr) => {
+    if (!dateStr) return "";
+    const diff = Math.round((now - new Date(dateStr)) / (1000 * 60 * 60 * 24));
+    if (diff === 0) return "Today";
+    if (diff === 1) return "Yesterday";
+    if (diff < 7) return `${diff}d ago`;
+    if (diff < 30) return `${Math.round(diff / 7)}w ago`;
+    return `${Math.round(diff / 30)}mo ago`;
+  };
 
   return (
     <div>
-      {/* Header row */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isMobile ? 20 : 28 }}>
+      {/* Greeting + Bell */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: isMobile ? 20 : 24 }}>
         <div>
-          <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.02em" }}>Dashboard</h1>
-          <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>Here's what's happening with your quotes</p>
+          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.02em" }}>{greeting}, {name}</h1>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>
+            {quotesThisMonth > 0 ? `${quotesThisMonth} quote${quotesThisMonth > 1 ? "s" : ""} this month` : "No quotes yet this month"}{revenueThisMonth > 0 ? ` · $${revenueThisMonth.toLocaleString()} revenue` : ""}
+          </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })} size="sm" style={{ background: "rgba(20,184,166,0.1)", color: "#14B8A6", border: "1px solid rgba(20,184,166,0.15)" }}><Cpu size={13} /> AI Quote</Button>
-          {!isMobile && <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "newQuote" })} variant="secondary" size="sm"><Plus size={13} /> Manual</Button>}
-          {/* Notification bell */}
-          <div style={{ position: "relative" }}>
-            <button onClick={() => setBellOpen(!bellOpen)}
-              style={{ width: 36, height: 36, borderRadius: 8, background: bellOpen ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", transition: "all 0.15s" }}>
-              <Bell size={16} color={(requested + accepted + overdueInvoices) > 0 ? theme.text : theme.textDim} />
-              {(requested + accepted + overdueInvoices) > 0 && (
-                <div style={{ position: "absolute", top: -3, right: -3, width: 16, height: 16, borderRadius: 8, background: overdueInvoices > 0 ? theme.red : theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#fff", border: "2px solid #0A0E17" }}>
-                  {requested + accepted + overdueInvoices}
-                </div>
-              )}
-            </button>
-            {bellOpen && (
-              <>
-                <div onClick={() => setBellOpen(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 98 }} />
-                <div style={{ position: "absolute", top: 44, right: 0, width: isMobile ? "calc(100vw - 72px)" : 320, maxWidth: 320, background: "rgba(17,24,39,0.97)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, boxShadow: "0 16px 48px rgba(0,0,0,0.5)", zIndex: 99, overflow: "hidden", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
-                  <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: theme.text, letterSpacing: "0.02em" }}>Activity</div>
-                  </div>
-                  <div style={{ maxHeight: 280, overflowY: "auto" }}>
-                    {requested > 0 && (
-                      <div onClick={() => { dispatch({ type: "SET_SCREEN", payload: "quotes" }); setBellOpen(false); }}
-                        style={{ padding: "12px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.15s" }}
-                        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                        <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(20,184,166,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          <MessageSquare size={13} color="#14B8A6" />
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{requested} new quote request{requested > 1 ? "s" : ""}</div>
-                          <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 1 }}>Review and send a quote</div>
-                        </div>
-                      </div>
-                    )}
-                    {accepted > 0 && (
-                      <div onClick={() => { dispatch({ type: "SET_SCREEN", payload: "quotes" }); setBellOpen(false); }}
-                        style={{ padding: "12px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.15s" }}
-                        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                        <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(245,158,11,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          <Clock size={13} color="#F59E0B" />
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{accepted} accepted — ready to book</div>
-                          <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 1 }}>Call your customer{accepted > 1 ? "s" : ""} to confirm</div>
-                        </div>
-                      </div>
-                    )}
-                    {overdueInvoices > 0 && (
-                      <div onClick={() => { dispatch({ type: "SET_SCREEN", payload: "invoices" }); setBellOpen(false); }}
-                        style={{ padding: "12px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.15s" }}
-                        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                        <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(239,68,68,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          <AlertTriangle size={13} color={theme.red} />
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{overdueInvoices} overdue invoice{overdueInvoices > 1 ? "s" : ""}</div>
-                          <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 1 }}>Chase up payment</div>
-                        </div>
-                      </div>
-                    )}
-                    {requested === 0 && accepted === 0 && overdueInvoices === 0 && (
-                      <div style={{ padding: "20px 16px", textAlign: "center" }}>
-                        <Bell size={18} color={theme.textDim} style={{ marginBottom: 6 }} />
-                        <div style={{ fontSize: 12, color: theme.textDim }}>No new activity</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
+        {/* Notification bell */}
+        <div style={{ position: "relative" }}>
+          <button onClick={() => setBellOpen(!bellOpen)}
+            style={{ width: 36, height: 36, borderRadius: 8, background: bellOpen ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", transition: "all 0.15s" }}>
+            <Bell size={16} color={(requested + accepted + overdueInvoices) > 0 ? theme.text : theme.textDim} />
+            {(requested + accepted + overdueInvoices) > 0 && (
+              <div style={{ position: "absolute", top: -3, right: -3, width: 16, height: 16, borderRadius: 8, background: overdueInvoices > 0 ? theme.red : theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#fff", border: "2px solid #0A0E17" }}>
+                {requested + accepted + overdueInvoices}
+              </div>
             )}
-          </div>
+          </button>
+          {bellOpen && (
+            <>
+              <div onClick={() => setBellOpen(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 98 }} />
+              <div style={{ position: "absolute", top: 44, right: 0, width: isMobile ? "calc(100vw - 72px)" : 320, maxWidth: 320, background: "rgba(17,24,39,0.97)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, boxShadow: "0 16px 48px rgba(0,0,0,0.5)", zIndex: 99, overflow: "hidden", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
+                <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: theme.text, letterSpacing: "0.02em" }}>Activity</div>
+                </div>
+                <div style={{ maxHeight: 280, overflowY: "auto" }}>
+                  {attentionItems.map((item, i) => (
+                    <div key={i} onClick={() => { dispatch({ type: "SET_SCREEN", payload: item.screen }); setBellOpen(false); }}
+                      style={{ padding: "12px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.15s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                      <div style={{ width: 28, height: 28, borderRadius: 7, background: `${item.color}18`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <item.icon size={13} color={item.color} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{item.label}</div>
+                        <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 1 }}>{item.sub}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {attentionItems.length === 0 && (
+                    <div style={{ padding: "20px 16px", textAlign: "center" }}>
+                      <Bell size={18} color={theme.textDim} style={{ marginBottom: 6 }} />
+                      <div style={{ fontSize: 12, color: theme.textDim }}>No new activity</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
+      </div>
+
+      {/* Primary CTA — Generate AI Quote */}
+      <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })}
+        style={{
+          width: "100%", padding: isMobile ? "18px 20px" : "20px 24px", borderRadius: 14, border: "1px solid rgba(20,184,166,0.25)",
+          background: "linear-gradient(135deg, rgba(20,184,166,0.12) 0%, rgba(20,184,166,0.04) 100%)",
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+          marginBottom: isMobile ? 12 : 16, transition: "all 0.2s", fontFamily: theme.font,
+          boxShadow: "0 0 24px rgba(20,184,166,0.08)",
+        }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.4)"; e.currentTarget.style.boxShadow = "0 0 32px rgba(20,184,166,0.15)"; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.25)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(20,184,166,0.08)"; }}>
+        <Camera size={22} color={theme.accent} />
+        <span style={{ fontSize: 17, fontWeight: 700, color: theme.accent, letterSpacing: "-0.01em" }}>Generate AI Quote</span>
+      </button>
+
+      {/* Quick action chips */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: isMobile ? 16 : 20 }}>
+        {[
+          { label: "New Quote", icon: FileText, screen: "newQuote" },
+          { label: "New Invoice", icon: Receipt, screen: "newInvoice" },
+          { label: "Schedule", icon: CalendarDays, screen: "schedule" },
+        ].map(chip => (
+          <button key={chip.label} onClick={() => dispatch({ type: "SET_SCREEN", payload: chip.screen })}
+            style={{
+              padding: isMobile ? "12px 8px" : "14px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)",
+              background: "rgba(255,255,255,0.03)", cursor: "pointer", display: "flex", alignItems: "center",
+              justifyContent: "center", gap: 6, transition: "all 0.15s", fontFamily: theme.font,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.2)"; e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}>
+            <chip.icon size={14} color={theme.textMuted} />
+            <span style={{ fontSize: 13, fontWeight: 500, color: theme.text }}>{chip.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Automation activity feed strip */}
@@ -3523,6 +3513,28 @@ const Dashboard = ({ quotes, dispatch, invoices = [], jobs = [] }) => {
         </div>
       )}
 
+      {/* Needs Attention */}
+      {attentionItems.length > 0 && (
+        <Card style={{ padding: isMobile ? 14 : 18, marginBottom: isMobile ? 12 : 16 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: 0, letterSpacing: "0.01em" }}>Needs attention</h3>
+            <span style={{ fontSize: 12, fontWeight: 600, color: theme.accent, background: "rgba(20,184,166,0.1)", padding: "2px 8px", borderRadius: 10 }}>{attentionItems.length}</span>
+          </div>
+          {attentionItems.map((item, i) => (
+            <div key={i} onClick={() => dispatch({ type: "SET_SCREEN", payload: item.screen })}
+              style={{
+                display: "flex", alignItems: "center", gap: 10, padding: "10px 10px", borderRadius: 8,
+                cursor: "pointer", transition: "background 0.15s", marginBottom: i < attentionItems.length - 1 ? 2 : 0,
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.04)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              <div style={{ width: 8, height: 8, borderRadius: 4, background: item.color, flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: theme.text, flex: 1 }}>{item.label}</span>
+              <ChevronRight size={14} color={theme.textDim} />
+            </div>
+          ))}
+        </Card>
+      )}
+
       {/* Today's Jobs */}
       {(() => {
         const todayJobs = (jobs || []).filter((j) => {
@@ -3539,7 +3551,7 @@ const Dashboard = ({ quotes, dispatch, invoices = [], jobs = [] }) => {
 
         return (
           <div style={{
-            padding: 16, borderRadius: 12, marginBottom: 16,
+            padding: 16, borderRadius: 12, marginBottom: isMobile ? 12 : 16,
             background: "rgba(20,184,166,0.04)",
             border: "1px solid rgba(20,184,166,0.12)",
           }}>
@@ -3556,7 +3568,7 @@ const Dashboard = ({ quotes, dispatch, invoices = [], jobs = [] }) => {
                   onClick={() => dispatch({ type: "SET_SCREEN", payload: "schedule" })}
                   style={{
                     display: "flex", alignItems: "center", gap: 10, width: "100%",
-                    padding: "8px 10px", marginBottom: 4, borderRadius: 8,
+                    padding: "10px 10px", marginBottom: 4, borderRadius: 8,
                     background: "rgba(255,255,255,0.03)", border: "none", cursor: "pointer",
                     color: theme.text, fontFamily: theme.font, textAlign: "left",
                   }}
@@ -3580,178 +3592,57 @@ const Dashboard = ({ quotes, dispatch, invoices = [], jobs = [] }) => {
         );
       })()}
 
-      {/* Pipeline overview */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : `repeat(${pipeline.length}, 1fr)`, gap: isMobile ? 8 : 10, marginBottom: isMobile ? 16 : 20 }}>
-        {pipeline.map(col => (
-          <div key={col.key} onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}
-            style={{ padding: isMobile ? 12 : 14, borderRadius: 10, background: "rgba(255,255,255,0.025)", border: `1px solid ${col.color}12`, cursor: "pointer", transition: "all 0.15s" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = `${col.color}30`; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = `${col.color}12`; e.currentTarget.style.background = "rgba(255,255,255,0.025)"; }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-              <span style={{ fontSize: 11, color: theme.textMuted, fontWeight: 500 }}>{col.label}</span>
-              <col.icon size={14} color={col.color} />
-            </div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: col.count > 0 ? col.color : theme.textDim, letterSpacing: "-0.02em" }}>{col.count}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Stats row */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(5, 1fr)", gap: isMobile ? 8 : 10, marginBottom: isMobile ? 16 : 20 }}>
-        <Stat label="Win Rate" value={`${winRate}%`} accent={winRate >= 50 ? theme.green : winRate >= 25 ? "#F59E0B" : theme.red} icon={BarChart3} />
-        <Stat label="Revenue" value={`$${revenue.toLocaleString()}`} accent={theme.green} icon={DollarSign} />
-        <Stat label="Avg Quote" value={`$${avgQuoteValue.toLocaleString()}`} icon={FileText} />
-        {avgResponseDays !== null ? (
-          <Stat label="Avg Response" value={`${avgResponseDays}d`} accent={theme.accent} icon={Clock} />
-        ) : outstandingAmount > 0 ? (
-          <Stat label="Outstanding" value={`$${outstandingAmount.toLocaleString()}`} accent={overdueInvoices > 0 ? theme.red : "#F59E0B"} icon={Receipt} />
-        ) : (
-          <Stat label="Total Quotes" value={total} icon={FileText} />
-        )}
-        <Stat
-          label="This Week"
-          value={thisWeekJobs}
-          icon={CalendarDays}
-          accent={theme.accent}
-          onClick={() => dispatch({ type: "SET_SCREEN", payload: "schedule" })}
-        />
-      </div>
-
-      {/* Two-column layout */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 16 }}>
-
-        {/* Left: Charts */}
-        <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 12 : 16, order: isMobile ? 2 : 1 }}>
-
-          {/* Quote funnel */}
-          <Card style={{ padding: isMobile ? 16 : 20 }}>
-            <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 14px", letterSpacing: "0.01em" }}>Quote Funnel</h3>
-            {[
-              { label: "Sent", value: total, color: theme.accent },
-              { label: "Opened", value: quotes.filter(q => q.status === "opened").length, color: theme.blue },
-              { label: "Accepted", value: accepted, color: "#F59E0B" },
-              { label: "Booked", value: booked, color: theme.green },
-              { label: "Declined", value: declined, color: theme.red },
-            ].map((bar, i) => (
-              <div key={i} style={{ marginBottom: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: theme.textMuted, marginBottom: 3 }}>
-                  <span>{bar.label}</span><span style={{ fontWeight: 600, color: theme.text, fontFamily: "'DM Sans', sans-serif" }}>{bar.value}</span>
-                </div>
-                <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${total > 0 ? (bar.value / total) * 100 : 0}%`, borderRadius: 3, background: bar.color, transition: "width 0.6s ease" }} />
-                </div>
-              </div>
-            ))}
-          </Card>
-
-          {/* Monthly sparkline */}
-          {months.length > 1 && (
-            <Card style={{ padding: isMobile ? 16 : 20 }}>
-              <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 3px", letterSpacing: "0.01em" }}>Monthly Revenue</h3>
-              <p style={{ fontSize: 11, color: theme.textDim, margin: "0 0 14px" }}>Last {months.length} months</p>
-              {(() => {
-                const maxRev = Math.max(...months.map(m => m[1].revenue), 1);
-                return (
-                  <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 72 }}>
-                    {months.map(([month, data], i) => (
-                      <div key={month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                        <div style={{
-                          width: "100%", maxWidth: 36, borderRadius: 4,
-                          height: `${Math.max((data.revenue / maxRev) * 56, 3)}px`,
-                          background: i === months.length - 1 ? theme.accent : "rgba(20,184,166,0.15)",
-                          transition: "height 0.5s ease",
-                        }} />
-                        <span style={{ fontSize: 9, color: theme.textDim }}>{new Date(month + "-01").toLocaleDateString("en-NZ", { month: "short" })}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, padding: "8px 0 0", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                <span style={{ fontSize: 11, color: theme.textMuted }}>This month</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: theme.green }}>${(months[months.length - 1]?.[1]?.revenue || 0).toLocaleString()}</span>
-              </div>
-            </Card>
-          )}
-
-          {/* Follow-up effectiveness */}
-          {stepData.length > 0 && (
-            <Card style={{ padding: isMobile ? 16 : 20 }}>
-              <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 3px", letterSpacing: "0.01em" }}>Follow-Up Effectiveness</h3>
-              <p style={{ fontSize: 11, color: theme.textDim, margin: "0 0 12px" }}>When customers respond</p>
-              {stepData.map(([label, count]) => {
-                const maxStep = Math.max(...stepData.map(s => s[1]));
-                return (
-                  <div key={label} style={{ marginBottom: 8 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: theme.textMuted, marginBottom: 3 }}>
-                      <span>{label}</span><span style={{ fontWeight: 600, color: theme.text }}>{count}</span>
-                    </div>
-                    <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${(count / maxStep) * 100}%`, borderRadius: 3, background: theme.accent, transition: "width 0.6s ease" }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </Card>
-          )}
-
-          <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "analytics" })}
-            style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)", cursor: "pointer", textAlign: "center", fontSize: 12, color: theme.accent, fontWeight: 500, transition: "all 0.15s" }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(20,184,166,0.2)"} onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"}>
-            View Full Analytics →
-          </div>
-        </div>
-
-        {/* Right: Recent Quotes */}
-        <Card style={{ alignSelf: "start", order: isMobile ? 1 : 2, padding: isMobile ? 14 : 20 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+      {/* Recent Quotes */}
+      {quotes.length > 0 && (
+        <Card style={{ padding: isMobile ? 14 : 18, marginBottom: isMobile ? 12 : 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: 0, letterSpacing: "0.01em" }}>Recent Quotes</h3>
             <span onClick={() => dispatch({ type: "SET_SCREEN", payload: "quotes" })}
               style={{ fontSize: 12, color: theme.accent, cursor: "pointer", fontWeight: 500 }}>View all →</span>
           </div>
-          {recentQuotes.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 20, color: theme.textMuted, fontSize: 12 }}>
-              No quotes yet — create your first one!
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              {recentQuotes.map((q) => (
-                <div key={q.id}
-                  onClick={() => dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + q.id })}
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "9px 10px", borderRadius: 7, cursor: "pointer", transition: "background 0.1s",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
-                    <div style={{
-                      width: 30, height: 30, borderRadius: 7, background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 12, fontWeight: 700, color: theme.accent, flexShrink: 0,
-                    }}>
-                      {q.customer_name?.charAt(0) || "?"}
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer_name}</div>
-                      <div style={{ fontSize: 11, color: theme.textDim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.job_title}</div>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: "'DM Sans', sans-serif" }}>${parseFloat(q.amount || 0).toLocaleString()}</span>
-                    <Badge status={q.status} size="sm" />
-                    <span onClick={(e) => { e.stopPropagation(); dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + q.id }); }}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 500, color: theme.accent, padding: "3px 8px", borderRadius: 5, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.12)", cursor: "pointer" }}
-                    ><Eye size={10} /> View</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {recentQuotes.map((q) => (
+              <div key={q.id}
+                onClick={() => dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + q.id })}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "10px 10px", borderRadius: 8, cursor: "pointer", transition: "background 0.1s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
+                  <Badge status={q.status} size="sm" />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.customer_name}</div>
+                    <div style={{ fontSize: 11, color: theme.textDim, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.job_title}</div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>${parseFloat(q.amount || 0).toLocaleString()}</span>
+                  <span style={{ fontSize: 11, color: theme.textDim }}>{relTime(q.sent_at || q.created_at)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </Card>
-      </div>
+      )}
+
+      {/* Quick Stats */}
+      {quotes.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 8 }}>
+          <Stat label="This Month" value={quotesThisMonth} icon={FileText} />
+          <Stat label="Revenue" value={`$${revenueThisMonth.toLocaleString()}`} accent={theme.green} icon={DollarSign} />
+          <Stat label="Win Rate" value={`${winRate}%`} accent={winRate >= 50 ? theme.green : winRate >= 25 ? "#F59E0B" : theme.red} icon={BarChart3} />
+        </div>
+      )}
+      {quotes.length > 0 && (
+        <div onClick={() => dispatch({ type: "SET_SCREEN", payload: "analytics" })}
+          style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)", cursor: "pointer", textAlign: "center", fontSize: 12, color: theme.accent, fontWeight: 500, transition: "all 0.15s" }}
+          onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(20,184,166,0.2)"} onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"}>
+          View Full Analytics →
+        </div>
+      )}
     </div>
   );
 };
@@ -4818,6 +4709,7 @@ function ScheduleView({ jobs, dispatch, business, quotes, focusDate }) {
           date={currentDate} onNavigate={(date) => setCurrentDate(date)}
           min={new Date(2026, 0, 1, 6, 0)} max={new Date(2026, 0, 1, 20, 0)}
           step={30} timeslots={2} selectable resizable
+          longPressThreshold={isMobile ? 250 : 0}
           onEventDrop={handleEventDrop} onEventResize={handleEventResize}
           onSelectEvent={handleSelectEvent} onSelectSlot={handleSelectSlot}
           eventPropGetter={eventPropGetter} components={{ event: EventComponent }}
@@ -6918,6 +6810,27 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
           };
           await db("quotes").eq("id", quote.id).update(updates);
           dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, ...updates } });
+          // Auto-create job if one doesn't already exist for this quote
+          const { data: existingJobs } = await db("jobs").eq("quote_id", quote.id).select();
+          if (!existingJobs || existingJobs.length === 0) {
+            const jobData = {
+              business_id: business.id,
+              quote_id: quote.id,
+              title: quote.job_title,
+              customer_name: quote.customer_name,
+              customer_phone: quote.customer_phone || "",
+              customer_email: quote.customer_email || "",
+              address: "",
+              starts_at: new Date().toISOString(),
+              ends_at: addHours(new Date(), 2).toISOString(),
+              status: "scheduled",
+              amount: parseFloat(quote.amount) || 0,
+              notes: quote.description || "",
+            };
+            const { data: newJob } = await db("jobs").insert(jobData);
+            if (newJob && newJob[0]) dispatch({ type: "ADD_JOB", payload: newJob[0] });
+            dispatch({ type: "NOTIFY", payload: { message: "Job created — schedule it in your calendar", type: "success" } });
+          }
           dispatch({ type: "SET_SCREEN", payload: "schedule" });
         }}
       />
@@ -9409,31 +9322,32 @@ function WynflowAppInner() {
   useSEO(screen);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showProfileCompletion, setShowProfileCompletion] = useState(false);
-  const [sessionReady, setSessionReady] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
 
   const loadData = useCallback(async (force = false) => {
-    if (!business || !sessionReady) return;
+    if (!business) return;
     if (!business.id) return;
     dispatch({ type: "SET_LOADING", payload: true });
     try {
-      const [quotesRes, seqRes, invoicesRes, jobsRes] = await Promise.all([
+      const [quotesRes, seqRes, invoicesRes, jobsRes, teamRes] = await Promise.all([
         db("quotes").eq("business_id", business.id).order("created_at", { ascending: false }).select(),
         db("follow_up_sequences").eq("business_id", business.id).select(),
         db("invoices").eq("business_id", business.id).order("created_at", { ascending: false }).select(),
         db("jobs").eq("business_id", business.id).order("starts_at", { ascending: true }).select(),
+        db("team_members").eq("business_id", business.id).order("created_at").select(),
       ]);
       if (quotesRes.data) dispatch({ type: "SET_QUOTES", payload: quotesRes.data });
       if (seqRes.data) dispatch({ type: "SET_SEQUENCES", payload: seqRes.data });
       if (invoicesRes.data) dispatch({ type: "SET_INVOICES", payload: invoicesRes.data });
       if (jobsRes.data) dispatch({ type: "SET_JOBS", payload: jobsRes.data });
+      if (teamRes.data) dispatch({ type: "SET_TEAM_MEMBERS", payload: teamRes.data });
       setDataLoaded(true);
     } catch (err) {
       reportError(err, "load_dashboard_data");
       dispatch({ type: "NOTIFY", payload: { message: "Failed to load data. Please refresh.", type: "error" } });
     }
     dispatch({ type: "SET_LOADING", payload: false });
-  }, [business?.id, sessionReady]);
+  }, [business?.id]);
 
   // Restore session on mount
   useEffect(() => {
@@ -9550,11 +9464,11 @@ function WynflowAppInner() {
     if (savedToken && savedUser && savedBusiness) {
       supabase.token = savedToken;
       supabase.user = savedUser;
-      setSessionReady(false); // Gate loadData until token is validated
+      // Load dashboard immediately with cached data — don't gate on validation
       dispatch({ type: "SET_USER", payload: savedUser });
       dispatch({ type: "SET_BUSINESS", payload: savedBusiness });
       dispatch({ type: "SET_SCREEN", payload: "dashboard" });
-      // Validate token is still valid — if expired, try refreshing
+      // Validate token in background — if expired, try refreshing
       supabase.auth_getUser().then(async (res) => {
         if (!res && savedRefresh) {
           // Access token expired — use refresh token to get a new one
@@ -9569,7 +9483,6 @@ function WynflowAppInner() {
             setCookie("wynflow_business", bizData, 43200);
             dispatch({ type: "SET_USER", payload: refreshed.user });
             dispatch({ type: "SET_BUSINESS", payload: bizData });
-            setSessionReady(true);
           } else {
             supabase.token = null;
             supabase.user = null;
@@ -9590,11 +9503,9 @@ function WynflowAppInner() {
           setCookie("wynflow_user", savedUser, 43200);
           setCookie("wynflow_business", bizData, 43200);
           dispatch({ type: "SET_BUSINESS", payload: bizData });
-          setSessionReady(true);
         }
       }).catch(() => {
         // Token validation failed — still allow dashboard with cached data
-        setSessionReady(true);
       });
     } else {
       const routes = { "about": "about", "pricing": "pricing", "login": "login", "signup": "signup" };
@@ -9616,12 +9527,17 @@ function WynflowAppInner() {
     }
   }, [screen, business]);
 
+  // Reset dataLoaded when user logs out so re-login triggers a fresh fetch
+  useEffect(() => {
+    if (!user) setDataLoaded(false);
+  }, [user]);
+
   // Load data whenever business/session becomes ready, or hasn't loaded yet
   useEffect(() => {
-    if (business?.id && sessionReady && !dataLoaded) {
+    if (business?.id && !dataLoaded) {
       loadData();
     }
-  }, [business?.id, sessionReady, dataLoaded, loadData]);
+  }, [business?.id, dataLoaded, loadData]);
 
   // Show onboarding for new users (device-independent via DB flag)
   useEffect(() => {
@@ -9648,7 +9564,7 @@ function WynflowAppInner() {
   }, [business?.id, dataLoaded]);
 
   useEffect(() => {
-    if (business && (screen === "dashboard" || screen === "quotes" || screen === "invoices")) {
+    if (business && (screen === "dashboard" || screen === "quotes" || screen === "invoices" || screen === "settings" || screen === "schedule")) {
       loadData();
     }
   }, [screen, business, loadData]);
@@ -9686,17 +9602,21 @@ function WynflowAppInner() {
     .rbc-time-view, .rbc-month-view { background: rgba(255,255,255,0.015); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; overflow: hidden; }
     .rbc-time-header { border-bottom: 1px solid rgba(255,255,255,0.06); }
     .rbc-time-content { border-top: none; }
-    .rbc-time-slot { border-top: 1px solid rgba(255,255,255,0.03); min-height: 28px; }
+    .rbc-time-slot { border-top: 1px solid rgba(255,255,255,0.03); min-height: 32px; }
     .rbc-timeslot-group { border-bottom: 1px solid rgba(255,255,255,0.06); }
     .rbc-day-slot .rbc-time-slot { border-top-color: rgba(255,255,255,0.03); }
     .rbc-current-time-indicator { background-color: #14B8A6; height: 2px; }
     .rbc-today { background: rgba(20,184,166,0.03); }
     .rbc-off-range-bg { background: rgba(0,0,0,0.15); }
-    .rbc-event { border: none !important; border-radius: 6px; padding: 2px 6px; font-size: 12px; cursor: pointer; }
+    .rbc-event { border: none !important; border-radius: 6px; padding: 4px 8px; font-size: 12px; cursor: grab; min-height: 24px; transition: box-shadow 0.15s, transform 0.15s; }
+    .rbc-event:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
     .rbc-event-label { font-size: 11px; color: rgba(255,255,255,0.7); }
     .rbc-event-content { font-weight: 500; }
     .rbc-addons-dnd .rbc-addons-dnd-resize-ns-icon { display: none; }
-    .rbc-addons-dnd .rbc-addons-dnd-resizable { border-bottom: 3px solid rgba(255,255,255,0.3); }
+    .rbc-addons-dnd .rbc-addons-dnd-resizable { border-bottom: 4px solid rgba(255,255,255,0.35); cursor: ns-resize; }
+    .rbc-addons-dnd .rbc-addons-dnd-resizable:hover { border-bottom-color: rgba(20,184,166,0.6); }
+    .rbc-addons-dnd-dragged-event { opacity: 0.5; }
+    .rbc-addons-dnd-drag-preview { opacity: 0.85; box-shadow: 0 4px 16px rgba(0,0,0,0.4); transform: scale(1.02); z-index: 10; }
     .rbc-allday-cell { min-height: 30px; }
     .rbc-time-gutter .rbc-label { color: #5C6578; font-size: 11px; padding: 0 8px; }
     .rbc-show-more { color: #14B8A6; font-size: 12px; }
@@ -9784,7 +9704,7 @@ function WynflowAppInner() {
   const renderContent = () => {
     if (loading) return <Spinner />;
     switch (activeScreen) {
-      case "dashboard": return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} jobs={jobs} />;
+      case "dashboard": return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} jobs={jobs} business={business} />;
       case "quotes": return <QuotesList quotes={quotes} dispatch={dispatch} sequences={sequences} invoices={invoices} />;
       case "analytics": return <Analytics quotes={quotes} invoices={invoices} />;
       case "schedule": return <ScheduleView jobs={jobs} dispatch={dispatch} business={business} quotes={quotes} focusDate={detailId} />;
@@ -9799,7 +9719,7 @@ function WynflowAppInner() {
       case "help": return <HelpCentre />;
       case "historicalQuotes": return <HistoricalQuotes business={business} dispatch={dispatch} quotes={quotes} />;
       case "settings": return <Settings business={business} dispatch={dispatch} />;
-      default: return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} />;
+      default: return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} business={business} />;
     }
   };
 
