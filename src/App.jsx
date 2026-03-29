@@ -8591,10 +8591,10 @@ const HistoricalQuotes = ({ business, dispatch, quotes }) => {
         const headerRaw = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/['"]/g, ""));
         const colMap = {};
         headerRaw.forEach((h, i) => {
-          if (h.includes("job") || h.includes("title") || h.includes("description") || h.includes("name") && !h.includes("customer")) colMap.jobTitle = i;
+          if (h.includes("job") || (h === "title") || (h.includes("name") && !h.includes("customer") && !h.includes("client"))) colMap.jobTitle = i;
           if (h.includes("amount") || h.includes("total") || h.includes("price") || h.includes("value") || h.includes("cost")) colMap.amount = i;
           if (h.includes("customer") || h.includes("client")) colMap.customerName = i;
-          if (h.includes("scope") || h.includes("desc") || h.includes("detail") || h.includes("note")) colMap.description = i;
+          if (h.includes("scope") || h.includes("description") || h.includes("detail") || h.includes("note")) colMap.description = i;
           if (h.includes("status") || h.includes("outcome") || h.includes("result")) colMap.status = i;
         });
         // Fallback: if no column mapping found, assume: col 0 = job title, col 1 = amount, col 2 = customer
