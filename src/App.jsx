@@ -8499,9 +8499,194 @@ const HistoricalQuotes = ({ business, dispatch, quotes }) => {
   const isMobile = useIsMobile();
   const [form, setForm] = useState({ jobTitle: "", description: "", amount: "", customerName: "", status: "booked" });
   const [saving, setSaving] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [extractedPreview, setExtractedPreview] = useState(null);
+  const [csvRows, setCsvRows] = useState([]);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvImported, setCsvImported] = useState(0);
   const historicalQuotes = quotes.filter(q => q.source === "historical");
 
   const update = (key, val) => setForm({ ...form, [key]: val });
+
+  // Image compression (reused pattern)
+  const compressImage = (file, maxSize = 1200) => new Promise((resolve) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let w = img.width, h = img.height;
+        if (w > maxSize || h > maxSize) {
+          if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+          else { w = Math.round(w * maxSize / h); h = maxSize; }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Extract quote data from uploaded photo
+  const handlePhotoExtract = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setExtracting(true);
+    setExtractedPreview(null);
+    try {
+      const photoData = [];
+      for (const file of files.slice(0, 3)) {
+        const compressed = await compressImage(file);
+        photoData.push(compressed);
+      }
+      const res = await fetch("https://wynfallautomation.app.n8n.cloud/webhook/extract-quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          business_id: business.id,
+          trade: business.trade,
+          photos: photoData,
+        }),
+      });
+      const result = await res.json();
+      if (result.extracted) {
+        const ext = result.extracted;
+        setForm({
+          jobTitle: ext.job_title || "",
+          description: ext.description || "",
+          amount: ext.amount ? String(ext.amount) : "",
+          customerName: ext.customer_name || "",
+          status: ext.status || "booked",
+        });
+        setExtractedPreview(ext);
+        dispatch({ type: "NOTIFY", payload: { message: "Quote details extracted — review and save below", type: "success" } });
+      } else {
+        dispatch({ type: "NOTIFY", payload: { message: result.error || "Couldn't extract quote details from photo", type: "error" } });
+      }
+    } catch (err) {
+      reportError(err, "extract_quote_photo");
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to extract quote. Try a clearer photo.", type: "error" } });
+    }
+    setExtracting(false);
+    e.target.value = "";
+  };
+
+  // CSV parsing and import
+  const handleCsvUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const text = evt.target.result;
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) {
+          dispatch({ type: "NOTIFY", payload: { message: "CSV is empty or has no data rows", type: "error" } });
+          return;
+        }
+        // Parse header row — be flexible with column names
+        const headerRaw = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/['"]/g, ""));
+        const colMap = {};
+        headerRaw.forEach((h, i) => {
+          if (h.includes("job") || h.includes("title") || h.includes("description") || h.includes("name") && !h.includes("customer")) colMap.jobTitle = i;
+          if (h.includes("amount") || h.includes("total") || h.includes("price") || h.includes("value") || h.includes("cost")) colMap.amount = i;
+          if (h.includes("customer") || h.includes("client")) colMap.customerName = i;
+          if (h.includes("scope") || h.includes("desc") || h.includes("detail") || h.includes("note")) colMap.description = i;
+          if (h.includes("status") || h.includes("outcome") || h.includes("result")) colMap.status = i;
+        });
+        // Fallback: if no column mapping found, assume: col 0 = job title, col 1 = amount, col 2 = customer
+        if (colMap.jobTitle === undefined && headerRaw.length >= 1) colMap.jobTitle = 0;
+        if (colMap.amount === undefined && headerRaw.length >= 2) colMap.amount = 1;
+        if (colMap.customerName === undefined && headerRaw.length >= 3) colMap.customerName = 2;
+
+        // Parse data rows
+        const rows = [];
+        for (let i = 1; i < lines.length; i++) {
+          // Handle commas inside quoted fields
+          const vals = [];
+          let current = "";
+          let inQuotes = false;
+          for (const ch of lines[i]) {
+            if (ch === '"') { inQuotes = !inQuotes; continue; }
+            if (ch === "," && !inQuotes) { vals.push(current.trim()); current = ""; continue; }
+            current += ch;
+          }
+          vals.push(current.trim());
+
+          const jobTitle = vals[colMap.jobTitle] || "";
+          const amount = parseFloat((vals[colMap.amount] || "0").replace(/[$,]/g, "")) || 0;
+          const customerName = vals[colMap.customerName] || "";
+          const description = colMap.description !== undefined ? (vals[colMap.description] || "") : "";
+          const statusRaw = colMap.status !== undefined ? (vals[colMap.status] || "").toLowerCase() : "";
+          const status = statusRaw.includes("lost") || statusRaw.includes("declin") ? "declined" : statusRaw.includes("accept") ? "accepted" : "booked";
+
+          if (jobTitle && amount > 0) {
+            rows.push({ jobTitle, amount, customerName, description, status, selected: true });
+          }
+        }
+        if (rows.length === 0) {
+          dispatch({ type: "NOTIFY", payload: { message: "No valid rows found. Make sure your CSV has job titles and amounts.", type: "error" } });
+          return;
+        }
+        setCsvRows(rows);
+        dispatch({ type: "NOTIFY", payload: { message: `${rows.length} quote${rows.length > 1 ? "s" : ""} found in CSV — review below`, type: "success" } });
+      } catch (err) {
+        dispatch({ type: "NOTIFY", payload: { message: "Failed to parse CSV file", type: "error" } });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const toggleCsvRow = (idx) => {
+    setCsvRows(csvRows.map((r, i) => i === idx ? { ...r, selected: !r.selected } : r));
+  };
+
+  const importCsvRows = async () => {
+    const selected = csvRows.filter(r => r.selected);
+    if (selected.length === 0) return;
+    setCsvImporting(true);
+    setCsvImported(0);
+    let imported = 0;
+    for (const row of selected) {
+      try {
+        const quoteData = {
+          business_id: business.id,
+          job_title: row.jobTitle,
+          description: row.description,
+          amount: row.amount,
+          customer_name: row.customerName || "Historical Customer",
+          customer_email: (row.customerName || "historical").toLowerCase().replace(/\s+/g, ".") + "@historical.local",
+          status: row.status,
+          source: "historical",
+          created_at: new Date().toISOString(),
+        };
+        const { data, error } = await db("quotes").insert(quoteData);
+        if (!error && data?.[0]) {
+          dispatch({ type: "ADD_QUOTE", payload: data[0] });
+          imported++;
+          setCsvImported(imported);
+        }
+      } catch (err) { /* skip failed rows */ }
+    }
+    setCsvImporting(false);
+    setCsvRows([]);
+    dispatch({ type: "NOTIFY", payload: { message: `${imported} quote${imported > 1 ? "s" : ""} imported — AI will use these for future estimates`, type: "success" } });
+  };
+
+  const downloadCsvTemplate = () => {
+    const template = "Job Title,Amount,Customer Name,Description,Status\nBathroom renovation,4500,Mike Thompson,Full reno incl tiling and plumbing,Won\nRoof repair,1200,Sarah Wilson,Replace broken tiles and reseal,Won\nKitchen install,8500,Dave Chen,Full kitchen fit-out,Lost\n";
+    const blob = new Blob([template], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "wynflow-historical-quotes-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const saveQuote = async () => {
     if (!form.jobTitle || !form.amount) {
@@ -8526,6 +8711,7 @@ const HistoricalQuotes = ({ business, dispatch, quotes }) => {
       dispatch({ type: "ADD_QUOTE", payload: data[0] });
       dispatch({ type: "SET_SCREEN", payload: "historicalQuotes" });
       setForm({ jobTitle: "", description: "", amount: "", customerName: "", status: "booked" });
+      setExtractedPreview(null);
       dispatch({ type: "NOTIFY", payload: { message: "Historical quote added — AI will use this for future estimates", type: "success" } });
     } catch (err) {
       dispatch({ type: "NOTIFY", payload: { message: "Failed to save quote", type: "error" } });
@@ -8552,9 +8738,117 @@ const HistoricalQuotes = ({ business, dispatch, quotes }) => {
         <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: "4px 0 0" }}>Add old quotes so the AI learns from your pricing history</p>
       </div>
 
-      {/* Add new historical quote */}
+      {/* Upload photo to extract */}
+      <Card style={{ marginBottom: 16, padding: isMobile ? 16 : 24 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 6px", display: "flex", alignItems: "center", gap: 8 }}><Camera size={18} color={theme.accent} /> Import from Photo</h3>
+        <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>Upload a photo of an old quote — AI will extract the details automatically</p>
+        <label style={{
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          padding: isMobile ? "24px 16px" : "32px 24px", borderRadius: 12,
+          border: "2px dashed rgba(20,184,166,0.25)", background: "rgba(20,184,166,0.03)",
+          cursor: extracting ? "wait" : "pointer", transition: "all 0.2s",
+          opacity: extracting ? 0.6 : 1,
+        }}
+          onMouseEnter={e => { if (!extracting) { e.currentTarget.style.borderColor = "rgba(20,184,166,0.5)"; e.currentTarget.style.background = "rgba(20,184,166,0.06)"; }}}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.25)"; e.currentTarget.style.background = "rgba(20,184,166,0.03)"; }}>
+          <input type="file" accept="image/*,.pdf" multiple style={{ display: "none" }} onChange={handlePhotoExtract} disabled={extracting} />
+          {extracting ? (
+            <>
+              <Spinner />
+              <span style={{ fontSize: 14, color: theme.accent, fontWeight: 500, marginTop: 12 }}>Extracting quote details...</span>
+              <span style={{ fontSize: 12, color: theme.textDim, marginTop: 4 }}>AI is reading your quote</span>
+            </>
+          ) : (
+            <>
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
+                <Upload size={22} color={theme.accent} />
+              </div>
+              <span style={{ fontSize: 14, color: theme.text, fontWeight: 500 }}>Tap to upload quote photo</span>
+              <span style={{ fontSize: 12, color: theme.textDim, marginTop: 4 }}>JPG, PNG, or PDF — up to 3 photos</span>
+            </>
+          )}
+        </label>
+        {extractedPreview && extractedPreview.line_items && extractedPreview.line_items.length > 0 && (
+          <div style={{ marginTop: 16, padding: 14, borderRadius: 10, background: "rgba(20,184,166,0.04)", border: "1px solid rgba(20,184,166,0.12)" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: theme.accent, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Extracted Line Items</div>
+            {extractedPreview.line_items.map((item, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13, color: theme.textMuted, borderBottom: i < extractedPreview.line_items.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                <span>{item.description}</span>
+                <span style={{ color: theme.text, fontWeight: 500 }}>${parseFloat(item.amount || 0).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* CSV Import */}
+      <Card style={{ marginBottom: 16, padding: isMobile ? 16 : 24 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 6px", display: "flex", alignItems: "center", gap: 8 }}><FileText size={18} color={theme.accent} /> Import from CSV</h3>
+        <p style={{ fontSize: 13, color: theme.textMuted, margin: "0 0 16px" }}>
+          Bulk import from Fergus, Tradify, or a spreadsheet.{" "}
+          <span onClick={downloadCsvTemplate} style={{ color: theme.accent, cursor: "pointer", textDecoration: "underline" }}>Download template</span>
+        </p>
+
+        {csvRows.length === 0 ? (
+          <label style={{
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            padding: isMobile ? "20px 16px" : "24px 20px", borderRadius: 12,
+            border: "2px dashed rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.02)",
+            cursor: "pointer", transition: "all 0.2s",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.3)"; e.currentTarget.style.background = "rgba(20,184,166,0.03)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}>
+            <input type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={handleCsvUpload} />
+            <Upload size={20} color={theme.textMuted} />
+            <span style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>Upload .csv file</span>
+          </label>
+        ) : (
+          <div>
+            {/* CSV preview table */}
+            <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 10 }}>
+              {csvRows.filter(r => r.selected).length} of {csvRows.length} quotes selected
+            </div>
+            <div style={{ maxHeight: 300, overflowY: "auto", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
+              {csvRows.map((row, i) => (
+                <div key={i} onClick={() => toggleCsvRow(i)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
+                    background: row.selected ? "rgba(20,184,166,0.04)" : "rgba(255,255,255,0.01)",
+                    borderBottom: i < csvRows.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                    cursor: "pointer", transition: "background 0.15s",
+                  }}>
+                  <div style={{
+                    width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                    border: `1.5px solid ${row.selected ? theme.accent : "rgba(255,255,255,0.15)"}`,
+                    background: row.selected ? theme.accent : "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    {row.selected && <Check size={12} color="#fff" />}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: theme.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{row.jobTitle}</div>
+                    <div style={{ fontSize: 11, color: theme.textDim }}>{row.customerName || "No customer"}{row.description ? ` — ${row.description.slice(0, 40)}` : ""}</div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>${row.amount.toLocaleString()}</div>
+                    <div style={{ fontSize: 10, color: row.status === "declined" ? theme.red : theme.green, fontWeight: 500 }}>{row.status === "declined" ? "Lost" : "Won"}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <Button onClick={importCsvRows} disabled={csvImporting || csvRows.filter(r => r.selected).length === 0} style={{ flex: 1 }}>
+                {csvImporting ? `Importing... (${csvImported}/${csvRows.filter(r => r.selected).length})` : `Import ${csvRows.filter(r => r.selected).length} Quote${csvRows.filter(r => r.selected).length !== 1 ? "s" : ""}`}
+              </Button>
+              <Button variant="ghost" onClick={() => setCsvRows([])} disabled={csvImporting}>Cancel</Button>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Add new historical quote (manual or pre-filled from extraction) */}
       <Card style={{ marginBottom: 24 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px", display: "flex", alignItems: "center", gap: 8 }}><Plus size={18} color={theme.accent} /> Add a Past Quote</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 16px", display: "flex", alignItems: "center", gap: 8 }}><Plus size={18} color={theme.accent} /> {extractedPreview ? "Review & Save Extracted Quote" : "Add a Past Quote"}</h3>
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14 }}>
           <Input label="Job Title *" placeholder="e.g. Bathroom reno, 3 Elm St" value={form.jobTitle} onChange={v => update("jobTitle", v)} />
           <Input label="Amount (excl. GST) *" type="number" placeholder="e.g. 4500" value={form.amount} onChange={v => update("amount", v)} />

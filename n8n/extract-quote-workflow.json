@@ -1,0 +1,142 @@
+{
+  "name": "Wynflow — Extract Quote from Photo",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "extract-quote",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build Claude API request with vision content blocks\nconst body = $input.first().json.body;\nconst photos = body.photos || [];\nconst trade = body.trade || 'tradesperson';\n\nif (photos.length === 0) {\n  return [{ json: { error: 'No photos provided' } }];\n}\n\n// Build content array with images + text prompt\nconst content = [];\n\n// Add each photo as an image content block\nfor (const photo of photos) {\n  // photo is a base64 data URL like \"data:image/jpeg;base64,/9j/4AAQ...\"\n  const matches = photo.match(/^data:(image\\/\\w+);base64,(.+)$/);\n  if (matches) {\n    content.push({\n      type: 'image',\n      source: {\n        type: 'base64',\n        media_type: matches[1],\n        data: matches[2]\n      }\n    });\n  }\n}\n\n// Add the extraction prompt\ncontent.push({\n  type: 'text',\n  text: `You are an expert at extracting quote and invoice data from photos. The user is a ${trade} in New Zealand.\n\nAnalyse the photo(s) of a quote/invoice and extract ALL details you can find. Return a JSON object with this exact structure:\n\n{\n  \"job_title\": \"Brief job title (e.g. Bathroom Renovation, Roof Repair)\",\n  \"description\": \"Full scope of work / job description extracted from the quote\",\n  \"amount\": 0,\n  \"customer_name\": \"Customer name if visible\",\n  \"status\": \"booked\",\n  \"line_items\": [\n    { \"description\": \"Item description\", \"amount\": 0 }\n  ]\n}\n\nRules:\n- \"amount\" should be the TOTAL excl. GST. If the quote shows GST-inclusive pricing, divide by 1.15 to get excl. GST.\n- If you can see individual line items (materials, labour, etc.), include them in \"line_items\"\n- If you can't determine the customer name, use an empty string\n- \"status\" should be \"booked\" (assume completed work) unless the quote clearly shows it was declined\n- Be accurate with dollar amounts — don't round unless the original is rounded\n- If you can't extract meaningful data, return { \"error\": \"Could not read quote details from this image\" }\n\nReturn ONLY valid JSON, no markdown, no explanation.`\n});\n\nreturn [{\n  json: {\n    requestBody: {\n      model: 'claude-sonnet-4-20250514',\n      max_tokens: 2000,\n      messages: [\n        {\n          role: 'user',\n          content: content\n        }\n      ]\n    }\n  }\n}];"
+      },
+      "id": "code-build",
+      "name": "Build Claude Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.requestBody) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "http-claude",
+      "name": "Call Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Claude API response and extract the JSON\nconst response = $input.first().json;\n\ntry {\n  // Claude API returns { content: [{ type: 'text', text: '...' }] }\n  const text = response.content?.[0]?.text || '';\n  \n  if (!text) {\n    return [{ json: { error: 'Empty response from AI' } }];\n  }\n  \n  // Extract JSON (handle markdown code blocks just in case)\n  let jsonStr = text.trim();\n  if (jsonStr.includes('```')) {\n    jsonStr = jsonStr.replace(/```json?\\n?/g, '').replace(/```/g, '').trim();\n  }\n  \n  const extracted = JSON.parse(jsonStr);\n  \n  // Check for error response\n  if (extracted.error) {\n    return [{ json: { error: extracted.error } }];\n  }\n  \n  // Ensure amount is a number\n  extracted.amount = parseFloat(extracted.amount) || 0;\n  \n  // Ensure line_items amounts are numbers\n  if (extracted.line_items && Array.isArray(extracted.line_items)) {\n    extracted.line_items = extracted.line_items.map(item => ({\n      description: item.description || '',\n      amount: parseFloat(item.amount) || 0\n    }));\n  } else {\n    extracted.line_items = [];\n  }\n  \n  // Ensure all string fields exist\n  extracted.job_title = extracted.job_title || '';\n  extracted.description = extracted.description || '';\n  extracted.customer_name = extracted.customer_name || '';\n  extracted.status = extracted.status || 'booked';\n  \n  return [{ json: { extracted } }];\n} catch (err) {\n  return [{ json: { error: 'Failed to parse AI response: ' + err.message } }];\n}"
+      },
+      "id": "code-parse",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-1",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1200, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build Claude Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Claude Request": {
+      "main": [
+        [
+          {
+            "node": "Call Claude API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Claude API": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
