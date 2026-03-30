@@ -9378,31 +9378,9 @@ function ProfileCompletionModal({ business, dispatch, onComplete }) {
 // ─── Onboarding Tutorial ───
 const OnboardingTutorial = ({ business, dispatch, onComplete }) => {
   const [step, setStep] = useState(0);
-  const [linkCopied, setLinkCopied] = useState(false);
-  const [hourlyRate, setHourlyRate] = useState(String(business?.hourly_rate || ""));
-  const [calloutFee, setCalloutFee] = useState(String(business?.callout_fee || ""));
-  const [materialsMargin, setMaterialsMargin] = useState(String(business?.materials_margin || ""));
-  const [savingRates, setSavingRates] = useState(false);
   const isMobile = useIsMobile();
-  const requestLink = `https://www.wynflow.co.nz/request/${business?.id || ""}`;
   const firstName = (business?.contact_name || "").split(" ")[0] || "legend";
-
-  const saveRates = async () => {
-    setSavingRates(true);
-    const updates = {};
-    if (hourlyRate) updates.hourly_rate = parseFloat(hourlyRate) || 0;
-    if (calloutFee) updates.callout_fee = parseFloat(calloutFee) || 0;
-    if (materialsMargin) updates.materials_margin = Math.max(0, Math.min(200, parseFloat(materialsMargin) || 0));
-    if (Object.keys(updates).length > 0) {
-      const { error } = await db("businesses").eq("id", business.id).update(updates);
-      if (!error) {
-        const updatedBiz = { ...business, ...updates };
-        dispatch({ type: "SET_BUSINESS", payload: updatedBiz });
-        setCookie("wynflow_business", updatedBiz, 43200);
-      }
-    }
-    setSavingRates(false);
-  };
+  const totalSteps = 5;
 
   const handleComplete = async (navigateTo) => {
     await db("businesses").eq("id", business.id).update({ onboarded: true });
@@ -9412,183 +9390,267 @@ const OnboardingTutorial = ({ business, dispatch, onComplete }) => {
     try { localStorage.setItem("wynflow_onboarded_" + business.id, "true"); } catch(e) {}
     setCookie("wynflow_onboarded", "true", 525600);
     onComplete();
-    if (navigateTo) {
-      dispatch({ type: "SET_SCREEN", payload: navigateTo });
-    }
+    if (navigateTo) dispatch({ type: "SET_SCREEN", payload: navigateTo });
   };
 
-  const steps = [
-    {
-      icon: Sparkles, iconBg: "rgba(20,184,166,0.15)", iconColor: "#14B8A6",
-      title: `Welcome, ${firstName}!`,
-      subtitle: "Let's get you quoting in 2 minutes",
-      content: (
-        <div>
-          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.7, margin: "0 0 20px" }}>
-            Wynflow generates professional quotes from your job site photos using AI — scope, materials, labour, the lot. Then automated follow-ups chase your customers until they say yes.
-          </p>
-          <div style={{ display: "flex", justifyContent: "center", gap: isMobile ? 8 : 16, padding: "16px 0", flexWrap: "wrap" }}>
-            {[
-              { icon: Camera, label: "Photos", delay: "0s" },
-              { icon: Cpu, label: "AI Quote", delay: "0.15s" },
-              { icon: Send, label: "Send", delay: "0.3s" },
-              { icon: RefreshCw, label: "Follow-Up", delay: "0.45s" },
-              { icon: CheckCircle2, label: "Won", delay: "0.6s" },
-            ].map((s, i) => (
-              <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, animation: `onb-step-in 0.4s ${s.delay} ease both` }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(20,184,166,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <s.icon size={20} color={theme.accent} />
-                </div>
-                <span style={{ fontSize: 11, color: theme.textMuted }}>{s.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ),
-    },
-    {
-      icon: DollarSign, iconBg: "rgba(20,184,166,0.15)", iconColor: "#14B8A6",
-      title: "Set Your Rates",
-      subtitle: "So AI quotes are accurate from day one",
-      content: (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <Input label="Hourly Rate ($)" value={hourlyRate} onChange={setHourlyRate} type="number" placeholder="e.g. 85" />
-              <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>Your standard hourly charge</div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <Input label="Callout Fee ($)" value={calloutFee} onChange={setCalloutFee} type="number" placeholder="e.g. 50" />
-              <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>One-off charge for showing up</div>
-            </div>
-          </div>
-          <div>
-            <Input label="Materials Markup %" value={materialsMargin} onChange={setMaterialsMargin} type="number" placeholder="e.g. 20" />
-            <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>Applied automatically to material costs in AI quotes</div>
-          </div>
-          <div style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(20,184,166,0.06)", border: "1px solid rgba(20,184,166,0.12)", fontSize: 12, color: theme.textMuted, lineHeight: 1.5 }}>
-            You can always change these later in Settings. If you're not sure, skip this step — you can set them before your first quote.
-          </div>
-        </div>
-      ),
-    },
-    {
-      icon: Link, iconBg: "rgba(34,197,94,0.15)", iconColor: "#22C55E",
-      title: "Your Quote Request Link",
-      subtitle: "Let customers come to you",
-      content: (
-        <div>
-          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.7, margin: "0 0 16px" }}>
-            Share this link anywhere — customers fill in their details and Wynflow notifies you instantly.
-          </p>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", marginBottom: 16 }}>
-            <span style={{ flex: 1, fontSize: 13, color: theme.accent, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{requestLink}</span>
-            <button onClick={() => {
-              navigator.clipboard.writeText(requestLink).then(() => { setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); });
-            }} style={{
-              padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "none", flexShrink: 0,
-              background: linkCopied ? theme.green : theme.accent, color: "#fff", fontFamily: theme.font,
-              display: "flex", alignItems: "center", gap: 4,
-            }}>
-              {linkCopied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
-            </button>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {[
-              { title: "Google Business", desc: "Add as your booking link" },
-              { title: "Facebook & Instagram", desc: "Pop it in your bio" },
-              { title: "Your website", desc: "Add a 'Request a Quote' button" },
-              { title: "Email signature", desc: "Add to your footer" },
-            ].map((s, i) => (
-              <div key={i} style={{ padding: "10px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: theme.text }}>{s.title}</div>
-                <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>{s.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ),
-    },
-    {
-      icon: CheckCircle2, iconBg: "rgba(34,197,94,0.15)", iconColor: "#22C55E",
-      title: "You're All Set!",
-      subtitle: "Time to create your first quote",
-      content: (
-        <div style={{ textAlign: "center", padding: "8px 0" }}>
-          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.7, margin: "0 0 20px" }}>
-            Take some job site photos, add your notes, and let the AI generate a professional quote in seconds. You can edit everything before sending.
-          </p>
-        </div>
-      ),
-    },
-  ];
+  const advance = () => {
+    if (step >= totalSteps - 1) { handleComplete("aiQuote"); return; }
+    setStep(step + 1);
+  };
 
-  const s = steps[step];
-  const Icon = s.icon;
+  // Shared styles
+  const glassBorder = "1px solid rgba(255,255,255,0.06)";
+  const glassCard = { background: "rgba(255,255,255,0.03)", border: glassBorder, borderRadius: 12 };
+  const accentCard = { background: "rgba(20,184,166,0.04)", border: "1px solid rgba(20,184,166,0.15)", borderRadius: 12 };
+  const tealCheck = { width: 16, height: 16, borderRadius: 5, background: "rgba(20,184,166,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
+  const redX = { width: 16, height: 16, borderRadius: 5, background: "rgba(239,68,68,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
+
+  // Phone mockup wrapper
+  const Phone = ({ children }) => (
+    <div style={{ width: isMobile ? 150 : 170, height: isMobile ? 270 : 300, borderRadius: isMobile ? 22 : 26, background: "linear-gradient(145deg, #1e2233, #141825)", border: "1px solid rgba(255,255,255,0.08)", padding: 7, flexShrink: 0, boxShadow: "0 16px 48px rgba(0,0,0,0.4)" }}>
+      <div style={{ width: "100%", height: "100%", borderRadius: isMobile ? 16 : 20, background: theme.surface, overflow: "hidden", position: "relative" }}>
+        <div style={{ position: "absolute", top: 5, left: "50%", transform: "translateX(-50%)", width: 44, height: 14, background: "#000", borderRadius: 8, zIndex: 5 }} />
+        <div style={{ padding: "24px 10px 10px", height: "100%", display: "flex", flexDirection: "column", fontSize: 8 }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Step indicator sidebar
+  const StepNav = ({ active }) => (
+    <div style={{ display: "flex", flexDirection: isMobile ? "row" : "column", gap: 6, width: isMobile ? "100%" : 140 }}>
+      {["Take photos", "AI quote", "Send", "Follow-up"].map((label, i) => {
+        const isActive = i === active;
+        const isDone = i < active;
+        return (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 7, flex: isMobile ? 1 : undefined, justifyContent: isMobile ? "center" : undefined,
+            background: isActive ? "rgba(20,184,166,0.08)" : "rgba(255,255,255,0.02)", border: `1px solid ${isActive ? "rgba(20,184,166,0.2)" : "rgba(255,255,255,0.04)"}`, opacity: isActive ? 1 : isDone ? 0.7 : 0.35, transition: "all 0.3s ease" }}>
+            <div style={{ width: 16, height: 16, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, flexShrink: 0,
+              background: isActive ? theme.accent : isDone ? "rgba(20,184,166,0.3)" : "rgba(255,255,255,0.06)", color: isActive || isDone ? "#000" : theme.dim }}>{i + 1}</div>
+            {!isMobile && <span style={{ fontSize: 10, fontWeight: 600, color: isActive ? theme.text : theme.dim }}>{label}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
       <style>{`
-        @keyframes onb-step-in { from { transform: scale(0.8) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
-        @keyframes onb-slide-in { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes onb-enter { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
       `}</style>
-      <div style={{
-        width: isMobile ? "95%" : 520, maxHeight: "90vh", overflow: "auto",
-        background: "rgba(17,24,39,0.98)", border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 20, boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
-      }}>
-        <div style={{ padding: isMobile ? "24px 20px 16px" : "32px 36px 20px", background: "linear-gradient(180deg, rgba(20,184,166,0.06) 0%, transparent 100%)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: s.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Icon size={24} color={s.iconColor} />
-            </div>
+      <div style={{ width: isMobile ? "96%" : 520, maxHeight: "94vh", background: theme.bg, border: "1px solid rgba(255,255,255,0.08)", borderRadius: 24, overflow: "hidden", boxShadow: "0 40px 120px rgba(0,0,0,0.7)", display: "flex", flexDirection: "column" }}>
+
+        {/* Slide content */}
+        <div key={step} style={{ flex: 1, overflow: "auto", animation: "onb-enter 0.4s cubic-bezier(0.22,1,0.36,1)" }}>
+
+          {/* SLIDE 1: The Difference */}
+          {step === 0 && (
             <div>
-              <h2 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: theme.text, margin: 0, fontFamily: theme.fontHeading, lineHeight: 1.2 }}>{s.title}</h2>
-              <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0", fontWeight: 500 }}>{s.subtitle}</p>
+              <div style={{ position: "relative", padding: isMobile ? "28px 20px 16px" : "36px 28px 20px", display: "flex", flexDirection: "column", alignItems: "center", background: "linear-gradient(180deg, rgba(20,184,166,0.04) 0%, transparent 100%)" }}>
+                <div style={{ display: "flex", alignItems: "stretch", gap: isMobile ? 10 : 16, flexDirection: isMobile ? "column" : "row" }}>
+                  <div style={{ textAlign: "center", flex: 1 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: theme.dim, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Without Wynflow</div>
+                    <div style={{ ...glassCard, background: "rgba(239,68,68,0.03)", border: "1px solid rgba(239,68,68,0.1)", padding: isMobile ? 12 : 16 }}>
+                      {["Measure job manually", "Type up quote at home", "Forget to follow up", "Lose the job"].map((t, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", fontSize: 12, color: theme.dim }}>
+                          <div style={redX}><XCircle size={9} color="#EF4444" /></div>{t}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: isMobile ? "center" : "center", justifyContent: "center", padding: isMobile ? "4px 0" : "0 4px" }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(20,184,166,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <ArrowRight size={14} color={theme.accent} />
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "center", flex: 1 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: theme.accent, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>With Wynflow</div>
+                    <div style={{ ...accentCard, padding: isMobile ? 12 : 16, boxShadow: "0 8px 24px rgba(20,184,166,0.06)" }}>
+                      {["Photo the job site", "AI builds your quote", "Auto follow-ups sent", "Customer books you"].map((t, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", fontSize: 12, color: theme.textMuted }}>
+                          <div style={tealCheck}><Check size={9} color={theme.accent} /></div>{t}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ padding: "0 28px 4px", textAlign: "center" }}>
+                <div style={{ display: "inline-flex", padding: "4px 11px", borderRadius: 100, fontSize: 11, fontWeight: 600, color: theme.accent, background: "rgba(20,184,166,0.08)", marginBottom: 12 }}>The only AI quoting app built for NZ tradies</div>
+                <h2 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.12, marginBottom: 8, color: theme.text }}>Quoting should take <span style={{ color: theme.accent }}>seconds, not hours.</span></h2>
+                <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, maxWidth: 400, margin: "0 auto" }}>Wynflow turns your job site photos into professional quotes using AI, then chases your customers automatically until they say yes.</p>
+              </div>
             </div>
-          </div>
-          <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
-            {steps.map((_, i) => (
-              <div key={i} onClick={() => { if (i < step) setStep(i); }}
-                style={{ width: i === step ? 24 : 8, height: 8, borderRadius: 4, background: i === step ? theme.accent : i < step ? "rgba(20,184,166,0.4)" : "rgba(255,255,255,0.08)", transition: "all 0.3s ease", cursor: i < step ? "pointer" : "default" }} />
+          )}
+
+          {/* SLIDE 2: Step 1 — Take Photos */}
+          {step === 1 && (
+            <div>
+              <div style={{ position: "relative", padding: isMobile ? "24px 16px 12px" : "32px 28px 16px", display: "flex", alignItems: "center", justifyContent: "center", gap: isMobile ? 12 : 20, flexDirection: isMobile ? "column" : "row", background: "linear-gradient(180deg, rgba(20,184,166,0.03) 0%, transparent 100%)" }}>
+                <StepNav active={0} />
+                <Phone>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 8 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: theme.accent }} /><span style={{ fontWeight: 700, color: theme.text, letterSpacing: "0.03em" }}>New AI Quote</span></div>
+                  <div style={{ background: "rgba(255,255,255,0.04)", border: glassBorder, borderRadius: 5, padding: "5px 7px", marginBottom: 4, color: theme.text }}>Sarah Thompson</div>
+                  <div style={{ background: "rgba(255,255,255,0.04)", border: glassBorder, borderRadius: 5, padding: "5px 7px", marginBottom: 6, color: theme.text }}>Bathroom renovation</div>
+                  <div style={{ fontSize: 6, color: theme.dim, fontWeight: 700, letterSpacing: "0.06em", marginBottom: 3 }}>JOB SITE PHOTOS</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 3, marginBottom: 6 }}>
+                    <div style={{ height: 40, borderRadius: 5, background: "linear-gradient(135deg, #2a3040, #1e2535)", border: glassBorder, display: "flex", alignItems: "center", justifyContent: "center" }}><Camera size={12} color={theme.dim} /></div>
+                    <div style={{ height: 40, borderRadius: 5, background: "linear-gradient(135deg, #2a3040, #1e2535)", border: glassBorder, display: "flex", alignItems: "center", justifyContent: "center" }}><Camera size={12} color={theme.dim} /></div>
+                  </div>
+                  <div style={{ fontSize: 6, color: theme.dim, fontWeight: 700, letterSpacing: "0.06em", marginBottom: 3 }}>YOUR NOTES</div>
+                  <div style={{ background: "rgba(255,255,255,0.04)", border: glassBorder, borderRadius: 5, padding: "5px 7px", color: theme.text, lineHeight: 1.3, flex: 1, minHeight: 30 }}>Full reno — tiling, plumbing, vanity, heated towel rail</div>
+                  <div style={{ background: theme.accent, borderRadius: 5, padding: 5, textAlign: "center", fontWeight: 700, color: "#000", marginTop: 6 }}>Generate AI Quote</div>
+                </Phone>
+              </div>
+              <div style={{ padding: "0 28px 4px", textAlign: "center" }}>
+                <div style={{ display: "inline-flex", padding: "4px 11px", borderRadius: 100, fontSize: 11, fontWeight: 600, color: theme.accent, background: "rgba(20,184,166,0.08)", marginBottom: 12 }}>Step 1 of 4</div>
+                <h2 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.12, marginBottom: 8, color: theme.text }}>Snap photos. Add your notes.</h2>
+                <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, maxWidth: 400, margin: "0 auto" }}>On site, take a few photos and jot down what needs doing. Customer details, job scope, access notes — whatever helps price the job.</p>
+              </div>
+            </div>
+          )}
+
+          {/* SLIDE 3: Step 2 — AI Quote */}
+          {step === 2 && (
+            <div>
+              <div style={{ position: "relative", padding: isMobile ? "24px 16px 12px" : "32px 28px 16px", display: "flex", alignItems: "center", justifyContent: "center", gap: isMobile ? 12 : 20, flexDirection: isMobile ? "column" : "row", background: "linear-gradient(180deg, rgba(20,184,166,0.03) 0%, transparent 100%)" }}>
+                <StepNav active={1} />
+                <Phone>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 6 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: theme.accent }} /><span style={{ fontWeight: 700, color: theme.text, letterSpacing: "0.03em" }}>AI Quote Ready</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <span style={{ fontWeight: 700, color: theme.text, fontSize: 9 }}>Bathroom Renovation</span>
+                    <span style={{ padding: "1px 5px", borderRadius: 3, fontSize: 6, fontWeight: 700, color: theme.accent, background: "rgba(20,184,166,0.12)", letterSpacing: "0.04em" }}>AI GENERATED</span>
+                  </div>
+                  <div style={{ ...accentCard, padding: 7 }}>
+                    {[["Demolition & removal","$850"],["Plumbing rough-in","$1,400"],["Tiling — floor & walls","$2,200"],["Vanity & fixtures","$1,650"],["Heated towel rail","$380"],["Labour (6 hrs @ $85)","$510"]].map(([desc, amt], i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", fontSize: 7, borderBottom: i < 5 ? "1px solid rgba(255,255,255,0.03)" : "none" }}>
+                        <span style={{ color: theme.dim }}>{desc}</span><span style={{ color: theme.text, fontWeight: 500 }}>{amt}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 5, marginTop: 4, borderTop: "1px solid rgba(20,184,166,0.2)" }}>
+                      <span style={{ fontSize: 8, fontWeight: 700, color: theme.text }}>Total</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: theme.accent }}>$7,440</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 3, marginTop: "auto" }}>
+                    <div style={{ flex: 1, padding: 4, borderRadius: 4, background: "rgba(255,255,255,0.04)", border: glassBorder, textAlign: "center", color: theme.textMuted, fontSize: 7 }}>Edit</div>
+                    <div style={{ flex: 2, padding: 4, borderRadius: 4, background: theme.accent, textAlign: "center", color: "#000", fontSize: 7, fontWeight: 700 }}>Send Quote</div>
+                  </div>
+                </Phone>
+              </div>
+              <div style={{ padding: "0 28px 4px", textAlign: "center" }}>
+                <div style={{ display: "inline-flex", padding: "4px 11px", borderRadius: 100, fontSize: 11, fontWeight: 600, color: theme.accent, background: "rgba(20,184,166,0.08)", marginBottom: 12 }}>Step 2 of 4</div>
+                <h2 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.12, marginBottom: 8, color: theme.text }}>AI scopes it. You review it.</h2>
+                <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, maxWidth: 400, margin: "0 auto" }}>Wynflow analyses your photos and notes, prices materials and labour from your rates, and generates a full itemised quote. Edit anything, then send.</p>
+              </div>
+            </div>
+          )}
+
+          {/* SLIDE 4: Steps 3 & 4 — Send + Follow-up */}
+          {step === 3 && (
+            <div>
+              <div style={{ position: "relative", padding: isMobile ? "24px 16px 12px" : "32px 28px 16px", display: "flex", alignItems: "center", justifyContent: "center", gap: isMobile ? 12 : 20, flexDirection: isMobile ? "column" : "row", background: "linear-gradient(180deg, rgba(245,158,11,0.03) 0%, transparent 100%)" }}>
+                <StepNav active={2} />
+                <Phone>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 6 }}><div style={{ width: 5, height: 5, borderRadius: "50%", background: theme.accent }} /><span style={{ fontWeight: 700, color: theme.text, letterSpacing: "0.03em" }}>Quote Tracker</span></div>
+                  <div style={{ fontSize: 7, color: theme.textMuted, marginBottom: 8 }}>Bathroom Renovation — Sarah T.</div>
+                  {[
+                    { color: theme.accent, label: "Day 0 — Quote sent", desc: "Professional email delivered" },
+                    { color: theme.accent, label: "Day 1 — Opened", desc: "Sarah opened at 8:14am" },
+                    { color: "#F59E0B", label: "Day 2 — Auto follow-up", desc: '"Just checking in on that quote..."', auto: true },
+                    { color: "#F59E0B", label: "Day 5 — Auto follow-up", desc: '"Any questions about the bathroom?"', auto: true },
+                    { color: theme.green, label: "Day 6 — Accepted", desc: "Sarah clicked Accept — job's yours" },
+                  ].map((item, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 5, padding: "3px 0" }}>
+                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: item.color, marginTop: 3, flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: 7, fontWeight: 700, color: item.color }}>
+                          {item.label}
+                          {item.auto && <span style={{ marginLeft: 4, padding: "0 3px", borderRadius: 2, fontSize: 5, fontWeight: 700, background: "rgba(245,158,11,0.12)", color: "#F59E0B", letterSpacing: "0.04em" }}>AUTO</span>}
+                        </div>
+                        <div style={{ fontSize: 6, color: theme.dim, lineHeight: 1.3 }}>{item.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: "auto", padding: "5px 7px", borderRadius: 5, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)", textAlign: "center" }}>
+                    <div style={{ fontSize: 8, fontWeight: 700, color: theme.green }}>$7,440 won</div>
+                    <div style={{ fontSize: 5, color: theme.dim }}>Without lifting a finger</div>
+                  </div>
+                </Phone>
+              </div>
+              <div style={{ padding: "0 28px 4px", textAlign: "center" }}>
+                <div style={{ display: "inline-flex", padding: "4px 11px", borderRadius: 100, fontSize: 11, fontWeight: 600, color: "#F59E0B", background: "rgba(245,158,11,0.08)", marginBottom: 12 }}>Steps 3 & 4</div>
+                <h2 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.12, marginBottom: 8, color: theme.text }}>Send once. We chase <span style={{ color: theme.accent }}>until they book.</span></h2>
+                <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, maxWidth: 400, margin: "0 auto" }}>Your customer gets a professional email with one-click Accept. If they don't respond, Wynflow follows up automatically on Day 2, 5, and 10.</p>
+              </div>
+            </div>
+          )}
+
+          {/* SLIDE 5: Get Started */}
+          {step === 4 && (
+            <div>
+              <div style={{ position: "relative", padding: isMobile ? "24px 16px 12px" : "32px 28px 16px", display: "flex", flexDirection: "column", alignItems: "center", background: "linear-gradient(180deg, rgba(34,197,94,0.03) 0%, transparent 100%)" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 380 }}>
+                  <div onClick={() => handleComplete("aiQuote")}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: isMobile ? 14 : 16, borderRadius: 12, ...accentCard, boxShadow: "0 0 20px rgba(20,184,166,0.06)", cursor: "pointer", transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.35)"; e.currentTarget.style.boxShadow = "0 0 28px rgba(20,184,166,0.1)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.15)"; e.currentTarget.style.boxShadow = "0 0 20px rgba(20,184,166,0.06)"; }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(20,184,166,0.12)", border: "1px solid rgba(20,184,166,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Camera size={16} color={theme.accent} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>Create your first AI quote</div>
+                      <div style={{ fontSize: 12, color: theme.dim }}>Upload photos, get a quote in 30 seconds</div>
+                    </div>
+                    <ChevronRight size={16} color={theme.dim} />
+                  </div>
+                  {[
+                    { icon: DollarSign, title: "Set your rates", desc: "Hourly rate, callout fee, materials markup", screen: "settings" },
+                    { icon: Link, title: "Share your quote request link", desc: "Let customers come to you from socials", screen: "settings" },
+                  ].map((a, i) => {
+                    const AIcon = a.icon;
+                    return (
+                      <div key={i} onClick={() => handleComplete(a.screen)}
+                        style={{ display: "flex", alignItems: "center", gap: 12, padding: isMobile ? 14 : 16, borderRadius: 12, ...glassCard, cursor: "pointer", transition: "all 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.15)"; e.currentTarget.style.background = "rgba(20,184,166,0.03)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: glassBorder, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <AIcon size={16} color={theme.dim} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>{a.title}</div>
+                          <div style={{ fontSize: 12, color: theme.dim }}>{a.desc}</div>
+                        </div>
+                        <ChevronRight size={16} color={theme.dim} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div style={{ padding: "0 28px 4px", textAlign: "center" }}>
+                <div style={{ display: "inline-flex", padding: "4px 11px", borderRadius: 100, fontSize: 11, fontWeight: 600, color: theme.green, background: "rgba(34,197,94,0.08)", marginBottom: 12 }}>You're in</div>
+                <h2 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.12, marginBottom: 8, color: theme.text }}>Pick where to start.</h2>
+                <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.6, maxWidth: 400, margin: "0 auto" }}>Most tradies go straight to AI quoting. You can come back to rates and your request link anytime.</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: "12px 28px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", gap: 6 }}>
+            {Array.from({ length: totalSteps }).map((_, i) => (
+              <div key={i} style={{ width: i === step ? 20 : 6, height: 6, borderRadius: 3, background: i === step ? theme.accent : i < step ? "rgba(20,184,166,0.35)" : "rgba(255,255,255,0.1)", transition: "all 0.35s ease" }} />
             ))}
           </div>
-        </div>
-        <div key={step} style={{ padding: isMobile ? "8px 20px 20px" : "8px 36px 28px", maxHeight: isMobile ? "52vh" : "48vh", overflowY: "auto", animation: "onb-slide-in 0.35s ease" }}>
-          {s.content}
-        </div>
-        <div style={{ padding: isMobile ? "0 20px 24px" : "0 36px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            {step > 0 && (
-              <button onClick={() => setStep(step - 1)} style={{ background: "none", border: "none", color: theme.textMuted, cursor: "pointer", fontSize: 14, fontFamily: theme.font, display: "flex", alignItems: "center", gap: 4 }}>
-                <ChevronLeft size={16} /> Back
-              </button>
-            )}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-            {step === steps.length - 1 ? (
-              <>
-                <Button onClick={() => handleComplete("aiQuote")} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <Cpu size={16} /> Create My First Quote
-                </Button>
-                <button onClick={() => handleComplete(null)} style={{ background: "none", border: "none", color: theme.textMuted, cursor: "pointer", fontSize: 12, fontFamily: theme.font }}>
-                  I'll explore first
-                </button>
-              </>
-            ) : (
-              <>
-                <Button onClick={async () => {
-                  if (step === 1) await saveRates();
-                  setStep(step + 1);
-                }} disabled={savingRates}>
-                  {savingRates ? "Saving..." : "Next →"}
-                </Button>
-                {step === 1 && (
-                  <button onClick={() => setStep(step + 1)} style={{ background: "none", border: "none", color: theme.textMuted, cursor: "pointer", fontSize: 12, fontFamily: theme.font, textDecoration: "underline" }}>
-                    Skip for now
-                  </button>
-                )}
-              </>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button onClick={() => handleComplete(null)} style={{ padding: "8px 14px", border: "none", background: "transparent", color: theme.dim, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: theme.font }}>Skip</button>
+            {step < totalSteps - 1 && (
+              <Button onClick={advance} size="sm">
+                Next <ArrowRight size={14} style={{ marginLeft: 4 }} />
+              </Button>
             )}
           </div>
         </div>
