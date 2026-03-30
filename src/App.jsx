@@ -4191,8 +4191,112 @@ const Analytics = ({ quotes, invoices = [] }) => {
 // JOB FORM MODAL
 // ========================
 
-function JobFormModal({ business, dispatch, defaults, quote, onClose, onBooked }) {
+function JobFormModal({ business, dispatch, defaults, quote, onClose, onBooked, jobs = [] }) {
   const isMobile = useIsMobile();
+
+  // Estimate job duration from quote amount and hourly rate
+  const estimatedHours = (() => {
+    const amount = parseFloat(quote?.amount || defaults?.amount || 0);
+    const rate = parseFloat(business?.hourly_rate || 85);
+    if (!amount || !rate) return 2;
+    // Rough formula: ~40% of quote is labour, rest is materials
+    const labourPortion = amount * 0.4;
+    const hours = Math.max(1, Math.round(labourPortion / rate));
+    return Math.min(hours, 40); // Cap at 5 days
+  })();
+
+  // Generate smart scheduling suggestions
+  const suggestions = (() => {
+    const slots = [];
+    const now = new Date();
+    const jobDuration = estimatedHours;
+    const workStart = 8; // 8am
+    const workEnd = 17; // 5pm
+    const maxHoursPerDay = workEnd - workStart;
+
+    // Look 14 days ahead
+    for (let d = 1; d <= 14 && slots.length < 3; d++) {
+      const date = addDays(now, d);
+      const dayOfWeek = date.getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) continue; // Skip weekends
+
+      const dateStr = format(date, "yyyy-MM-dd");
+      const dayLabel = d === 1 ? "Tomorrow" : format(date, "EEEE d MMM");
+
+      // Find jobs on this day
+      const dayJobs = jobs.filter(j => {
+        if (!j.starts_at || j.status === "cancelled") return false;
+        return format(new Date(j.starts_at), "yyyy-MM-dd") === dateStr;
+      }).sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+
+      // Calculate booked hours
+      const bookedHours = dayJobs.reduce((sum, j) => {
+        const start = new Date(j.starts_at);
+        const end = new Date(j.ends_at);
+        return sum + Math.max(0, (end - start) / (1000 * 60 * 60));
+      }, 0);
+
+      const freeHours = maxHoursPerDay - bookedHours;
+
+      // Need enough free time for this job (or at least a half day)
+      const neededHours = Math.min(jobDuration, maxHoursPerDay);
+      if (freeHours < neededHours) continue;
+
+      // Find the best start time (after last job, or at work start)
+      let suggestedStart = workStart;
+      if (dayJobs.length > 0) {
+        const lastEnd = new Date(dayJobs[dayJobs.length - 1].ends_at);
+        const lastEndHour = lastEnd.getHours() + lastEnd.getMinutes() / 60;
+        if (lastEndHour > workStart && lastEndHour < workEnd) {
+          suggestedStart = Math.ceil(lastEndHour * 2) / 2; // Round to nearest 30min
+        }
+        // If there's a big morning gap, suggest that instead
+        if (dayJobs.length > 0) {
+          const firstStart = new Date(dayJobs[0].starts_at);
+          const firstStartHour = firstStart.getHours() + firstStart.getMinutes() / 60;
+          if (firstStartHour - workStart >= neededHours) {
+            suggestedStart = workStart; // Morning is free
+          }
+        }
+      }
+
+      // Check if customer address matches any nearby job
+      const customerAddr = (quote?.customer_address || defaults?.address || "").toLowerCase();
+      const nearbyJob = customerAddr ? dayJobs.find(j => {
+        const jobAddr = (j.address || "").toLowerCase();
+        // Simple suburb matching — check if they share a suburb keyword
+        const suburbs = jobAddr.split(/[,\s]+/).filter(w => w.length > 3);
+        return suburbs.some(s => customerAddr.includes(s));
+      }) : null;
+
+      const timeStr = `${String(Math.floor(suggestedStart)).padStart(2, "0")}:${suggestedStart % 1 ? "30" : "00"}`;
+      const reasons = [];
+      if (dayJobs.length === 0) reasons.push("Free all day");
+      else if (freeHours >= maxHoursPerDay * 0.75) reasons.push(`${Math.round(freeHours)}hrs free`);
+      else reasons.push(`${Math.round(freeHours)}hrs available`);
+      if (nearbyJob) reasons.push("Nearby job that day");
+
+      slots.push({
+        date: dateStr,
+        time: timeStr,
+        dayLabel,
+        duration: Math.min(neededHours, freeHours),
+        freeHours: Math.round(freeHours),
+        jobCount: dayJobs.length,
+        reasons,
+        nearbyJob: nearbyJob?.title || null,
+      });
+    }
+    return slots;
+  })();
+
+  const [showSuggestions, setShowSuggestions] = useState(suggestions.length > 0);
+
+  const applySuggestion = (slot) => {
+    setForm(f => ({ ...f, date: slot.date, time: slot.time, duration: String(slot.duration) }));
+    setShowSuggestions(false);
+  };
+
   const [form, setForm] = useState({
     title: quote?.job_title || defaults?.title || "",
     customer_name: quote?.customer_name || defaults?.customer_name || "",
@@ -4201,8 +4305,8 @@ function JobFormModal({ business, dispatch, defaults, quote, onClose, onBooked }
     address: defaults?.address || "",
     date: defaults?.starts_at ? format(new Date(defaults.starts_at), "yyyy-MM-dd") : format(addDays(new Date(), 1), "yyyy-MM-dd"),
     time: defaults?.starts_at ? format(new Date(defaults.starts_at), "HH:mm") : "08:00",
-    duration: "2",
-    allDay: false,
+    duration: String(estimatedHours > 8 ? 8 : estimatedHours),
+    allDay: estimatedHours > 8,
     endDate: defaults?.ends_at ? format(new Date(defaults.ends_at), "yyyy-MM-dd") : "",
     assignedTo: "",
     assignedTags: [],
@@ -4306,6 +4410,61 @@ function JobFormModal({ business, dispatch, defaults, quote, onClose, onBooked }
             <Input label="Email" value={form.customer_email} onChange={(val) => setForm((f) => ({ ...f, customer_email: val }))} />
           </div>
           <Input label="Address" value={form.address} onChange={(val) => setForm((f) => ({ ...f, address: val }))} placeholder="Job site address" />
+
+          {/* Smart scheduling suggestions */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div style={{ borderRadius: 12, background: "rgba(20,184,166,0.03)", border: "1px solid rgba(20,184,166,0.12)", padding: isMobile ? 12 : 14, marginBottom: 2 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <Sparkles size={14} color={theme.accent} />
+                  <span style={{ fontSize: 12, fontWeight: 700, color: theme.accent, letterSpacing: "0.02em" }}>Suggested times</span>
+                </div>
+                <button onClick={() => setShowSuggestions(false)} style={{ background: "none", border: "none", color: theme.dim, cursor: "pointer", fontSize: 11, fontFamily: theme.font }}>Pick manually</button>
+              </div>
+              {estimatedHours > 1 && (
+                <div style={{ fontSize: 11, color: theme.dim, marginBottom: 8 }}>
+                  Estimated duration: <strong style={{ color: theme.textMuted }}>{estimatedHours > 8 ? `${Math.ceil(estimatedHours / 8)} days` : `${estimatedHours} hours`}</strong> based on quote value
+                </div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {suggestions.map((slot, i) => (
+                  <button key={i} onClick={() => applySuggestion(slot)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10, padding: isMobile ? "10px 10px" : "10px 12px",
+                      borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
+                      cursor: "pointer", transition: "all 0.15s", textAlign: "left", fontFamily: theme.font, width: "100%",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(20,184,166,0.25)"; e.currentTarget.style.background = "rgba(20,184,166,0.04)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}>
+                    <div style={{ minWidth: 44, textAlign: "center" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: theme.text, lineHeight: 1 }}>{slot.time.replace(/^0/, "")}</div>
+                      <div style={{ fontSize: 9, color: theme.dim, marginTop: 1 }}>{slot.duration}hrs</div>
+                    </div>
+                    <div style={{ height: 28, width: 1, background: "rgba(255,255,255,0.06)" }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>{slot.dayLabel}</div>
+                      <div style={{ display: "flex", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
+                        {slot.reasons.map((r, j) => (
+                          <span key={j} style={{ fontSize: 10, color: r.includes("Nearby") ? theme.accent : theme.dim,
+                            background: r.includes("Nearby") ? "rgba(20,184,166,0.08)" : "transparent",
+                            padding: r.includes("Nearby") ? "1px 5px" : 0, borderRadius: 3 }}>{r}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <ChevronRight size={14} color={theme.dim} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!showSuggestions && suggestions.length > 0 && (
+            <button onClick={() => setShowSuggestions(true)}
+              style={{ background: "none", border: "none", color: theme.accent, cursor: "pointer", fontSize: 12, fontFamily: theme.font, padding: 0, display: "flex", alignItems: "center", gap: 4 }}>
+              <Sparkles size={12} /> Show suggested times
+            </button>
+          )}
+
           <label style={{ display: "flex", alignItems: "center", gap: 8, color: theme.textMuted, fontSize: 14, cursor: "pointer" }}>
             <input type="checkbox" checked={form.allDay} onChange={(e) => setForm((f) => ({ ...f, allDay: e.target.checked }))} />
             Multi-day job (full days, no specific times)
@@ -4734,7 +4893,7 @@ function ScheduleView({ jobs, dispatch, business, quotes, focusDate }) {
       )}
 
       {showJobForm && (
-        <JobFormModal business={business} dispatch={dispatch} defaults={jobFormDefaults}
+        <JobFormModal business={business} dispatch={dispatch} defaults={jobFormDefaults} jobs={jobs}
           onClose={() => { setShowJobForm(false); setJobFormDefaults(null); }} />
       )}
     </div>
@@ -6801,6 +6960,7 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
         dispatch={dispatch}
         defaults={{}}
         quote={quote}
+        jobs={jobs}
         onClose={() => setShowBookingModal(false)}
         onBooked={async () => {
           const updates = {
