@@ -8664,6 +8664,10 @@ const HistoricalQuotes = ({ business, dispatch, quotes }) => {
   const [csvRows, setCsvRows] = useState([]);
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvImported, setCsvImported] = useState(0);
+  const [csvHeaders, setCsvHeaders] = useState([]); // raw header strings from CSV
+  const [csvRawLines, setCsvRawLines] = useState([]); // raw data lines
+  const [csvColMap, setCsvColMap] = useState({}); // user-adjustable column mapping
+  const [csvStep, setCsvStep] = useState("upload"); // "upload" | "mapping" | "preview"
   const historicalQuotes = quotes.filter(q => q.source === "historical");
 
   const update = (key, val) => setForm({ ...form, [key]: val });
@@ -8734,7 +8738,65 @@ const HistoricalQuotes = ({ business, dispatch, quotes }) => {
     e.target.value = "";
   };
 
-  // CSV parsing and import
+  // CSV parsing helper — split a line respecting quoted fields
+  const parseCsvLine = (line) => {
+    const vals = [];
+    let current = "";
+    let inQuotes = false;
+    for (const ch of line) {
+      if (ch === '"') { inQuotes = !inQuotes; continue; }
+      if (ch === "," && !inQuotes) { vals.push(current.trim()); current = ""; continue; }
+      current += ch;
+    }
+    vals.push(current.trim());
+    return vals;
+  };
+
+  // Auto-detect column mapping from headers (best-guess, user can override)
+  const autoDetectColMap = (headers) => {
+    const colMap = {};
+    const used = new Set(); // each column maps to at most one field
+
+    // Priority-ordered field matchers — most specific first to avoid greedy matches
+    const fields = [
+      { key: "customerName", match: h => h.includes("customer") || h.includes("client") },
+      { key: "status", match: h => h.includes("status") || h.includes("outcome") || h.includes("result") },
+      { key: "amount", match: h => h.includes("amount") || h.includes("total") || h.includes("price") || h.includes("value") || h.includes("cost") },
+      { key: "description", match: h => h.includes("scope") || h === "description" || h.includes("detail") || h.includes("note") },
+      { key: "jobTitle", match: h => (h.includes("job") && !h.includes("status") && !h.includes("outcome")) || h === "title" || (h.includes("name") && !h.includes("customer") && !h.includes("client") && !h.includes("business")) },
+    ];
+
+    fields.forEach(({ key, match }) => {
+      headers.forEach((h, i) => {
+        if (!used.has(i) && colMap[key] === undefined && match(h)) {
+          colMap[key] = i;
+          used.add(i);
+        }
+      });
+    });
+
+    return colMap;
+  };
+
+  // Apply column mapping to raw lines and produce preview rows
+  const applyColMap = (lines, colMap) => {
+    const rows = [];
+    for (const line of lines) {
+      const vals = parseCsvLine(line);
+      const jobTitle = colMap.jobTitle !== undefined ? (vals[colMap.jobTitle] || "") : "";
+      const amount = parseFloat(((colMap.amount !== undefined ? vals[colMap.amount] : "0") || "0").replace(/[$,]/g, "")) || 0;
+      const customerName = colMap.customerName !== undefined ? (vals[colMap.customerName] || "") : "";
+      const description = colMap.description !== undefined ? (vals[colMap.description] || "") : "";
+      const statusRaw = colMap.status !== undefined ? (vals[colMap.status] || "").toLowerCase() : "";
+      const status = statusRaw.includes("lost") || statusRaw.includes("declin") || statusRaw.includes("reject") ? "declined" : statusRaw.includes("accept") || statusRaw.includes("won") ? "accepted" : "booked";
+      if (jobTitle && amount > 0) {
+        rows.push({ jobTitle, amount, customerName, description, status, selected: true });
+      }
+    }
+    return rows;
+  };
+
+  // Step 1: Upload CSV → show column mapping step
   const handleCsvUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -8747,58 +8809,47 @@ const HistoricalQuotes = ({ business, dispatch, quotes }) => {
           dispatch({ type: "NOTIFY", payload: { message: "CSV is empty or has no data rows", type: "error" } });
           return;
         }
-        // Parse header row — be flexible with column names
-        const headerRaw = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/['"]/g, ""));
-        const colMap = {};
-        headerRaw.forEach((h, i) => {
-          if (h.includes("job") || (h === "title") || (h.includes("name") && !h.includes("customer") && !h.includes("client"))) colMap.jobTitle = i;
-          if (h.includes("amount") || h.includes("total") || h.includes("price") || h.includes("value") || h.includes("cost")) colMap.amount = i;
-          if (h.includes("customer") || h.includes("client")) colMap.customerName = i;
-          if (h.includes("scope") || h.includes("description") || h.includes("detail") || h.includes("note")) colMap.description = i;
-          if (h.includes("status") || h.includes("outcome") || h.includes("result")) colMap.status = i;
-        });
-        // Fallback: if no column mapping found, assume: col 0 = job title, col 1 = amount, col 2 = customer
-        if (colMap.jobTitle === undefined && headerRaw.length >= 1) colMap.jobTitle = 0;
-        if (colMap.amount === undefined && headerRaw.length >= 2) colMap.amount = 1;
-        if (colMap.customerName === undefined && headerRaw.length >= 3) colMap.customerName = 2;
+        const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/['"]/g, ""));
+        const rawHeaders = lines[0].split(",").map(h => h.trim().replace(/['"]/g, ""));
+        const dataLines = lines.slice(1);
+        const detected = autoDetectColMap(headers);
 
-        // Parse data rows
-        const rows = [];
-        for (let i = 1; i < lines.length; i++) {
-          // Handle commas inside quoted fields
-          const vals = [];
-          let current = "";
-          let inQuotes = false;
-          for (const ch of lines[i]) {
-            if (ch === '"') { inQuotes = !inQuotes; continue; }
-            if (ch === "," && !inQuotes) { vals.push(current.trim()); current = ""; continue; }
-            current += ch;
-          }
-          vals.push(current.trim());
-
-          const jobTitle = vals[colMap.jobTitle] || "";
-          const amount = parseFloat((vals[colMap.amount] || "0").replace(/[$,]/g, "")) || 0;
-          const customerName = vals[colMap.customerName] || "";
-          const description = colMap.description !== undefined ? (vals[colMap.description] || "") : "";
-          const statusRaw = colMap.status !== undefined ? (vals[colMap.status] || "").toLowerCase() : "";
-          const status = statusRaw.includes("lost") || statusRaw.includes("declin") ? "declined" : statusRaw.includes("accept") ? "accepted" : "booked";
-
-          if (jobTitle && amount > 0) {
-            rows.push({ jobTitle, amount, customerName, description, status, selected: true });
-          }
-        }
-        if (rows.length === 0) {
-          dispatch({ type: "NOTIFY", payload: { message: "No valid rows found. Make sure your CSV has job titles and amounts.", type: "error" } });
-          return;
-        }
-        setCsvRows(rows);
-        dispatch({ type: "NOTIFY", payload: { message: `${rows.length} quote${rows.length > 1 ? "s" : ""} found in CSV — review below`, type: "success" } });
+        setCsvHeaders(rawHeaders);
+        setCsvRawLines(dataLines);
+        setCsvColMap(detected);
+        setCsvStep("mapping");
+        dispatch({ type: "NOTIFY", payload: { message: `${dataLines.length} rows found — check column mapping below`, type: "success" } });
       } catch (err) {
         dispatch({ type: "NOTIFY", payload: { message: "Failed to parse CSV file", type: "error" } });
       }
     };
     reader.readAsText(file);
     e.target.value = "";
+  };
+
+  // Step 2: Confirm mapping → parse rows → show preview
+  const confirmCsvMapping = () => {
+    if (csvColMap.jobTitle === undefined || csvColMap.amount === undefined) {
+      dispatch({ type: "NOTIFY", payload: { message: "Job Title and Amount columns are required", type: "error" } });
+      return;
+    }
+    const rows = applyColMap(csvRawLines, csvColMap);
+    if (rows.length === 0) {
+      dispatch({ type: "NOTIFY", payload: { message: "No valid rows found. Check your column mapping.", type: "error" } });
+      return;
+    }
+    setCsvRows(rows);
+    setCsvStep("preview");
+    dispatch({ type: "NOTIFY", payload: { message: `${rows.length} quote${rows.length > 1 ? "s" : ""} ready to import — review below`, type: "success" } });
+  };
+
+  // Reset CSV import state
+  const resetCsvImport = () => {
+    setCsvRows([]);
+    setCsvHeaders([]);
+    setCsvRawLines([]);
+    setCsvColMap({});
+    setCsvStep("upload");
   };
 
   const toggleCsvRow = (idx) => {
@@ -8833,7 +8884,7 @@ const HistoricalQuotes = ({ business, dispatch, quotes }) => {
       } catch (err) { /* skip failed rows */ }
     }
     setCsvImporting(false);
-    setCsvRows([]);
+    resetCsvImport();
     dispatch({ type: "NOTIFY", payload: { message: `${imported} quote${imported > 1 ? "s" : ""} imported — AI will use these for future estimates`, type: "success" } });
   };
 
@@ -8949,7 +9000,7 @@ const HistoricalQuotes = ({ business, dispatch, quotes }) => {
           <span onClick={downloadCsvTemplate} style={{ color: theme.accent, cursor: "pointer", textDecoration: "underline" }}>Download template</span>
         </p>
 
-        {csvRows.length === 0 ? (
+        {csvStep === "upload" ? (
           <label style={{
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
             padding: isMobile ? "20px 16px" : "24px 20px", borderRadius: 12,
@@ -8962,6 +9013,60 @@ const HistoricalQuotes = ({ business, dispatch, quotes }) => {
             <Upload size={20} color={theme.textMuted} />
             <span style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>Upload .csv file</span>
           </label>
+        ) : csvStep === "mapping" ? (
+          <div>
+            {/* Column mapping step — user confirms which CSV column maps to which field */}
+            <div style={{ fontSize: 13, color: theme.textMuted, marginBottom: 12 }}>
+              Check that each field maps to the right column from your CSV. {csvRawLines.length} data rows found.
+            </div>
+            {[
+              { key: "jobTitle", label: "Job Title", required: true },
+              { key: "amount", label: "Amount", required: true },
+              { key: "customerName", label: "Customer Name", required: false },
+              { key: "description", label: "Description", required: false },
+              { key: "status", label: "Status (Won/Lost)", required: false },
+            ].map(({ key, label, required }) => {
+              const selectedCol = csvColMap[key];
+              // Show a sample value from the first data row for the selected column
+              const sampleVals = csvRawLines.slice(0, 3).map(l => parseCsvLine(l)[selectedCol]).filter(Boolean);
+              return (
+                <div key={key} style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: theme.text, marginBottom: 4 }}>
+                    {label}{required && <span style={{ color: theme.red }}> *</span>}
+                  </div>
+                  <select
+                    value={selectedCol !== undefined ? String(selectedCol) : ""}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setCsvColMap(prev => {
+                        const next = { ...prev };
+                        if (val === "") { delete next[key]; } else { next[key] = parseInt(val); }
+                        return next;
+                      });
+                    }}
+                    style={{
+                      width: "100%", padding: "8px 10px", borderRadius: 8, fontSize: 13,
+                      background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+                      color: theme.text, outline: "none", appearance: "auto",
+                    }}>
+                    <option value="" style={{ background: "#1A2235" }}>— Skip —</option>
+                    {csvHeaders.map((h, i) => (
+                      <option key={i} value={String(i)} style={{ background: "#1A2235" }}>{h}</option>
+                    ))}
+                  </select>
+                  {sampleVals.length > 0 && selectedCol !== undefined && (
+                    <div style={{ fontSize: 11, color: theme.textDim, marginTop: 3 }}>
+                      Preview: {sampleVals.join(", ")}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+              <Button onClick={confirmCsvMapping} style={{ flex: 1 }}>Confirm Mapping</Button>
+              <Button variant="ghost" onClick={resetCsvImport}>Cancel</Button>
+            </div>
+          </div>
         ) : (
           <div>
             {/* CSV preview table */}
@@ -8997,10 +9102,11 @@ const HistoricalQuotes = ({ business, dispatch, quotes }) => {
               ))}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <Button variant="ghost" onClick={() => setCsvStep("mapping")} disabled={csvImporting} size="sm">Back</Button>
               <Button onClick={importCsvRows} disabled={csvImporting || csvRows.filter(r => r.selected).length === 0} style={{ flex: 1 }}>
                 {csvImporting ? `Importing... (${csvImported}/${csvRows.filter(r => r.selected).length})` : `Import ${csvRows.filter(r => r.selected).length} Quote${csvRows.filter(r => r.selected).length !== 1 ? "s" : ""}`}
               </Button>
-              <Button variant="ghost" onClick={() => setCsvRows([])} disabled={csvImporting}>Cancel</Button>
+              <Button variant="ghost" onClick={resetCsvImport} disabled={csvImporting}>Cancel</Button>
             </div>
           </div>
         )}
