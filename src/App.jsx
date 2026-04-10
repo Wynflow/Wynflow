@@ -3444,7 +3444,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
 };
 
 // ─── Dashboard ───
-const Dashboard = ({ quotes, dispatch, invoices = [], jobs = [], business }) => {
+const Dashboard = ({ quotes, dispatch, invoices = [], jobs = [], business, onShowDemo }) => {
   const isMobile = useIsMobile();
   const [bellOpen, setBellOpen] = useState(false);
   const requested = quotes.filter((q) => q.status === "requested").length;
@@ -3597,6 +3597,37 @@ const Dashboard = ({ quotes, dispatch, invoices = [], jobs = [], business }) => 
           {acceptedAfterFollowUp > 0 && <><span style={{ color: "rgba(255,255,255,0.1)" }}>·</span><span style={{ fontSize: 12, color: theme.textMuted, whiteSpace: "nowrap" }}><strong style={{ color: theme.green }}>{acceptedAfterFollowUp}</strong> won via follow-up</span></>}
         </div>
       )}
+
+      {/* Rescue banner: for users who already finished old onboarding but never made a quote */}
+      {quotes.length === 0 && business?.onboarded && !business?.demo_completed_at && onShowDemo && (() => {
+        const dismissedKey = "wynflow_rescue_banner_dismissed_" + business.id;
+        let dismissed = false;
+        try { dismissed = localStorage.getItem(dismissedKey) === "true"; } catch(e) {}
+        if (dismissed) return null;
+        return (
+          <div style={{
+            padding: 16, borderRadius: 14, marginBottom: 16,
+            background: "linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(245,158,11,0.02) 100%)",
+            border: "1px solid rgba(245,158,11,0.18)",
+            display: "flex", alignItems: "center", gap: 14,
+          }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(245,158,11,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Sparkles size={18} color="#F59E0B" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: theme.text }}>See Wynflow in 30 seconds</div>
+              <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>Try our new demo — we'll show you a sample quote with your business name.</div>
+            </div>
+            <Button size="sm" onClick={onShowDemo}>Try it →</Button>
+            <div onClick={() => { try { localStorage.setItem(dismissedKey, "true"); } catch(e) {}; dispatch({ type: "NOTIFY", payload: { message: "Dismissed — you can still create your first quote anytime", type: "success" } }); }}
+              style={{ fontSize: 11, color: theme.textMuted, cursor: "pointer", padding: 4 }}
+              onMouseEnter={e => e.currentTarget.style.color = theme.text}
+              onMouseLeave={e => e.currentTarget.style.color = theme.textMuted}>
+              Dismiss
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Get started card for empty state */}
       {quotes.length === 0 && (
@@ -10397,7 +10428,7 @@ function WynflowAppInner() {
   const renderContent = () => {
     if (loading) return <Spinner />;
     switch (activeScreen) {
-      case "dashboard": return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} jobs={jobs} business={business} />;
+      case "dashboard": return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} jobs={jobs} business={business} onShowDemo={() => setShowOnboarding(true)} />;
       case "quotes": return <QuotesList quotes={quotes} dispatch={dispatch} sequences={sequences} invoices={invoices} />;
       case "analytics": return <Analytics quotes={quotes} invoices={invoices} />;
       case "schedule": return <ScheduleView jobs={jobs} dispatch={dispatch} business={business} quotes={quotes} focusDate={detailId} />;
@@ -10412,7 +10443,7 @@ function WynflowAppInner() {
       case "help": return <HelpCentre />;
       case "historicalQuotes": return <HistoricalQuotes business={business} dispatch={dispatch} quotes={quotes} />;
       case "settings": return <Settings business={business} dispatch={dispatch} />;
-      default: return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} business={business} />;
+      default: return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} business={business} onShowDemo={() => setShowOnboarding(true)} />;
     }
   };
 
