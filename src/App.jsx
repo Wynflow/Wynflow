@@ -5017,6 +5017,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
   const [generated, setGenerated] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [sending, setSending] = useState(false);
+  const [showLazyProfile, setShowLazyProfile] = useState(false);
 
   const [hasDraft, setHasDraft] = useState(false);
   const [savedDraft, setSavedDraft] = useState(null);
@@ -5355,10 +5356,20 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
     });
   };
 
-  const sendQuote = async () => {
+  const sendQuote = async (skipLazyCheck = false) => {
     if (!editForm.amount || !form.customerEmail) {
       dispatch({ type: "NOTIFY", payload: { message: "Please set an amount and customer email", type: "error" } });
       return;
+    }
+    // Lazy profile check: if contact_name was defaulted to business_name or phone is missing,
+    // block the send and prompt the user to fill them in. Customers need this on the quote PDF.
+    if (!skipLazyCheck) {
+      const needsName = !business?.contact_name || business.contact_name === business.business_name;
+      const needsPhone = !business?.phone;
+      if (needsName || needsPhone) {
+        setShowLazyProfile(true);
+        return;
+      }
     }
     setSending(true);
     try {
@@ -5427,6 +5438,14 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
 
   return (
     <div>
+      {showLazyProfile && (
+        <LazyProfileModal
+          business={business}
+          dispatch={dispatch}
+          onSaved={() => { setShowLazyProfile(false); sendQuote(true); }}
+          onCancel={() => setShowLazyProfile(false)}
+        />
+      )}
       {hasDraft && (
         <div style={{ padding: "16px 20px", borderRadius: 12, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.2)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
           <div>
@@ -9746,6 +9765,63 @@ function ProfileCompletionModal({ business, dispatch, onComplete }) {
     </div>
   );
 }
+
+// ─── Lazy Profile Modal ───
+// Shown before the first real quote Send when contact_name or phone is missing.
+// Collects the minimum extra info needed for a professional quote PDF.
+const LazyProfileModal = ({ business, dispatch, onSaved, onCancel }) => {
+  const isMobile = useIsMobile();
+  // Default contact_name = business_name means we treat it as "needs lazy fill"
+  // only if it's literally equal to business_name (user never customised it)
+  const needsName = !business?.contact_name || business.contact_name === business.business_name;
+  const needsPhone = !business?.phone;
+  const [contactName, setContactName] = useState(needsName ? "" : business.contact_name);
+  const [phone, setPhone] = useState(needsPhone ? "" : business.phone);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!contactName.trim() || !phone.trim()) {
+      dispatch({ type: "NOTIFY", payload: { message: "We need both your name and mobile for customers to reach you", type: "error" } });
+      return;
+    }
+    setSaving(true);
+    try {
+      await db("businesses").eq("id", business.id).update({
+        contact_name: contactName.trim(),
+        phone: phone.trim(),
+      });
+      const updatedBiz = { ...business, contact_name: contactName.trim(), phone: phone.trim() };
+      dispatch({ type: "SET_BUSINESS", payload: updatedBiz });
+      setCookie("wynflow_business", updatedBiz, 43200);
+      onSaved(updatedBiz);
+    } catch (err) {
+      dispatch({ type: "NOTIFY", payload: { message: "Couldn't save — try again", type: "error" } });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", padding: 16 }}>
+      <div style={{ width: isMobile ? "100%" : 420, background: theme.bg, border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, boxShadow: "0 40px 120px rgba(0,0,0,0.7)", padding: isMobile ? "32px 24px" : "36px 32px" }}>
+        <h3 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: theme.text, margin: "0 0 6px" }}>One last thing</h3>
+        <p style={{ fontSize: 13, color: theme.textMuted, lineHeight: 1.5, margin: "0 0 22px" }}>
+          Your customer needs to know who to contact. We'll add these to all your quotes going forward.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 22 }}>
+          <Input label="Your Name *" value={contactName} onChange={setContactName} placeholder="e.g. Jesse Smith" />
+          <Input label="Mobile Number *" value={phone} onChange={setPhone} type="tel" placeholder="e.g. 021 123 4567" />
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Button variant="ghost" onClick={onCancel} disabled={saving} style={{ padding: "12px 18px" }}>Cancel</Button>
+          <Button onClick={save} disabled={saving} style={{ flex: 1, justifyContent: "center", padding: "12px 18px" }}>
+            {saving ? "Saving..." : "Save & Send Quote →"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ─── Demo Onboarding Flow (replaces the old OnboardingTutorial) ───
 // 4-step flow: optional trade picker → preview → "generating" → result
