@@ -2624,9 +2624,6 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [businessName, setBusinessName] = useState("");
-  const [contactName, setContactName] = useState("");
-  const [trade, setTrade] = useState("");
-  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resetMode, setResetMode] = useState(false);
@@ -2654,7 +2651,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
 
   const handleSubmit = async () => {
     if (!email || !password) { setError("Please enter email and password"); return; }
-    if (isSignup && (!businessName || !contactName || !trade || !phone.trim())) { setError("Please fill in all required fields"); return; }
+    if (isSignup && !businessName.trim()) { setError("Please enter your business name"); return; }
     setLoading(true);
     setError("");
     try {
@@ -2670,13 +2667,13 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         // If no token but user exists with identities, email confirmation is pending
         if (!authData.access_token) {
           // Store signup details temporarily so we can create business after email confirmation
-          try { localStorage.setItem("wynflow_pending_signup", JSON.stringify({ businessName, contactName, email, phone, trade, plan })); } catch(e) {}
+          try { localStorage.setItem("wynflow_pending_signup", JSON.stringify({ businessName, email, plan })); } catch(e) {}
           setEmailSent(true);
           setLoading(false);
           // Notify N8N about new signup
           fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, phone, trade }),
+            body: JSON.stringify({ business_name: businessName, contact_name: businessName, email, phone: null, trade: null }),
           }).catch(() => {});
           return;
         }
@@ -2684,11 +2681,11 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         const { data: biz, error: bizErr } = await db("businesses").insert({
           user_id: authData.user.id,
           business_name: businessName,
-          contact_name: contactName,
+          contact_name: businessName,  // defaulted — collected lazily on first real quote send via LazyProfileModal
           email: email,
-          phone: phone.trim(),
-          trade: trade || null,
-          trade_category: trade || null,
+          phone: null,  // deferred, collected lazily on first real quote send
+          trade: null,  // deferred, asked in the demo onboarding flow
+          trade_category: null,
           hourly_rate: 0,
           callout_fee: 0,
           subscription_status: "trialing",
@@ -2739,7 +2736,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         dispatch({ type: "SET_SCREEN", payload: "dashboard" });
         fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ business_name: businessName, contact_name: contactName, email, phone, trade }),
+          body: JSON.stringify({ business_name: businessName, contact_name: businessName, email, phone: null, trade: null }),
         }).catch(() => {});
       } else {
         const authData = await supabase.auth_signIn(email, password);
@@ -2836,19 +2833,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
           ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             {isSignup && (
-              <>
-                <Input label="Business Name *" value={businessName} onChange={setBusinessName} />
-                <Input label="Your Name *" value={contactName} onChange={setContactName} />
-                <Input label="Mobile Number *" value={phone} onChange={setPhone} type="tel" placeholder="e.g. 021 123 4567" />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: theme.textMuted, marginBottom: 6 }}>Trade / Industry *</div>
-                  <select value={trade} onChange={e => setTrade(e.target.value)}
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#F1F3F7", fontSize: 14, fontFamily: theme.font, outline: "none", appearance: "auto" }}>
-                    <option value="">Select your trade...</option>
-                    {TRADE_CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-              </>
+              <Input label="Business Name *" value={businessName} onChange={setBusinessName} />
             )}
             <Input label="Email *" value={email} onChange={setEmail} type="email" />
             <Input label="Password *" value={password} onChange={setPassword} type="password" />
@@ -10007,25 +9992,29 @@ function WynflowAppInner() {
               if (refreshToken) setCookie("wynflow_refresh", refreshToken, 43200);
               setCookie("wynflow_user", user, 43200);
               setCookie("wynflow_business", existingBiz, 43200);
-              if (!existingBiz.trade || existingBiz.business_name === "My Business") {
+              // Only fall back to the ProfileCompletionModal if we lost the business name
+              // entirely (e.g. cross-device email verify with no localStorage). Trade is
+              // now deferred to the demo onboarding, so missing trade is expected.
+              if (existingBiz.business_name === "My Business") {
                 setShowProfileCompletion(true);
               }
               dispatch({ type: "NOTIFY", payload: { message: "Email verified! Welcome to Wynflow.", type: "success" } });
               dispatch({ type: "SET_SCREEN", payload: "dashboard" });
               return;
             }
-            // Create business from pending signup data
+            // Create business from pending signup data (shrunk signup — only business_name is carried)
             let pending = {};
             try { pending = JSON.parse(localStorage.getItem("wynflow_pending_signup") || "{}"); } catch(e) {}
             const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+            const bizName = pending.businessName || "My Business";
             const { data: biz } = await db("businesses").insert({
               user_id: user.id,
-              business_name: pending.businessName || "My Business",
-              contact_name: pending.contactName || "",
+              business_name: bizName,
+              contact_name: bizName,  // defaulted — collected lazily on first real quote send
               email: user.email || pending.email || "",
-              phone: pending.phone || "",
-              trade: pending.trade || null,
-              trade_category: pending.trade || null,
+              phone: null,  // deferred
+              trade: null,  // deferred — asked in demo onboarding
+              trade_category: null,
               hourly_rate: 0,
               callout_fee: 0,
               subscription_status: "trialing",
