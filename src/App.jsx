@@ -667,6 +667,57 @@ const isInvoiceSettingsComplete = (business) => {
 const fmtNZD = (n) => "$" + parseFloat(n || 0).toLocaleString("en-NZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = (d) => new Date(d).toLocaleDateString("en-NZ", { day: "numeric", month: "long", year: "numeric" });
 
+// ─── CCA Form 1: Prescribed notice under Construction Contracts Act 2002 ───
+// Verbatim text from "Form 1: Information that must accompany all payment claims"
+// per Section 20, Construction Contracts Regulations 2003, Schedule 1.
+// Source: building.govt.nz (MBIE). Must be included with payment claims to residential occupiers.
+const CCA_FORM1_TITLE = "Form 1: Information that must accompany all payment claims";
+const CCA_FORM1_SUBTITLE = "Section 20, Construction Contracts Act 2002";
+const CCA_FORM1_SECTIONS = [
+  { heading: "What is this?", body: "This notice is attached to a claim for a payment (a payment claim) under the Construction Contracts Act 2002 (the Act). The person who sent this payment claim (the claimant) is claiming to be entitled to a payment for, or in relation to, the construction work carried out to date under a construction contract. Whether that person is entitled to a payment, and how much they are entitled to, will depend on whether you have a construction contract and what you have agreed between yourselves about payments. If you haven't agreed on payments, there are default provisions in the Act." },
+  { heading: "What should I do with this payment claim?", body: "You can either:\n• pay the amount claimed in the payment claim (in full) on or before the due date for payment; or\n• if you dispute the payment claim, send the claimant a written payment schedule that complies with section 21 of the Act (a payment schedule) stating the amount you are prepared to pay instead (which could be nothing).\n\nThe due date for a payment is the date agreed between you and the claimant. That due date must be set out in the payment claim. If you haven't agreed on a due date, then the Act says that a payment is due within 20 working days after the payment claim is served on you. (A working day is any day other than a Saturday, a Sunday, a public holiday, or any day from 24 December to 5 January.)" },
+  { heading: "When do I have to act?", body: "You should act promptly. Otherwise, you may lose the right to object." },
+  { heading: "What if I do nothing?", body: "If you don't pay the amount claimed by the due date for payment or send a payment schedule indicating what you will pay instead, the claimant can go to court to recover the unpaid amount from you as a debt owed. In addition, the court may decide that you have to pay the claimant's costs for bringing the court case." },
+  { heading: "Can I say that I will not pay, or pay less than, the claimed amount?", body: "Yes, by sending a written payment schedule.\n\nNOTE: If you do not send a written payment schedule, the claimant can bring court proceedings against you or refer the matter to adjudication (or both)." },
+  { heading: "How do I say I will not pay, or pay less than, the claimed amount?", body: "To say that you will pay nothing or indicate what you will pay instead, you must send the claimant a written payment schedule.\n\nYou must indicate the amount that you are prepared to pay, which could be nothing. This amount is called the scheduled amount.\n\nIf the scheduled amount is less than the claimed amount, you must explain in the payment schedule:\n• how you calculated the scheduled amount; and\n• why the scheduled amount is less than the claimed amount; and\n• your reason or reasons for not paying the full amount claimed.\n\nNOTE: The written payment schedule must also state which payment claim the payment schedule relates to.\n\nNOTE: If you state in the payment schedule that you will pay less than the claimed amount or pay nothing at all, the claimant may refer the dispute about how much is owing for adjudication." },
+  { heading: "How long do I have?", body: "You must send a payment schedule by the date agreed in the contract or, if no date was agreed, within 20 working days after the payment claim was served on you." },
+  { heading: "If I say I will pay another amount instead, when do I have to pay it?", body: "You must still pay the scheduled amount by the due date for payment." },
+  { heading: "What if I don't pay the scheduled amount when I say I will?", body: "If you send a payment schedule but do not pay the scheduled amount by the due date, the claimant can go to court to recover the unpaid amount from you as a debt owed or refer the matter to adjudication (or both). Note: A court may also require you to pay that person's costs." },
+  { heading: "Advice", body: "IMPORTANT: If there is anything in this notice that you do not understand or if you want advice about what to do, you should consult a lawyer immediately." },
+];
+
+const appendCCAForm1 = (doc) => {
+  doc.addPage();
+  const pw = 210, lm = 20, rm = 20, cw = pw - lm - rm;
+  let y = 20;
+  const checkPage = (needed = 15) => { if (y + needed > 275) { doc.addPage(); y = 20; } };
+
+  // "IMPORTANT NOTICE" header bar
+  doc.setFillColor(20, 184, 166); doc.rect(lm, y - 4, cw, 10, "F");
+  doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor("#FFFFFF");
+  doc.text("IMPORTANT NOTICE", lm + 4, y + 3); y += 14;
+
+  // Title
+  doc.setFontSize(13); doc.setFont("helvetica", "bold"); doc.setTextColor("#111827");
+  doc.text(CCA_FORM1_TITLE, lm, y); y += 6;
+  doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor("#6b7280");
+  doc.text(CCA_FORM1_SUBTITLE, lm, y); y += 10;
+
+  // Sections
+  CCA_FORM1_SECTIONS.forEach(({ heading, body }) => {
+    checkPage(25);
+    doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor("#111827");
+    doc.text(heading, lm, y); y += 5;
+    doc.setFontSize(8.5); doc.setFont("helvetica", "normal"); doc.setTextColor("#374151");
+    const lines = doc.splitTextToSize(body, cw);
+    lines.forEach(line => {
+      checkPage(4);
+      doc.text(line, lm, y); y += 3.8;
+    });
+    y += 4;
+  });
+};
+
 const generateInvoicePDF = ({ business, invoice, breakdown }) => {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pw = 210, lm = 20, rm = 20, cw = pw - lm - rm;
@@ -835,6 +886,11 @@ const generateInvoicePDF = ({ business, invoice, breakdown }) => {
   txt(lm, y, "Thank you for your business", { size: 9, bold: true, color: "#374151" }); y += 4;
   txt(lm, y, business.business_name + (isGST ? "  •  GST: " + business.gst_number : ""), { size: 8, color: "#9ca3af" });
   txt(pw - rm, y, "Powered by Wynflow", { size: 7, color: "#9ca3af", align: "right" });
+
+  // Append CCA Form 1 if enabled for this business
+  if (business.include_cca_form1) {
+    appendCCAForm1(doc);
+  }
 
   return doc.output("blob");
 };
@@ -9354,6 +9410,7 @@ const Settings = ({ business, dispatch }) => {
   const [defaultPaymentTerms, setDefaultPaymentTerms] = useState(business?.default_payment_terms || "7 days");
   const [aiPricingMode, setAiPricingMode] = useState(business?.ai_pricing_mode || "flexible");
   const [autoFollowUps, setAutoFollowUps] = useState(business?.auto_follow_ups !== false);
+  const [includeCcaForm1, setIncludeCcaForm1] = useState(business?.include_cca_form1 || false);
   const [saving, setSaving] = useState(false);
   const [declineReasons, setDeclineReasons] = useState(business?.decline_reasons || DEFAULT_DECLINE_REASONS);
   const [newReason, setNewReason] = useState("");
@@ -9385,6 +9442,7 @@ const Settings = ({ business, dispatch }) => {
       quote_footer: quoteFooter,
       default_payment_terms: defaultPaymentTerms,
       auto_follow_ups: autoFollowUps,
+      include_cca_form1: includeCcaForm1,
     };
     try {
       const { error } = await db("businesses").eq("id", business.id).update(updates);
@@ -9493,6 +9551,20 @@ const Settings = ({ business, dispatch }) => {
               </div>
             )}
             <Input label="Custom Quote Footer" value={quoteFooter} onChange={setQuoteFooter} textarea placeholder="e.g. All work guaranteed for 12 months. Pricing valid for 30 days." />
+            <div style={{ marginTop: 12 }}>
+              <div onClick={() => setIncludeCcaForm1(!includeCcaForm1)}
+                style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px", borderRadius: 10, cursor: "pointer", background: includeCcaForm1 ? "rgba(20,184,166,0.06)" : "rgba(255,255,255,0.02)", border: `1px solid ${includeCcaForm1 ? "rgba(20,184,166,0.2)" : "rgba(255,255,255,0.06)"}`, transition: "all 0.2s" }}>
+                <div style={{ width: 20, height: 20, borderRadius: 5, border: `1.5px solid ${includeCcaForm1 ? theme.accent : "rgba(255,255,255,0.15)"}`, background: includeCcaForm1 ? theme.accent : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1, transition: "all 0.2s" }}>
+                  {includeCcaForm1 && <Check size={13} color="#fff" />}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>Include CCA Form 1 on invoices</div>
+                  <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 3, lineHeight: 1.5 }}>
+                    Appends the prescribed "Notice to Residential Occupier" (Construction Contracts Act 2002) to your invoice PDFs. Required for all payment claims to residential customers in NZ.
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </Card>
         <Card style={isMobile ? { padding: 16 } : {}}>
