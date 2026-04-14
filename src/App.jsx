@@ -9957,7 +9957,7 @@ const DemoOnboarding = ({ business, dispatch, onComplete }) => {
     dispatch({ type: "SET_BUSINESS", payload: updatedBiz });
     setCookie("wynflow_business", updatedBiz, 43200);
     try { localStorage.setItem("wynflow_onboarded_" + business.id, "true"); } catch(e) {}
-    setCookie("wynflow_onboarded", "true", 525600);
+    setCookie("wynflow_onboarded_" + business.id, "true", 525600);
     onComplete();
     if (navigateTo) dispatch({ type: "SET_SCREEN", payload: navigateTo });
   };
@@ -10225,7 +10225,9 @@ function WynflowAppInner() {
               setCookie("wynflow_user", user, 43200);
               setCookie("wynflow_business", bizRecord, 43200);
               try { localStorage.removeItem("wynflow_pending_signup"); } catch(e) {}
-              if (!bizRecord.trade || bizRecord.business_name === "My Business") {
+              // Only show ProfileCompletionModal if business name was lost (cross-device confirm
+              // with no localStorage). Trade is intentionally null — DemoOnboarding handles it.
+              if (bizRecord.business_name === "My Business") {
                 setShowProfileCompletion(true);
               }
               dispatch({ type: "NOTIFY", payload: { message: "Email verified! Welcome to Wynflow.", type: "success" } });
@@ -10338,21 +10340,21 @@ function WynflowAppInner() {
   // Show onboarding for new users (device-independent via DB flag)
   useEffect(() => {
     if (!business || !dataLoaded) return;
-    // Fast-check: localStorage/cookie cache
+    // Fast-check: localStorage/cookie cache (per-business so test accounts don't block new signups)
     let cached = false;
     try { cached = localStorage.getItem("wynflow_onboarded_" + business.id) === "true"; } catch(e) {}
-    if (cached || getCookie("wynflow_onboarded")) return;
+    if (cached || getCookie("wynflow_onboarded_" + business.id)) return;
     // DB check
     if (business.onboarded) {
       try { localStorage.setItem("wynflow_onboarded_" + business.id, "true"); } catch(e) {}
-      setCookie("wynflow_onboarded", "true", 525600);
+      setCookie("wynflow_onboarded_" + business.id, "true", 525600);
       return;
     }
     // Backward compat: existing user with quotes
     if (quotes.length > 0) {
       db("businesses").eq("id", business.id).update({ onboarded: true });
       try { localStorage.setItem("wynflow_onboarded_" + business.id, "true"); } catch(e) {}
-      setCookie("wynflow_onboarded", "true", 525600);
+      setCookie("wynflow_onboarded_" + business.id, "true", 525600);
       return;
     }
     // New user — show wizard
@@ -10524,7 +10526,7 @@ function WynflowAppInner() {
       <style>{globalStyles}</style>
       {notification && <Toast message={notification.message} type={notification.type} onClose={() => dispatch({ type: "CLEAR_NOTIFY" })} />}
       {showProfileCompletion && (
-        <ProfileCompletionModal business={business} dispatch={dispatch} onComplete={() => setShowProfileCompletion(false)} />
+        <ProfileCompletionModal business={business} dispatch={dispatch} onComplete={() => { setShowProfileCompletion(false); setShowOnboarding(true); }} />
       )}
       {showOnboarding && <DemoOnboarding business={business} dispatch={dispatch} onComplete={() => setShowOnboarding(false)} />}
       <div style={{ display: "flex", height: "100vh", fontFamily: theme.font, color: "#F1F3F7", background: theme.bg, overflow: "hidden", flexDirection: isMobile ? "column" : "row" }}>
