@@ -2801,6 +2801,8 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [businessName, setBusinessName] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resetMode, setResetMode] = useState(false);
@@ -2829,6 +2831,8 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
   const handleSubmit = async () => {
     if (!email || !password) { setError("Please enter email and password"); return; }
     if (isSignup && !businessName.trim()) { setError("Please enter your business name"); return; }
+    if (isSignup && !contactName.trim()) { setError("Please enter your name"); return; }
+    if (isSignup && !phone.trim()) { setError("Please enter your mobile number"); return; }
     setLoading(true);
     setError("");
     try {
@@ -2844,13 +2848,13 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         // If no token but user exists with identities, email confirmation is pending
         if (!authData.access_token) {
           // Store signup details temporarily so we can create business after email confirmation
-          try { localStorage.setItem("wynflow_pending_signup", JSON.stringify({ businessName, email, plan })); } catch(e) {}
+          try { localStorage.setItem("wynflow_pending_signup", JSON.stringify({ businessName, contactName, phone, email, plan })); } catch(e) {}
           setEmailSent(true);
           setLoading(false);
           // Notify N8N about new signup
           fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ business_name: businessName, contact_name: businessName, email, phone: null, trade: null }),
+            body: JSON.stringify({ business_name: businessName, contact_name: contactName.trim(), email, phone: phone.trim(), trade: null }),
           }).catch(() => {});
           return;
         }
@@ -2858,9 +2862,9 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         const { data: biz, error: bizErr } = await db("businesses").insert({
           user_id: authData.user.id,
           business_name: businessName,
-          contact_name: businessName,  // defaulted — collected lazily on first real quote send via LazyProfileModal
+          contact_name: contactName.trim(),
           email: email,
-          phone: null,  // deferred, collected lazily on first real quote send
+          phone: phone.trim(),
           trade: null,  // deferred, asked in the demo onboarding flow
           trade_category: null,
           hourly_rate: 0,
@@ -2913,7 +2917,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
         dispatch({ type: "SET_SCREEN", payload: "dashboard" });
         fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ business_name: businessName, contact_name: businessName, email, phone: null, trade: null }),
+          body: JSON.stringify({ business_name: businessName, contact_name: contactName.trim(), email, phone: phone.trim(), trade: null }),
         }).catch(() => {});
       } else {
         const authData = await supabase.auth_signIn(email, password);
@@ -3010,7 +3014,11 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
           ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             {isSignup && (
-              <Input label="Business Name *" value={businessName} onChange={setBusinessName} />
+              <>
+                <Input label="Business Name *" value={businessName} onChange={setBusinessName} placeholder="e.g. Smith Plumbing Ltd" />
+                <Input label="Your Name *" value={contactName} onChange={setContactName} placeholder="e.g. John Smith" />
+                <Input label="Mobile Number *" value={phone} onChange={setPhone} type="tel" placeholder="e.g. 021 123 4567" />
+              </>
             )}
             <Input label="Email *" value={email} onChange={setEmail} type="email" />
             <Input label="Password *" value={password} onChange={setPassword} type="password" />
@@ -9931,9 +9939,16 @@ const LazyProfileModal = ({ business, dispatch, onSaved, onCancel }) => {
 // Uses a HARDCODED sample quote per scenario (see DEMO_SCENARIOS near top of file).
 const DemoOnboarding = ({ business, dispatch, onComplete }) => {
   const isMobile = useIsMobile();
-  // If the user already has a trade (from pre-signup-shrink accounts), skip the picker step
-  const [step, setStep] = useState(business?.trade ? 1 : 0);
+  // Steps: 0=trade picker, 1=name+phone (fallback), 2=preview scenario, 3=generating, 4=result
+  const needsTrade = !business?.trade;
+  const needsContact = !business?.phone || !business?.contact_name || business?.contact_name === business?.business_name;
+  const firstStep = needsTrade ? 0 : (needsContact ? 1 : 2);
+  const [step, setStep] = useState(firstStep);
   const [selectedTrade, setSelectedTrade] = useState(business?.trade || "");
+  const [contactName, setContactName] = useState(
+    business?.contact_name && business.contact_name !== business.business_name ? business.contact_name : ""
+  );
+  const [phone, setPhone] = useState(business?.phone || "");
   const [generating, setGenerating] = useState(false);
 
   const scenario = getDemoScenario(selectedTrade);
@@ -9941,23 +9956,33 @@ const DemoOnboarding = ({ business, dispatch, onComplete }) => {
 
   const finishDemo = async (navigateTo) => {
     const now = new Date().toISOString();
-    try {
-      await db("businesses").eq("id", business.id).update({
-        onboarded: true,
-        demo_completed_at: now,
-        ...(selectedTrade && !business.trade ? { trade: selectedTrade, trade_category: selectedTrade } : {}),
-      });
-    } catch (e) { /* non-fatal */ }
-    const updatedBiz = {
-      ...business,
+    const updates = {
       onboarded: true,
       demo_completed_at: now,
       ...(selectedTrade && !business.trade ? { trade: selectedTrade, trade_category: selectedTrade } : {}),
+      ...(contactName.trim() ? { contact_name: contactName.trim() } : {}),
+      ...(phone.trim() ? { phone: phone.trim() } : {}),
     };
+    try {
+      await db("businesses").eq("id", business.id).update(updates);
+    } catch (e) { /* non-fatal */ }
+    const updatedBiz = { ...business, ...updates };
     dispatch({ type: "SET_BUSINESS", payload: updatedBiz });
     setCookie("wynflow_business", updatedBiz, 43200);
     try { localStorage.setItem("wynflow_onboarded_" + business.id, "true"); } catch(e) {}
     setCookie("wynflow_onboarded_" + business.id, "true", 525600);
+    // Notify N8N with complete details (name + phone now available)
+    fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        business_name: updatedBiz.business_name,
+        contact_name: updatedBiz.contact_name,
+        email: updatedBiz.email,
+        phone: updatedBiz.phone,
+        trade: updatedBiz.trade,
+        onboarding_completed: true,
+      }),
+    }).catch(() => {});
     onComplete();
     if (navigateTo) dispatch({ type: "SET_SCREEN", payload: navigateTo });
   };
@@ -9967,16 +9992,30 @@ const DemoOnboarding = ({ business, dispatch, onComplete }) => {
       dispatch({ type: "NOTIFY", payload: { message: "Pick your trade so we can show you a matching example", type: "error" } });
       return;
     }
-    setStep(1);
+    // Save trade immediately so it's not lost if they abandon
+    db("businesses").eq("id", business.id).update({ trade: selectedTrade, trade_category: selectedTrade }).catch(() => {});
+    dispatch({ type: "SET_BUSINESS", payload: { ...business, trade: selectedTrade, trade_category: selectedTrade } });
+    setStep(needsContact ? 1 : 2);
+  };
+
+  const saveContact = () => {
+    if (!contactName.trim() || !phone.trim()) {
+      dispatch({ type: "NOTIFY", payload: { message: "We need your name and mobile so customers can reach you", type: "error" } });
+      return;
+    }
+    // Save immediately so it's not lost if they abandon
+    db("businesses").eq("id", business.id).update({ contact_name: contactName.trim(), phone: phone.trim() }).catch(() => {});
+    dispatch({ type: "SET_BUSINESS", payload: { ...business, contact_name: contactName.trim(), phone: phone.trim() } });
+    setStep(2);
   };
 
   const startGenerate = () => {
-    setStep(2);
+    setStep(3);
     setGenerating(true);
     // Brief delay for the "aha" effect — feels like the AI is working
     setTimeout(() => {
       setGenerating(false);
-      setStep(3);
+      setStep(4);
     }, 1800);
   };
 
@@ -10017,8 +10056,26 @@ const DemoOnboarding = ({ business, dispatch, onComplete }) => {
     );
   }
 
-  // STEP 1: Preview the scenario
+  // STEP 1: Collect name + phone
   if (step === 1) {
+    return shell(
+      <div style={{ padding: isMobile ? "40px 24px 24px" : "52px 40px 36px" }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <div style={{ display: "inline-flex", padding: "4px 12px", borderRadius: 100, fontSize: 11, fontWeight: 600, color: theme.accent, background: "rgba(20,184,166,0.08)", marginBottom: 14 }}>Almost there</div>
+          <h2 style={{ fontSize: isMobile ? 24 : 28, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.15, margin: "0 0 10px", color: theme.text }}>Who should customers ask for?</h2>
+          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.5, margin: 0 }}>This goes on your quotes so customers know who to call.</p>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 20 }}>
+          <Input label="Your Name" value={contactName} onChange={setContactName} placeholder="e.g. Jesse Smith" />
+          <Input label="Mobile Number" value={phone} onChange={setPhone} type="tel" placeholder="e.g. 021 123 4567" />
+        </div>
+        <Button onClick={saveContact} style={{ width: "100%", justifyContent: "center", padding: "14px 24px" }}>Continue →</Button>
+      </div>
+    );
+  }
+
+  // STEP 2: Preview the scenario
+  if (step === 2) {
     return shell(
       <div style={{ padding: isMobile ? "40px 20px 24px" : "52px 36px 32px" }}>
         <div style={{ textAlign: "center", marginBottom: 24 }}>
@@ -10043,8 +10100,8 @@ const DemoOnboarding = ({ business, dispatch, onComplete }) => {
     );
   }
 
-  // STEP 2: "Generating" — brief spinner for effect
-  if (step === 2) {
+  // STEP 3: "Generating" — brief spinner for effect
+  if (step === 3) {
     return shell(
       <div style={{ padding: "80px 40px", textAlign: "center" }}>
         <div style={{ marginBottom: 20 }}>
@@ -10056,7 +10113,7 @@ const DemoOnboarding = ({ business, dispatch, onComplete }) => {
     );
   }
 
-  // STEP 3: Result — show the sample quote
+  // STEP 4: Result — show the sample quote
   return shell(
     <div style={{ display: "flex", flexDirection: "column", maxHeight: "94vh" }}>
       <div style={{ padding: isMobile ? "32px 20px 16px" : "40px 36px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -10187,7 +10244,7 @@ function WynflowAppInner() {
               dispatch({ type: "SET_SCREEN", payload: "dashboard" });
               return;
             }
-            // Create business from pending signup data (shrunk signup — only business_name is carried)
+            // Create business from pending signup data
             let pending = {};
             try { pending = JSON.parse(localStorage.getItem("wynflow_pending_signup") || "{}"); } catch(e) {}
             const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
@@ -10195,9 +10252,9 @@ function WynflowAppInner() {
             const { data: biz } = await db("businesses").insert({
               user_id: user.id,
               business_name: bizName,
-              contact_name: bizName,  // defaulted — collected lazily on first real quote send
+              contact_name: pending.contactName || bizName,
               email: user.email || pending.email || "",
-              phone: null,  // deferred
+              phone: pending.phone || null,
               trade: null,  // deferred — asked in demo onboarding
               trade_category: null,
               hourly_rate: 0,
