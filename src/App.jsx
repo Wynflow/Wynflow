@@ -5451,7 +5451,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
     });
   };
 
-  const sendQuote = async (skipLazyCheck = false) => {
+  const sendQuote = async (skipLazyCheck = false, overrideBusiness = null) => {
     if (!editForm.amount || !form.customerEmail) {
       dispatch({ type: "NOTIFY", payload: { message: "Please set an amount and customer email", type: "error" } });
       return;
@@ -5466,6 +5466,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         return;
       }
     }
+    const biz = overrideBusiness || business;
     setSending(true);
     try {
       const seqId = sequences.find(s => s.is_default)?.id || sequences[0]?.id || null;
@@ -5481,48 +5482,52 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         lineItems: editForm.lineItems,
         materialsCost: editForm.materialsCost,
         labourHours: editForm.labourHours,
-        labourRate: business.hourly_rate,
+        labourRate: biz.hourly_rate,
         includeCallout: editForm.includeCallout,
-        calloutFee: business.callout_fee,
+        calloutFee: biz.callout_fee,
         showBreakdown: editForm.showBreakdown,
         showGST: editForm.showGST,
         showBusinessDetails: editForm.showBusinessDetails,
         notes: editForm.notes,
-        requireDeposit: business.require_deposit,
-        depositPercentage: business.deposit_percentage,
-        depositAmount: business.require_deposit ? parseFloat(editForm.amount || 0) * (parseFloat(business.deposit_percentage || 25) / 100) : null,
-        bankName: business.bank_name,
-        bankAccountName: business.bank_account_name,
-        bankAccountNumber: business.bank_account_number,
-        quoteFooter: business.quote_footer,
-        businessAddress: business.address,
-        gstNumber: business.gst_number,
-        gstInclusive: business.gst_inclusive !== false,
-        licenseNumber: business.license_number,
-        businessPhone: business.phone,
-        businessEmail: business.email,
+        requireDeposit: biz.require_deposit,
+        depositPercentage: biz.deposit_percentage,
+        depositAmount: biz.require_deposit ? parseFloat(editForm.amount || 0) * (parseFloat(biz.deposit_percentage || 25) / 100) : null,
+        bankName: biz.bank_name,
+        bankAccountName: biz.bank_account_name,
+        bankAccountNumber: biz.bank_account_number,
+        quoteFooter: biz.quote_footer,
+        businessAddress: biz.address,
+        gstNumber: biz.gst_number,
+        gstInclusive: biz.gst_inclusive !== false,
+        licenseNumber: biz.license_number,
+        businessPhone: biz.phone,
+        businessEmail: biz.email,
       };
       const { data: newQuote, error: quoteErr } = await db("quotes").insert({
-        business_id: business.id, quote_number: "", customer_name: form.customerName,
+        business_id: biz.id, quote_number: "", customer_name: form.customerName,
         customer_email: form.customerEmail, customer_phone: form.customerPhone,
         job_title: form.jobTitle, description: editForm.scope + (materialsText ? "\n\nMaterials:\n" + materialsText : "") + (editForm.notes ? "\n\nNotes:\n" + editForm.notes : ""),
         amount: parseFloat(editForm.amount), status: "sent", sent_at: new Date().toISOString(),
-        sequence_id: business.auto_follow_ups !== false ? seqId : null,
-        next_follow_up_at: business.auto_follow_ups !== false ? nextFollowUp : null,
-        current_step: 0, follow_up_paused: business.auto_follow_ups === false,
+        sequence_id: biz.auto_follow_ups !== false ? seqId : null,
+        next_follow_up_at: biz.auto_follow_ups !== false ? nextFollowUp : null,
+        current_step: 0, follow_up_paused: biz.auto_follow_ups === false,
         ai_estimate: parseFloat(editForm.amount), ai_estimate_notes: JSON.stringify(breakdown),
       });
       if (quoteErr || !newQuote?.[0]) throw new Error("Failed to create quote");
-      const sendRes = await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quote_id: newQuote[0].id, breakdown }),
-      });
       dispatch({ type: "ADD_QUOTE", payload: newQuote[0] });
       try { localStorage.removeItem("wynflow_quote_draft"); } catch (e) {}
-      if (!sendRes.ok) {
+      try {
+        const sendRes = await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quote_id: newQuote[0].id, breakdown }),
+        });
+        if (!sendRes.ok) {
+          dispatch({ type: "NOTIFY", payload: { message: "Quote saved but email failed to send. Try resending from quote details.", type: "error" } });
+        } else {
+          dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${form.customerName}!${biz.auto_follow_ups !== false ? " Follow-ups scheduled." : ""}`, type: "success" } });
+        }
+      } catch (e) {
         dispatch({ type: "NOTIFY", payload: { message: "Quote saved but email failed to send. Try resending from quote details.", type: "error" } });
-      } else {
-        dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${form.customerName}!${business.auto_follow_ups !== false ? " Follow-ups scheduled." : ""}`, type: "success" } });
       }
     } catch (err) {
       dispatch({ type: "NOTIFY", payload: { message: err.message, type: "error" } });
@@ -5537,7 +5542,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
         <LazyProfileModal
           business={business}
           dispatch={dispatch}
-          onSaved={() => { setShowLazyProfile(false); sendQuote(true); }}
+          onSaved={(updatedBiz) => { setShowLazyProfile(false); sendQuote(true, updatedBiz); }}
           onCancel={() => setShowLazyProfile(false)}
         />
       )}
@@ -5999,15 +6004,19 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
         ai_estimate_notes: JSON.stringify(breakdown),
       });
       if (quoteErr || !newQuote?.[0]) throw new Error("Failed to create quote");
-      const sendRes = await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quote_id: newQuote[0].id, breakdown }),
-      });
       dispatch({ type: "ADD_QUOTE", payload: newQuote[0] });
-      if (!sendRes.ok) {
+      try {
+        const sendRes = await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quote_id: newQuote[0].id, breakdown }),
+        });
+        if (!sendRes.ok) {
+          dispatch({ type: "NOTIFY", payload: { message: "Quote saved but email failed to send. Try resending from quote details.", type: "error" } });
+        } else {
+          dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${form.customerName}!${business.auto_follow_ups !== false ? " Follow-ups scheduled." : ""}`, type: "success" } });
+        }
+      } catch (e) {
         dispatch({ type: "NOTIFY", payload: { message: "Quote saved but email failed to send. Try resending from quote details.", type: "error" } });
-      } else {
-        dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${form.customerName}!${business.auto_follow_ups !== false ? " Follow-ups scheduled." : ""}`, type: "success" } });
       }
     } catch (err) {
       dispatch({ type: "NOTIFY", payload: { message: err.message, type: "error" } });
@@ -6558,15 +6567,19 @@ const QuoteGenerator = ({ quote, business, dispatch, sequences, quotes }) => {
       };
       const { error: updateErr } = await db("quotes").eq("id", quote.id).update(quoteUpdates);
       if (updateErr) throw new Error("Failed to update quote");
-      const sendRes = await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quote_id: quote.id, breakdown }),
-      });
       dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, ...quoteUpdates } });
-      if (!sendRes.ok) {
+      try {
+        const sendRes = await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-quote", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quote_id: quote.id, breakdown }),
+        });
+        if (!sendRes.ok) {
+          dispatch({ type: "NOTIFY", payload: { message: "Quote saved but email failed to send. Try resending from quote details.", type: "error" } });
+        } else {
+          dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${quote.customer_name}!${business.auto_follow_ups !== false ? " Follow-ups scheduled." : ""}`, type: "success" } });
+        }
+      } catch (e) {
         dispatch({ type: "NOTIFY", payload: { message: "Quote saved but email failed to send. Try resending from quote details.", type: "error" } });
-      } else {
-        dispatch({ type: "NOTIFY", payload: { message: `Quote sent to ${quote.customer_name}!${business.auto_follow_ups !== false ? " Follow-ups scheduled." : ""}`, type: "success" } });
       }
       dispatch({ type: "GO_BACK" });
     } catch (err) {
