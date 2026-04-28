@@ -8,6 +8,8 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (NOT the anon key — this bypasses RLS) | All API routes |
 | `STRIPE_WEBHOOK_SECRET` | Webhook signing secret from Stripe (starts with `whsec_`) | `/api/stripe-webhook` |
 | `STRIPE_SECRET_KEY` | Stripe secret API key (starts with `sk_live_` or `sk_test_`) | `/api/create-invoice-payment-link` (online invoice pay) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (starts with `sk-ant-`) | `/api/ai-rewrite-step` (AI follow-up rewrite) |
+| `ANTHROPIC_MODEL` | Optional. Claude model id (default `claude-opus-4-7`) | `/api/ai-rewrite-step` |
 
 ## Stripe Dashboard Configuration
 
@@ -57,3 +59,11 @@ ALTER TABLE invoices
   ADD COLUMN IF NOT EXISTS paid_via text,
   ADD COLUMN IF NOT EXISTS paid_at timestamptz;
 ```
+
+## `/api/ai-rewrite-step`
+
+Takes a follow-up sequence step (subject + body with placeholder tags) and uses Claude to rewrite it as natural, on-brand prose for a NZ tradie. Preserves placeholder tags so runtime substitution still works.
+
+Used by `SequencesManager` — every step edit form has an "AI Rewrite" button that calls this endpoint.
+
+**To enable AI rewrite:** add `ANTHROPIC_API_KEY` to Vercel env vars. Optionally override `ANTHROPIC_MODEL` (defaults to `claude-opus-4-7`). Without the key, the button surfaces a friendly error and the user can keep editing manually.

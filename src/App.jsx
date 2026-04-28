@@ -8935,8 +8935,70 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
   const [adding, setAdding] = useState(null);
   const [newStep, setNewStep] = useState({ delay: "", subject: "", body: "" });
   const [saving, setSaving] = useState(false);
+  const [rewriting, setRewriting] = useState(false);
   const [seqType, setSeqType] = useState("quote");
   const MAX_STEPS = 5;
+
+  // Calls /api/ai-rewrite-step to rewrite the current edit-form contents
+  // into more natural prose, preserving placeholders.
+  const aiRewriteEdit = async (stepIndex, totalSteps) => {
+    if (!editForm.email_subject && !editForm.email_body) {
+      dispatch({ type: "NOTIFY", payload: { message: "Write a draft first, then AI can rewrite it", type: "error" } });
+      return;
+    }
+    setRewriting(true);
+    try {
+      const r = await fetch("/api/ai-rewrite-step", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: editForm.email_subject,
+          body: editForm.email_body,
+          businessName: business?.business_name || "",
+          trade: business?.trade || "",
+          stepNumber: stepIndex + 1,
+          totalSteps,
+          sequenceType: seqType,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "AI rewrite failed");
+      setEditForm(prev => ({ ...prev, email_subject: data.subject || prev.email_subject, email_body: data.body || prev.email_body }));
+      dispatch({ type: "NOTIFY", payload: { message: "AI rewrite ready — review and save", type: "success" } });
+    } catch (err) {
+      dispatch({ type: "NOTIFY", payload: { message: err.message || "AI rewrite failed", type: "error" } });
+    }
+    setRewriting(false);
+  };
+
+  // Same for the Add Step form
+  const aiRewriteNew = async (stepIndex, totalSteps) => {
+    if (!newStep.subject && !newStep.body) {
+      dispatch({ type: "NOTIFY", payload: { message: "Write a draft first, then AI can rewrite it", type: "error" } });
+      return;
+    }
+    setRewriting(true);
+    try {
+      const r = await fetch("/api/ai-rewrite-step", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: newStep.subject,
+          body: newStep.body,
+          businessName: business?.business_name || "",
+          trade: business?.trade || "",
+          stepNumber: stepIndex + 1,
+          totalSteps,
+          sequenceType: seqType,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "AI rewrite failed");
+      setNewStep(prev => ({ ...prev, subject: data.subject || prev.subject, body: data.body || prev.body }));
+      dispatch({ type: "NOTIFY", payload: { message: "AI rewrite ready — review and add", type: "success" } });
+    } catch (err) {
+      dispatch({ type: "NOTIFY", payload: { message: err.message || "AI rewrite failed", type: "error" } });
+    }
+    setRewriting(false);
+  };
 
   const exampleData = { name: "Sarah", job: "Kitchen Renovation", amount: "4,500", business_name: business?.business_name || "Your Business", invoice_number: "INV-001", due_date: "15 April 2026" };
 
@@ -9221,7 +9283,8 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
                         <EmailPreview subject={editForm.email_subject} body={editForm.email_body} />
                         <div style={{ display: "flex", gap: 8, justifyContent: "space-between", flexWrap: "wrap" }}>
                           <Button size="sm" variant="danger" onClick={() => deleteStep(seq.id, step.id)}><XCircle size={14} /> Delete</Button>
-                          <div style={{ display: "flex", gap: 8 }}>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <Button size="sm" variant="secondary" onClick={() => aiRewriteEdit(i, seqSteps.length)} disabled={rewriting} style={{ background: "rgba(20,184,166,0.08)", color: theme.accent, border: "1px solid rgba(20,184,166,0.2)" }}><Sparkles size={13} /> {rewriting ? "Rewriting..." : "AI Rewrite"}</Button>
                             <Button size="sm" variant="secondary" onClick={() => setEditingStep(null)}>Cancel</Button>
                             <Button size="sm" onClick={() => saveEdit(step.id)} disabled={saving}><Check size={14} /> {saving ? "Saving..." : "Save"}</Button>
                           </div>
@@ -9267,7 +9330,8 @@ const SequencesManager = ({ sequences, business, dispatch }) => {
                       <PlaceholderButtons field="new_body" />
                     </div>
                     <EmailPreview subject={newStep.subject} body={newStep.body} />
-                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                      <Button size="sm" variant="secondary" onClick={() => aiRewriteNew(seqSteps.length, seqSteps.length + 1)} disabled={rewriting} style={{ background: "rgba(20,184,166,0.08)", color: theme.accent, border: "1px solid rgba(20,184,166,0.2)" }}><Sparkles size={13} /> {rewriting ? "Rewriting..." : "AI Rewrite"}</Button>
                       <Button size="sm" variant="secondary" onClick={() => { setAdding(null); setNewStep({ delay: "", subject: "", body: "" }); }}>Cancel</Button>
                       <Button size="sm" onClick={() => addStep(seq.id)} disabled={saving}><Plus size={14} /> {saving ? "Adding..." : "Add Step"}</Button>
                     </div>
