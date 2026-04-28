@@ -1,6 +1,6 @@
 import { useState, useEffect, useReducer, useCallback, Component } from "react";
 import { jsPDF } from "jspdf";
-import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History, Eye, CalendarDays } from "lucide-react";
+import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, ArrowLeft, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History, Eye, CalendarDays, Hammer, Paintbrush, Home as HomeIcon, TreePine, Image as ImageIcon } from "lucide-react";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -88,6 +88,69 @@ class ErrorBoundary extends Component {
     return this.props.children;
   }
 }
+
+// ─── Email typo detection ───
+// Catches obvious misspellings of major email providers before sending.
+// Used as a last-mile sanity check on quote-request forms so we don't send
+// to dead addresses like `wendypendy123@hotmsil.com`.
+const EMAIL_DOMAIN_TYPOS = {
+  "gmail.com": ["gmai.com","gmaill.com","gmial.com","gamil.com","gmil.com","gmal.com","gnail.com","gmail.co","gmail.con","gmail.cm","ggmail.com","gmal.co.nz","gmali.com"],
+  "hotmail.com": ["hotmsil.com","hotmial.com","hotmal.com","hotmali.com","hotnail.com","hotmai.com","hottmail.com","hotmail.co","hotmail.con","hotmail.cm","hotmil.com","hotmaul.com"],
+  "outlook.com": ["outlok.com","oultook.com","outloo.com","outlock.com","otulook.com","outook.com","outloook.com","outlook.co","outlook.con"],
+  "yahoo.com": ["yaho.com","yahho.com","yahooo.com","yhaoo.com","yahoo.con","yahoo.cm","yaoo.com"],
+  "xtra.co.nz": ["xtra.co","xtra.net.nz","xtra.conz","xtra.co.n","xtra.com"],
+  "icloud.com": ["iclod.com","icloud.co","icluod.com","icoud.com","iclould.com"],
+  "live.com": ["liv.com","live.con","live.cm"],
+  "me.com": ["me.con","me.cm"],
+};
+const EMAIL_TYPO_LOOKUP = Object.entries(EMAIL_DOMAIN_TYPOS).reduce((acc, [correct, typos]) => {
+  typos.forEach(t => { acc[t] = correct; });
+  return acc;
+}, {});
+const EMAIL_KNOWN_DOMAINS = new Set(Object.keys(EMAIL_DOMAIN_TYPOS));
+const levenshtein = (a, b) => {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const m = Array.from({ length: b.length + 1 }, (_, i) => [i]);
+  for (let j = 0; j <= a.length; j++) m[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      m[i][j] = b[i - 1] === a[j - 1] ? m[i - 1][j - 1] : Math.min(m[i - 1][j - 1], m[i][j - 1], m[i - 1][j]) + 1;
+    }
+  }
+  return m[b.length][a.length];
+};
+// Returns corrected email string if a likely typo is detected, else null.
+const suggestEmailFix = (email) => {
+  if (!email || typeof email !== "string" || !email.includes("@")) return null;
+  const [local, domain] = email.trim().toLowerCase().split("@");
+  if (!local || !domain) return null;
+  if (EMAIL_KNOWN_DOMAINS.has(domain)) return null;
+  if (EMAIL_TYPO_LOOKUP[domain]) return `${local}@${EMAIL_TYPO_LOOKUP[domain]}`;
+  // Fuzzy match: 1-char edit distance from a known domain — catches novel typos.
+  // Minimum domain length 6 to avoid false positives on short domains like "abc.co".
+  if (domain.length >= 6) {
+    for (const known of EMAIL_KNOWN_DOMAINS) {
+      if (levenshtein(domain, known) === 1) return `${local}@${known}`;
+    }
+  }
+  return null;
+};
+// UX helper: prompt user with confirm() for a typo fix.
+// Returns { send: bool, email: string } — send=true means proceed, email is the resolved address.
+const confirmEmailFix = (email, setEmailFn) => {
+  const suggestion = suggestEmailFix(email);
+  if (!suggestion) return { send: true, email };
+  const useFix = window.confirm(
+    `Double-check this address:\n\n  ${email}\n\nDid you mean:\n\n  ${suggestion}\n\nClick OK to use "${suggestion}", or Cancel to keep your original (and send anyway).`
+  );
+  if (useFix) {
+    if (typeof setEmailFn === "function") setEmailFn(suggestion);
+    return { send: true, email: suggestion };
+  }
+  return { send: true, email };
+};
 
 // ─── Demo Onboarding Scenarios ───
 // Used by DemoOnboarding to show new users a realistic sample quote
@@ -228,18 +291,18 @@ const safeFetch = async (url, options = {}, context = "") => {
 // ─── SEO Helper ───
 const SEO_CONFIG = {
   home: {
-    title: "Wynflow — AI Quote Generator for NZ Tradies | Plumber, Electrician & Builder Quoting Software",
-    description: "Generate accurate quotes from job site photos with AI. Automated follow-up emails chase customers so you don't have to. Free 14-day trial. Built for New Zealand plumbers, electricians, builders and tradies.",
+    title: "Wynflow — Job & Customer Management Software for NZ Tradies",
+    description: "Quote faster, follow up automatically, and win more jobs. Wynflow is the all-in-one job and customer management platform built for New Zealand plumbers, electricians, builders and tradies.",
     canonical: "https://www.wynflow.co.nz",
   },
   about: {
-    title: "About Wynflow — AI-Powered Quoting Software Built in New Zealand for Kiwi Tradies",
-    description: "Born from watching a Napier carpet layer lose $47,000 in jobs to forgotten follow-ups. Wynflow combines AI photo quoting with automated follow-up emails so NZ tradies never lose a job to silence again.",
+    title: "About Wynflow — Job & Customer Management Software Built in New Zealand for Tradies",
+    description: "Born from watching a Napier carpet layer lose $47,000 in jobs to forgotten follow-ups. Wynflow keeps every quote, customer and follow-up organised so NZ tradies never lose a job to silence again.",
     canonical: "https://www.wynflow.co.nz/about",
   },
   pricing: {
-    title: "Wynflow Pricing — AI Quote Generator from $29/mo NZD | Free 14-Day Trial",
-    description: "AI-powered quote generation, unlimited quotes, automated follow-up sequences, and analytics from $29/mo NZD. No credit card required. 14-day free trial for New Zealand tradies.",
+    title: "Wynflow Pricing — Tradie Job Management Software from $29/mo NZD | Free 14-Day Trial",
+    description: "Unlimited quotes, automated customer follow-ups, customer request page, dashboard and analytics from $29/mo NZD. No credit card required. 14-day free trial for New Zealand tradies.",
     canonical: "https://www.wynflow.co.nz/pricing",
   },
 };
@@ -259,8 +322,8 @@ const useSEO = (screen) => {
     setMeta("property", "og:title", config.title);
     setMeta("property", "og:description", config.description);
     setMeta("property", "og:url", config.canonical);
-    const ogTitle = { home: "AI-Powered Quote Management", about: "Built in NZ for Kiwi Tradies", pricing: "Plans from $29/mo NZD" }[screen] || "AI-Powered Quote Management";
-    const ogSubtitle = { home: "Generate quotes from photos. Chase customers automatically. Win more jobs.", about: "Born from watching a tradie lose $47K to forgotten follow-ups.", pricing: "AI quoting, unlimited quotes, automated follow-ups. Free 14-day trial." }[screen] || "";
+    const ogTitle = { home: "Quote the job. Win the job.", about: "Built in NZ for Kiwi tradies.", pricing: "Plans from $29/mo NZD" }[screen] || "Quote the job. Win the job.";
+    const ogSubtitle = { home: "Job & customer management software for NZ tradies.", about: "Born from a tradie losing $47K to forgotten follow-ups.", pricing: "Unlimited quotes & automated follow-ups. Free 14-day trial." }[screen] || "";
     const ogImage = `https://www.wynflow.co.nz/api/og?title=${encodeURIComponent(ogTitle)}&subtitle=${encodeURIComponent(ogSubtitle)}`;
     setMeta("property", "og:image", ogImage);
     setMeta("property", "og:image:width", "1200");
@@ -1141,7 +1204,7 @@ const Footer = ({ dispatch }) => {
         <div style={{ marginBottom: 16 }}>
           <WynflowLogo size={28} showText textSize={17} />
         </div>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.75, margin: "0 0 24px" }}>AI-powered quoting and automated follow-ups for NZ tradies. Send quotes, chase customers, win more jobs — on autopilot.</p>
+        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.75, margin: "0 0 24px" }}>Job and customer management software for NZ tradies. Quote faster, follow up automatically, and win more jobs — without lifting a finger between visits.</p>
         {/* Trade-themed decorative element */}
         <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 100, background: "rgba(20,184,166,0.06)", border: "1px solid rgba(20,184,166,0.1)" }}>
           <Wrench size={13} color={theme.accent} strokeWidth={1.5} />
@@ -1179,7 +1242,7 @@ const Footer = ({ dispatch }) => {
         2026 Wynflow. All rights reserved.
       </div>
       <p style={{ textAlign: "center", fontSize: 10, color: "rgba(255,255,255,0.12)", marginTop: 12, lineHeight: 1.6, maxWidth: 600, marginLeft: "auto", marginRight: "auto" }}>
-        AI-generated quotes are estimates only and should be reviewed before sending. Wynflow is a quoting tool — all quotes, pricing, and business decisions remain the responsibility of the business owner. Wynflow accepts no liability for the accuracy of AI-generated content.
+        Auto-drafted quotes are estimates only and should be reviewed before sending. Wynflow is a quoting tool — all quotes, pricing, and business decisions remain the responsibility of the business owner. Wynflow accepts no liability for the accuracy of generated content.
       </p>
     </div>
   </footer>
@@ -1253,7 +1316,7 @@ const ProductDemo = () => {
 
   const demoSteps = [
     { label: "Snap Photos", icon: Camera, accent: "#14B8A6" },
-    { label: "AI Quote", icon: Sparkles, accent: "#8B5CF6" },
+    { label: "Auto Quote", icon: Sparkles, accent: "#8B5CF6" },
     { label: "Send Email", icon: Send, accent: "#3B82F6" },
     { label: "Follow-Up", icon: RefreshCw, accent: "#F59E0B" },
     { label: "Get Paid", icon: Receipt, accent: "#22C55E" },
@@ -1297,14 +1360,14 @@ const ProductDemo = () => {
     <div key="quote" style={{ padding: isMobile ? 16 : 24 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#8B5CF6" }} />
-        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 2 — AI generates your quote</span>
+        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase" }}>Step 2 — Wynflow drafts your quote</span>
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div>
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 2 }}>Quote #WF-0047</div>
           <div style={{ fontSize: 16, fontWeight: 600, color: "#fff" }}>Bathroom Renovation — Smith Residence</div>
         </div>
-        <div style={{ padding: "4px 12px", borderRadius: 20, background: "rgba(139,92,246,0.15)", color: "#8B5CF6", fontSize: 11, fontWeight: 600 }}>AI Generated</div>
+        <div style={{ padding: "4px 12px", borderRadius: 20, background: "rgba(139,92,246,0.15)", color: "#8B5CF6", fontSize: 11, fontWeight: 600 }}>Auto-drafted</div>
       </div>
       {[
         { item: "Remove existing vanity & dispose", qty: "1", price: "$180" },
@@ -1527,16 +1590,16 @@ const HomePage = ({ dispatch }) => {
 
   // Bento grid features — 4 cards in asymmetric layout
   const features = [
-    { Icon: Cpu, title: "AI Quote Generation", desc: "Snap photos on site, add your notes, and get an accurate itemised quote in seconds. Materials, labour, scope — all handled by AI trained on your trade.", large: true, stat: "< 30 sec", statLabel: "avg quote time" },
-    { Icon: RefreshCw, title: "Automated Follow-ups", desc: "Wynflow chases your customers on autopilot — day 2, day 5, day 10. Personalised emails that sound like you.", large: false },
-    { Icon: Globe, title: "Live Quote Request Link", desc: "Share your personal link on socials, Google Business, or your website. Customers request quotes directly — no phone tag.", large: false },
-    { Icon: BarChart3, title: "Analytics & Feedback", desc: "Track conversion rates, revenue, and response times. When customers decline, they tell you why — so you can adjust pricing and win more next time.", large: true, stat: "2x", statLabel: "more jobs won" },
+    { Icon: Cpu, title: "Quote in minutes, not hours", desc: "Snap photos on site, add a few notes, and Wynflow turns them into a clean itemised quote — materials, labour, scope, the lot. Tweak it, hit send. Done.", large: true, stat: "< 30 sec", statLabel: "from photos to quote" },
+    { Icon: RefreshCw, title: "Follow-ups on autopilot", desc: "Wynflow chases your customers for you — day 2, day 5, day 10. Personalised emails that sound like you, not a robot.", large: false },
+    { Icon: Globe, title: "Customer quote requests", desc: "Share your personal Wynflow link on socials, Google Business, or your website. Customers send through their job details directly — no phone tag.", large: false },
+    { Icon: BarChart3, title: "Win rates & customer feedback", desc: "Track win rates, revenue and response times. When customers decline, they tell you why — so you can adjust pricing and win more next time.", large: true, stat: "2x", statLabel: "more jobs won" },
   ];
 
   const steps = [
-    { num: "01", Icon: Camera, title: "Snap Photos & Add Notes", desc: "Take photos on site and add your notes — access issues, customer preferences, anything relevant. Wynflow's AI analyses everything to generate an accurate, itemised quote." },
-    { num: "02", Icon: Send, title: "Review & Send", desc: "Check the AI-generated quote, tweak anything you want, and hit send. Your customer gets a professional email with one-click Accept or Decline buttons." },
-    { num: "03", Icon: Bot, title: "Auto Follow-Ups", desc: "If they don't respond, Wynflow chases automatically. Personalised emails that sound like you, not a robot. You're on the tools, not on your phone." },
+    { num: "01", Icon: Camera, title: "Snap photos & add notes", desc: "Take photos on site and jot down a few notes — access issues, customer preferences, anything relevant. Wynflow turns it into an accurate itemised quote." },
+    { num: "02", Icon: Send, title: "Review & send", desc: "Check the quote, tweak anything you want, and hit send. Your customer gets a tidy email with one-click Accept or Decline buttons." },
+    { num: "03", Icon: Bot, title: "Auto follow-ups", desc: "If they go quiet, Wynflow chases automatically. Personalised emails on your timing — sounding like you, not a robot. You stay on the tools." },
   ];
 
   // Stats strip data
@@ -1579,20 +1642,20 @@ const HomePage = ({ dispatch }) => {
         </div>
       </>}
 
-      <div style={{ maxWidth: 720, position: "relative", zIndex: 1 }}>
+      <div style={{ maxWidth: 760, position: "relative", zIndex: 1 }}>
         <FadeIn>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 100, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", marginBottom: isMobile ? 24 : 32 }}>
             <Wrench size={14} color={theme.accent} style={{ animation: "spin-slow 8s linear infinite" }} />
-            <span style={{ fontSize: 13, fontWeight: 500, color: theme.accent, letterSpacing: "0.02em" }}>AI-Powered Quoting for NZ Tradies</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: theme.accent, letterSpacing: "0.02em" }}>Job &amp; customer management for NZ tradies</span>
           </div>
         </FadeIn>
         <FadeIn delay={0.08}>
-          <h1 style={{ fontSize: isMobile ? 40 : 72, fontWeight: 700, color: "#FFFFFF", lineHeight: 1.05, marginBottom: isMobile ? 24 : 32, fontFamily: theme.font, letterSpacing: "-0.03em" }}>
-            Quote Faster. Chase Smarter.<br /><span style={{ background: `linear-gradient(135deg, ${theme.accent}, #5EEAD4)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Win More Jobs.</span>
+          <h1 style={{ fontSize: isMobile ? 40 : 72, fontWeight: 700, color: "#FFFFFF", lineHeight: 1.0, marginBottom: isMobile ? 24 : 32, fontFamily: theme.font, letterSpacing: "-0.04em" }}>
+            Quote the job.<br /><span style={{ background: `linear-gradient(135deg, ${theme.accent}, #5EEAD4)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Win the job.</span>
           </h1>
         </FadeIn>
         <FadeIn delay={0.16}>
-          <p style={{ fontSize: isMobile ? 16 : 19, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, maxWidth: 560, margin: "0 auto 48px", fontWeight: 400, letterSpacing: "0.01em" }}>Wynflow's AI generates accurate quotes from your job site photos and notes — scope, materials, labour, the lot. Then automated follow-ups chase your customers until they say yes. You stay on the tools, we handle the paperwork.</p>
+          <p style={{ fontSize: isMobile ? 16 : 19, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, maxWidth: 580, margin: "0 auto 48px", fontWeight: 400, letterSpacing: "0.01em" }}>Wynflow handles your quotes, follow-ups and customer responses on autopilot — so you stay on the tools and still close more work. Built for plumbers, sparkies, builders and every other NZ trade.</p>
         </FadeIn>
         <FadeIn delay={0.24}>
           <div style={{ display: "flex", gap: 16, justifyContent: "center", flexDirection: isMobile ? "column" : "row", alignItems: "center" }}>
@@ -1601,7 +1664,7 @@ const HomePage = ({ dispatch }) => {
               onMouseEnter={e => { e.currentTarget.style.background = "#5EEAD4"; e.currentTarget.style.boxShadow = "0 4px 32px rgba(20,184,166,0.4), 0 0 80px rgba(20,184,166,0.15)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)"; }}
               style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 600, padding: isMobile ? "16px 32px" : "16px 40px", borderRadius: 10, background: theme.accent, color: "#000", border: "none", cursor: "pointer", transition: "all 0.2s ease-out", boxShadow: "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)", letterSpacing: "0.01em", width: isMobile ? "100%" : "auto" }}>
-              Start Free Trial
+              Start free trial
               <ArrowRight size={16} style={{ display: "inline", verticalAlign: "middle", marginLeft: 8 }} />
             </button>
             <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "pricing" })}
@@ -1640,7 +1703,7 @@ const HomePage = ({ dispatch }) => {
           <div style={{ textAlign: "center", marginBottom: isMobile ? 48 : 72 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: theme.accent, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 16 }}>Features</p>
             <h2 style={{ fontSize: isMobile ? 30 : 44, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Everything you need to<br />win more jobs</h2>
-            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", maxWidth: 480, margin: "0 auto", lineHeight: 1.6 }}>AI smarts meets tradie simplicity. No complicated setup, no fluff.</p>
+            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", maxWidth: 480, margin: "0 auto", lineHeight: 1.6 }}>Less admin, more billable hours. No complicated setup, no fluff.</p>
           </div>
         </FadeIn>
 
@@ -1833,15 +1896,15 @@ const HomePage = ({ dispatch }) => {
             <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 56, height: 56, borderRadius: 16, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", marginBottom: 24, animation: "pulse-glow 3s ease-in-out infinite" }}>
               <Wrench size={26} color={theme.accent} strokeWidth={1.5} style={{ animation: "spin-slow 10s linear infinite" }} />
             </div>
-            <h2 style={{ fontSize: isMobile ? 28 : 40, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Snap a Photo. Get a Quote.<br />Win the Job.</h2>
-            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", marginBottom: 16, lineHeight: 1.6 }}>Join NZ tradies using AI to turn job site photos and notes into accurate quotes in minutes — then close more jobs on autopilot.</p>
+            <h2 style={{ fontSize: isMobile ? 28 : 40, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Quote faster.<br />Win more work.</h2>
+            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", marginBottom: 16, lineHeight: 1.6 }}>Wynflow is the all-in-one job and customer management tool built for NZ tradies. Less admin, more jobs booked — without lifting a finger between visits.</p>
             <p style={{ fontSize: 13, color: "rgba(20,184,166,0.6)", marginBottom: 32, fontWeight: 500 }}>Built for tradies, by a Kiwi who gets it.</p>
             <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })}
               onMouseDown={pressDown} onMouseUp={pressUp}
               onMouseEnter={e => { e.currentTarget.style.background = "#5EEAD4"; e.currentTarget.style.boxShadow = "0 4px 32px rgba(20,184,166,0.4), 0 0 80px rgba(20,184,166,0.15)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)"; }}
               style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 600, padding: "16px 40px", borderRadius: 10, background: theme.accent, color: "#000", border: "none", cursor: "pointer", transition: "all 0.2s ease-out", boxShadow: "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)", letterSpacing: "0.01em" }}>
-              Start Your Free Trial
+              Start your free trial
               <ArrowRight size={16} style={{ display: "inline", verticalAlign: "middle", marginLeft: 8 }} />
             </button>
           </div>
@@ -1919,6 +1982,7 @@ const RequestQuotePage = ({ businessId }) => {
       setError("Please fill in all required fields");
       return;
     }
+    const { email: checkedEmail } = confirmEmailFix(form.email, (fixed) => setForm(f => ({ ...f, email: fixed })));
     setLoading(true);
     setError(null);
     try {
@@ -1933,7 +1997,7 @@ const RequestQuotePage = ({ businessId }) => {
         body: JSON.stringify({
           business_id: businessId,
           customer_name: form.name,
-          customer_email: form.email,
+          customer_email: checkedEmail,
           customer_phone: form.phone,
           job_title: form.jobTitle,
           description: form.description || null,
@@ -2175,7 +2239,7 @@ const AboutPage = ({ dispatch }) => {
                 <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.8, margin: 0 }}>That's where Wynflow came from — a system that sends your quotes, chases your customers automatically, and lets you track every single one from sent to booked.</p>
                 <div style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 100, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)" }}>
                   <Bot size={14} color={theme.accent} />
-                  <span style={{ fontSize: 13, fontWeight: 500, color: theme.accent }}>AI + Automation</span>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: theme.accent }}>Built for NZ tradies</span>
                 </div>
               </div>
             </FadeIn>
@@ -2299,7 +2363,7 @@ const AboutPage = ({ dispatch }) => {
                 <CheckCircle2 size={22} color={theme.green} strokeWidth={1.5} />
               </div>
               <h3 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.02em" }}>The Solution</h3>
-              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", lineHeight: 1.8, margin: 0, maxWidth: 520 }}>Wynflow uses AI to generate quotes from job site photos — scope, materials, labour, all calculated from your rates and your trade. Then our automated system follows up at exactly the right intervals — professional, consistent, and hands-free. You get notified the moment a customer responds. No more lost jobs from slow quoting or forgotten follow-ups.</p>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", lineHeight: 1.8, margin: 0, maxWidth: 520 }}>Wynflow turns job site photos and a few quick notes into a tidy itemised quote — scope, materials, labour, all calculated from your rates and your trade. Then our automated system follows up at exactly the right intervals — professional, consistent, and hands-free. You get notified the moment a customer responds. No more lost jobs from slow quoting or forgotten follow-ups.</p>
               <div style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 16, padding: "16px 24px", borderRadius: 12, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.12)" }}>
                 <span style={{ fontSize: 28, fontWeight: 700, color: theme.green, fontFamily: theme.font, letterSpacing: "-0.02em" }}>2x</span>
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.3 }}>more jobs won<br />with follow-ups</span>
@@ -2343,7 +2407,7 @@ const AboutPage = ({ dispatch }) => {
                 </div>
               </div>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.8, margin: "0 0 16px" }}>I'm Jesse — a young Kiwi based in Auckland. I built Wynflow because I saw firsthand how much time and money small businesses waste on things that should be automatic.</p>
-              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.8, margin: 0 }}>Wynflow is built specifically for how NZ businesses actually work. No complicated setup, no enterprise pricing, no fluff. Snap photos, get an AI-generated quote, send it, and let automated follow-ups do the chasing.</p>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.8, margin: 0 }}>Wynflow is built specifically for how NZ businesses actually work. No complicated setup, no enterprise pricing, no fluff. Snap photos, send a tidy quote, and let automated follow-ups do the chasing.</p>
             </div>
           </FadeIn>
 
@@ -2358,7 +2422,7 @@ const AboutPage = ({ dispatch }) => {
             </FadeIn>
             <FadeIn delay={0.15}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: isMobile ? 16 : 16 }}>
-                {[{ icon: Globe, label: "100% NZ Built" }, { icon: Cpu, label: "AI-Powered" }, { icon: Wrench, label: "Made for Tradies" }].map((b, i) => {
+                {[{ icon: Globe, label: "100% NZ Built" }, { icon: Zap, label: "Automated" }, { icon: Wrench, label: "Made for Tradies" }].map((b, i) => {
                   const BIcon = b.icon;
                   return (
                   <div key={i} style={{ padding: isMobile ? 16 : 20, borderRadius: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", transition: "all 0.2s ease-out" }}
@@ -2388,15 +2452,15 @@ const AboutPage = ({ dispatch }) => {
             <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 56, height: 56, borderRadius: 16, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", marginBottom: 24, animation: "about-pulse-glow 3s ease-in-out infinite" }}>
               <Wrench size={26} color={theme.accent} strokeWidth={1.5} style={{ animation: "about-spin-slow 10s linear infinite" }} />
             </div>
-            <h2 style={{ fontSize: isMobile ? 28 : 40, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Quote Smarter. Chase Less.<br />Win More.</h2>
-            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", marginBottom: 16, lineHeight: 1.6 }}>Let AI handle the quoting and automated follow-ups handle the chasing — while you stay on the tools.</p>
+            <h2 style={{ fontSize: isMobile ? 28 : 40, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Quote faster. Chase less.<br />Win more work.</h2>
+            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", marginBottom: 16, lineHeight: 1.6 }}>Wynflow handles the quoting and the chasing — so you can stay on the tools and still close more jobs.</p>
             <p style={{ fontSize: 13, color: "rgba(20,184,166,0.6)", marginBottom: 32, fontWeight: 500 }}>Built for tradies, by a Kiwi who gets it.</p>
             <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })}
               onMouseDown={pressDown} onMouseUp={pressUp}
               onMouseEnter={e => { e.currentTarget.style.background = "#5EEAD4"; e.currentTarget.style.boxShadow = "0 4px 32px rgba(20,184,166,0.4), 0 0 80px rgba(20,184,166,0.15)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)"; }}
               style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 600, padding: "16px 40px", borderRadius: 10, background: theme.accent, color: "#000", border: "none", cursor: "pointer", transition: "all 0.2s ease-out", boxShadow: "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)", letterSpacing: "0.01em" }}>
-              Start Your Free Trial
+              Start your free trial
               <ArrowRight size={16} style={{ display: "inline", verticalAlign: "middle", marginLeft: 8 }} />
             </button>
           </div>
@@ -2414,10 +2478,10 @@ const PricingPage = ({ dispatch }) => {
   const [openFaq, setOpenFaq] = useState(null);
 
   const plans = [
-    {name:"Starter",price:"29",desc:"AI quoting & automated follow-ups to win more jobs",features:["AI photo quote generator","Unlimited quotes","1 automated follow-up sequence","Customer quote request page","One-click Accept / Decline","File attachments","Quote dashboard & analytics","Email support"],highlighted:true,active:true,link:"https://buy.stripe.com/eVqfZhaF76gDcl57Yx73G02"},
-    {name:"Pro",price:"49",desc:"The full AI-powered toolkit for serious tradies",features:[],highlighted:false,active:false,comingSoon:true,link:"https://buy.stripe.com/7sY3cv7sVawT1Gr6Ut73G03"},
+    {name:"Starter",price:"29",desc:"Job and customer management to win more work",features:["Photo-based quote drafting","Unlimited quotes","1 automated follow-up sequence","Customer quote request page","One-click Accept / Decline","File attachments","Dashboard & analytics","Email support"],highlighted:true,active:true,link:"https://buy.stripe.com/eVqfZhaF76gDcl57Yx73G02"},
+    {name:"Pro",price:"49",desc:"The full toolkit for serious tradies",features:[],highlighted:false,active:false,comingSoon:true,link:"https://buy.stripe.com/7sY3cv7sVawT1Gr6Ut73G03"},
   ];
-  const faqs = [{q:"How does the AI quote generator work?",a:"Take photos on the job site, add a few details about the work, and Wynflow's AI analyses everything — your trade, your rates, the scope of work — to generate an itemised quote with materials, labour, and pricing. Review it, tweak if needed, and send."},{q:"Is there really a free trial?",a:"Yep. 14 days, full access including AI quoting, no credit card needed. Send real quotes from day one."},{q:"Can I cancel anytime?",a:"Absolutely. No lock-in contracts, no cancellation fees. But most tradies stay."},{q:"Do my customers know it's automated?",a:"Nope. Emails come from Wynflow on behalf of your business name. They look professional and personal — your customers just think you're on the ball."},{q:"What if I already use Xero / Tradify / Fergus?",a:"Keep using them for your invoicing. Wynflow is specifically for AI-powered quoting and automated follow-ups — it fills the gap most trade software misses."},{q:"How long does it take to set up?",a:"About 30 seconds. Sign up, enter your business details, and generate your first AI quote. The default follow-up sequence is ready to go."}];
+  const faqs = [{q:"What does Wynflow actually do?",a:"Wynflow is job and customer management software for tradies. It turns your job site photos and notes into a tidy itemised quote, sends it for you, and chases the customer if they go quiet — all from your phone. You keep every quote, customer and follow-up in one place instead of across notebooks, texts and emails."},{q:"Is there really a free trial?",a:"Yep. 14 days, full access, no credit card needed. Send real quotes from day one."},{q:"Can I cancel anytime?",a:"Absolutely. No lock-in contracts, no cancellation fees. But most tradies stay."},{q:"Do my customers know the follow-ups are automated?",a:"Nope. Emails come from Wynflow on behalf of your business name. They look professional and personal — your customers just think you're on the ball."},{q:"What if I already use Xero / Tradify / Fergus?",a:"Keep using them. Wynflow sits before the job is booked — quoting, follow-up and customer responses — which is the gap most trade software leaves wide open."},{q:"How long does it take to set up?",a:"About 30 seconds. Sign up, enter your business details, and you're ready to draft your first quote. The default follow-up sequence is ready to go."}];
 
   // Button press handlers (matching HomePage pattern)
   const pressDown = (e) => { e.currentTarget.style.transform = "scale(0.97)"; };
@@ -2579,7 +2643,7 @@ const PricingPage = ({ dispatch }) => {
                         color: plan.highlighted ? "#000" : "#FFFFFF",
                         boxShadow: plan.highlighted ? "0 0 24px rgba(20,184,166,0.3)" : "none",
                       }}>
-                      {plan.highlighted ? "Start Free Trial" : "Get Pro"}
+                      {plan.highlighted ? "Start free trial" : "Get Pro"}
                       <ArrowRight size={15} style={{ display: "inline", verticalAlign: "middle", marginLeft: 8 }} />
                     </button>
                   )}
@@ -2675,15 +2739,15 @@ const PricingPage = ({ dispatch }) => {
             <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 56, height: 56, borderRadius: 16, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", marginBottom: 24, animation: "pricing-pulse-glow 3s ease-in-out infinite" }}>
               <Wrench size={26} color={theme.accent} strokeWidth={1.5} style={{ animation: "pricing-spin-slow 10s linear infinite" }} />
             </div>
-            <h2 style={{ fontSize: isMobile ? 28 : 40, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Still Not Sure?</h2>
-            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", marginBottom: 16, lineHeight: 1.6 }}>Start your free trial — generate your first AI quote in under a minute.</p>
-            <p style={{ fontSize: 13, color: "rgba(20,184,166,0.6)", marginBottom: 32, fontWeight: 500 }}>No credit card. No lock-in. Just smarter quoting.</p>
+            <h2 style={{ fontSize: isMobile ? 28 : 40, fontWeight: 700, color: "#FFFFFF", marginBottom: 16, fontFamily: theme.font, letterSpacing: "-0.03em", lineHeight: 1.15 }}>Still not sure?</h2>
+            <p style={{ fontSize: isMobile ? 15 : 17, color: "rgba(255,255,255,0.45)", marginBottom: 16, lineHeight: 1.6 }}>Start your free trial — send your first quote in under a minute.</p>
+            <p style={{ fontSize: 13, color: "rgba(20,184,166,0.6)", marginBottom: 32, fontWeight: 500 }}>No credit card. No lock-in. Just less admin.</p>
             <button onClick={() => dispatch({ type: "SET_SCREEN", payload: "signup" })}
               onMouseDown={pressDown} onMouseUp={pressUp}
               onMouseEnter={e => { e.currentTarget.style.background = "#5EEAD4"; e.currentTarget.style.boxShadow = "0 4px 32px rgba(20,184,166,0.4), 0 0 80px rgba(20,184,166,0.15)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = theme.accent; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)"; }}
               style={{ fontFamily: theme.font, fontSize: 15, fontWeight: 600, padding: "16px 40px", borderRadius: 10, background: theme.accent, color: "#000", border: "none", cursor: "pointer", transition: "all 0.2s ease-out", boxShadow: "0 0 24px rgba(20,184,166,0.3), 0 0 60px rgba(20,184,166,0.1)", letterSpacing: "0.01em" }}>
-              Start Your Free Trial
+              Start your free trial
               <ArrowRight size={16} style={{ display: "inline", verticalAlign: "middle", marginLeft: 8 }} />
             </button>
           </div>
@@ -3039,7 +3103,7 @@ const AuthScreen = ({ dispatch, isSignup, plan = "starter" }) => {
             </Button>
             {isSignup && (
               <p style={{ fontSize: 10, color: theme.textDim, textAlign: "center", lineHeight: 1.6, marginTop: 8 }}>
-                By signing up you agree that AI-generated quotes are estimates only and that you are responsible for reviewing all quotes before sending them to customers.
+                By signing up you agree that auto-drafted quotes are estimates only and that you are responsible for reviewing all quotes before sending them to customers.
               </p>
             )}
           </div>
@@ -3200,7 +3264,7 @@ const TrialPaywall = ({ business, dispatch }) => {
           borderRadius: 10,
           border: "1px solid rgba(255,255,255,0.06)",
         }}>
-          {["Unlimited AI quotes", "Automated follow-up emails", "Full analytics dashboard"].map((f, i) => (
+          {["Unlimited quotes", "Automated follow-up emails", "Full analytics dashboard"].map((f, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <Check size={15} color={theme.accent} />
               <span style={{ fontSize: 13, color: theme.textMuted }}>{f}</span>
@@ -5283,6 +5347,7 @@ const AIQuoteForm = ({ dispatch, business, sequences, quotes }) => {
       dispatch({ type: "NOTIFY", payload: { message: "Please fill in all fields including the job description — the more detail, the better the quote", type: "error" } });
       return;
     }
+    confirmEmailFix(form.customerEmail, (fixed) => update("customerEmail", fixed));
     if (!business.trade) {
       dispatch({ type: "NOTIFY", payload: { message: "Please set your trade in Settings before generating a quote.", type: "error" } });
       return;
@@ -5942,6 +6007,7 @@ const NewQuoteForm = ({ dispatch, business, sequences }) => {
       dispatch({ type: "NOTIFY", payload: { message: "Please fill in all required fields (name, email, phone, job title, and at least one line item)", type: "error" } });
       return;
     }
+    confirmEmailFix(form.customerEmail, (fixed) => update("customerEmail", fixed));
     setLoading(true);
     try {
       let pdfUrl = null;
@@ -7566,6 +7632,7 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
       dispatch({ type: "NOTIFY", payload: { message: "Please fill in customer name, email, and amount", type: "error" } });
       return;
     }
+    confirmEmailFix(form.customerEmail, (fixed) => update("customerEmail", fixed));
     setSending(true);
     try {
       let invoiceId;
@@ -9947,25 +10014,37 @@ const LazyProfileModal = ({ business, dispatch, onSaved, onCancel }) => {
   );
 };
 
-// ─── Demo Onboarding Flow (replaces the old OnboardingTutorial) ───
-// 4-step flow: optional trade picker → preview → "generating" → result
+// ─── Demo Onboarding Flow (v2) — narrative arc from "hi" to "aha" ───
+// 1 trade → 2 preview → 3 loading → 4 reveal → 5 contact (optional) → finish
 // Uses a HARDCODED sample quote per scenario (see DEMO_SCENARIOS near top of file).
+const TOP_TRADES = [
+  { key: "Builder", Icon: Hammer },
+  { key: "Plumber", Icon: Wrench },
+  { key: "Electrician", Icon: Zap },
+  { key: "Painter", Icon: Paintbrush },
+  { key: "Roofer", Icon: HomeIcon },
+  { key: "Landscaper", Icon: TreePine },
+];
+
 const DemoOnboarding = ({ business, dispatch, onComplete }) => {
   const isMobile = useIsMobile();
-  // Steps: 0=trade picker, 1=name+phone (fallback), 2=preview scenario, 3=generating, 4=result
-  const needsTrade = !business?.trade;
   const needsContact = !business?.phone || !business?.contact_name || business?.contact_name === business?.business_name;
-  const firstStep = needsTrade ? 0 : (needsContact ? 1 : 2);
-  const [step, setStep] = useState(firstStep);
+  const totalSteps = needsContact ? 5 : 4;
+
+  const [step, setStep] = useState(1);
   const [selectedTrade, setSelectedTrade] = useState(business?.trade || "");
+  const [showAllTrades, setShowAllTrades] = useState(false);
   const [contactName, setContactName] = useState(
     business?.contact_name && business.contact_name !== business.business_name ? business.contact_name : ""
   );
   const [phone, setPhone] = useState(business?.phone || "");
-  const [generating, setGenerating] = useState(false);
+  const [animatedTotal, setAnimatedTotal] = useState(0);
+  const [loadingMsg, setLoadingMsg] = useState("Analysing photos and notes");
+  const [finishing, setFinishing] = useState(false);
 
-  const scenario = getDemoScenario(selectedTrade);
   const businessName = business?.business_name || "Your Business";
+  const scenario = selectedTrade ? getDemoScenario(selectedTrade) : null;
+  const progressPct = Math.min(100, (step / totalSteps) * 100);
 
   const finishDemo = async (navigateTo) => {
     const now = new Date().toISOString();
@@ -9984,184 +10063,347 @@ const DemoOnboarding = ({ business, dispatch, onComplete }) => {
     setCookie("wynflow_business", updatedBiz, 43200);
     try { localStorage.setItem("wynflow_onboarded_" + business.id, "true"); } catch(e) {}
     setCookie("wynflow_onboarded_" + business.id, "true", 525600);
-    // Notify N8N with complete details (name + phone now available)
-    fetch("https://wynfallautomation.app.n8n.cloud/webhook/new-business", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        business_name: updatedBiz.business_name,
-        contact_name: updatedBiz.contact_name,
-        email: updatedBiz.email,
-        phone: updatedBiz.phone,
-        trade: updatedBiz.trade,
-        onboarding_completed: true,
-      }),
-    }).catch(() => {});
     onComplete();
     if (navigateTo) dispatch({ type: "SET_SCREEN", payload: navigateTo });
   };
 
-  const pickTrade = () => {
+  const handleContinueFromTrade = () => {
     if (!selectedTrade) {
       dispatch({ type: "NOTIFY", payload: { message: "Pick your trade so we can show you a matching example", type: "error" } });
       return;
     }
-    // Save trade immediately so it's not lost if they abandon
     db("businesses").eq("id", business.id).update({ trade: selectedTrade, trade_category: selectedTrade }).catch(() => {});
     dispatch({ type: "SET_BUSINESS", payload: { ...business, trade: selectedTrade, trade_category: selectedTrade } });
-    setStep(needsContact ? 1 : 2);
-  };
-
-  const saveContact = () => {
-    if (!contactName.trim() || !phone.trim()) {
-      dispatch({ type: "NOTIFY", payload: { message: "We need your name and mobile so customers can reach you", type: "error" } });
-      return;
-    }
-    // Save immediately so it's not lost if they abandon
-    db("businesses").eq("id", business.id).update({ contact_name: contactName.trim(), phone: phone.trim() }).catch(() => {});
-    dispatch({ type: "SET_BUSINESS", payload: { ...business, contact_name: contactName.trim(), phone: phone.trim() } });
     setStep(2);
   };
 
-  const startGenerate = () => {
+  const handleGenerate = () => {
     setStep(3);
-    setGenerating(true);
-    // Brief delay for the "aha" effect — feels like the AI is working
+    const msgs = ["Analysing photos and notes", "Pricing materials", "Calculating labour", "Finalising quote"];
+    let i = 0;
+    setLoadingMsg(msgs[0]);
+    const interval = setInterval(() => {
+      i++;
+      if (i < msgs.length) setLoadingMsg(msgs[i]);
+    }, 520);
     setTimeout(() => {
-      setGenerating(false);
+      clearInterval(interval);
       setStep(4);
-    }, 1800);
+      setAnimatedTotal(0);
+      const target = scenario?.total || 0;
+      const start = performance.now();
+      const dur = 1000;
+      const tick = (now) => {
+        const t = Math.min(1, (now - start) / dur);
+        const eased = 1 - Math.pow(1 - t, 3);
+        setAnimatedTotal(Math.floor(eased * target));
+        if (t < 1) requestAnimationFrame(tick);
+        else setAnimatedTotal(target);
+      };
+      requestAnimationFrame(tick);
+    }, 2000);
   };
 
-  // Shared shell wrapper
-  const shell = (content) => (
-    <div style={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", padding: isMobile ? 12 : 20 }}>
-      <div style={{ width: isMobile ? "100%" : 520, maxHeight: "94vh", background: theme.bg, border: "1px solid rgba(255,255,255,0.08)", borderRadius: 24, overflow: "hidden", boxShadow: "0 40px 120px rgba(0,0,0,0.7)", display: "flex", flexDirection: "column", position: "relative" }}>
-        {/* Skip link — always available except during "generating" */}
-        {!generating && (
-          <div onClick={() => finishDemo(null)}
-            style={{ position: "absolute", top: 14, right: 18, fontSize: 12, color: theme.textMuted, cursor: "pointer", zIndex: 2, padding: 6 }}
-            onMouseEnter={e => e.currentTarget.style.color = theme.text}
-            onMouseLeave={e => e.currentTarget.style.color = theme.textMuted}>
-            Skip
-          </div>
-        )}
-        {content}
+  const handleAfterReveal = (goToRealQuote) => {
+    if (needsContact) {
+      setStep(5);
+      return;
+    }
+    setFinishing(true);
+    setTimeout(() => finishDemo(goToRealQuote ? "aiQuote" : null), 1100);
+  };
+
+  const handleFinish = () => {
+    if (!contactName.trim() || !phone.trim()) {
+      dispatch({ type: "NOTIFY", payload: { message: "Pop your name and mobile in so customers can reach you.", type: "error" } });
+      return;
+    }
+    db("businesses").eq("id", business.id).update({ contact_name: contactName.trim(), phone: phone.trim() }).catch(() => {});
+    setFinishing(true);
+    setTimeout(() => finishDemo("aiQuote"), 1100);
+  };
+
+  const handleBack = () => {
+    if (step === 2) setStep(1);
+    else if (step === 4) setStep(2);
+    else if (step === 5) setStep(4);
+  };
+
+  const canShowBack = step === 2 || step === 4 || step === 5;
+  const canShowSkip = step !== 3 && !finishing;
+
+  // Trade tile renderer
+  const renderTradeTile = (key, Icon) => {
+    const active = selectedTrade === key;
+    return (
+      <div key={key} onClick={() => setSelectedTrade(key)}
+        style={{
+          padding: "16px 8px",
+          background: active ? "rgba(20,184,166,0.08)" : "rgba(255,255,255,0.03)",
+          border: active ? "1px solid rgba(20,184,166,0.4)" : "1px solid rgba(255,255,255,0.06)",
+          borderRadius: 10, cursor: "pointer", textAlign: "center",
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+          transition: "all 0.2s",
+          boxShadow: active ? "0 0 16px rgba(20,184,166,0.15)" : "none",
+        }}>
+        <Icon size={22} color={active ? theme.accent : "rgba(255,255,255,0.7)"} strokeWidth={1.6} />
+        <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>{key}</div>
       </div>
+    );
+  };
+
+  const kickerPill = (label) => (
+    <div style={{
+      display: "inline-flex", alignItems: "center", gap: 6,
+      padding: "5px 12px", borderRadius: 100, marginBottom: 14,
+      fontSize: 11, fontWeight: 600, color: theme.accent,
+      background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.18)",
+    }}>
+      <span style={{ width: 5, height: 5, borderRadius: "50%", background: theme.accent, boxShadow: `0 0 8px ${theme.accent}` }}></span>
+      {label}
     </div>
   );
 
-  // STEP 0: Trade picker
-  if (step === 0) {
-    return shell(
-      <div style={{ padding: isMobile ? "40px 24px 24px" : "52px 40px 36px" }}>
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ display: "inline-flex", padding: "4px 12px", borderRadius: 100, fontSize: 11, fontWeight: 600, color: theme.accent, background: "rgba(20,184,166,0.08)", marginBottom: 14 }}>Quick question</div>
-          <h2 style={{ fontSize: isMobile ? 24 : 28, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.15, margin: "0 0 10px", color: theme.text }}>What do you do?</h2>
-          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.5, margin: 0 }}>We'll show you a sample quote that matches your trade.</p>
-        </div>
-        <select value={selectedTrade} onChange={e => setSelectedTrade(e.target.value)}
-          style={{ width: "100%", padding: "14px 16px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: theme.text, fontSize: 15, fontFamily: theme.font, outline: "none", appearance: "auto", marginBottom: 20 }}>
-          <option value="">Choose your trade...</option>
-          {TRADE_CATEGORIES.map(t => <option key={t} value={t} style={{ background: "#1A2235" }}>{t}</option>)}
-        </select>
-        <Button onClick={pickTrade} style={{ width: "100%", justifyContent: "center", padding: "14px 24px" }}>Continue →</Button>
-      </div>
-    );
-  }
-
-  // STEP 1: Collect name + phone
-  if (step === 1) {
-    return shell(
-      <div style={{ padding: isMobile ? "40px 24px 24px" : "52px 40px 36px" }}>
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ display: "inline-flex", padding: "4px 12px", borderRadius: 100, fontSize: 11, fontWeight: 600, color: theme.accent, background: "rgba(20,184,166,0.08)", marginBottom: 14 }}>Almost there</div>
-          <h2 style={{ fontSize: isMobile ? 24 : 28, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.15, margin: "0 0 10px", color: theme.text }}>Who should customers ask for?</h2>
-          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.5, margin: 0 }}>This goes on your quotes so customers know who to call.</p>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 20 }}>
-          <Input label="Your Name" value={contactName} onChange={setContactName} placeholder="e.g. Jesse Smith" />
-          <Input label="Mobile Number" value={phone} onChange={setPhone} type="tel" placeholder="e.g. 021 123 4567" />
-        </div>
-        <Button onClick={saveContact} style={{ width: "100%", justifyContent: "center", padding: "14px 24px" }}>Continue →</Button>
-      </div>
-    );
-  }
-
-  // STEP 2: Preview the scenario
-  if (step === 2) {
-    return shell(
-      <div style={{ padding: isMobile ? "40px 20px 24px" : "52px 36px 32px" }}>
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <div style={{ display: "inline-flex", padding: "4px 12px", borderRadius: 100, fontSize: 11, fontWeight: 600, color: theme.accent, background: "rgba(20,184,166,0.08)", marginBottom: 14 }}>Try it now</div>
-          <h2 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.15, margin: "0 0 8px", color: theme.text }}>Here's a sample {scenario.jobTitle.toLowerCase()}</h2>
-          <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.5, margin: 0 }}>Hit the button and Wynflow will show you what your quote would look like.</p>
-        </div>
-        {/* Fake "photo" card with emoji placeholder */}
-        <div style={{ background: `linear-gradient(135deg, ${scenario.accent}22, ${scenario.accent}08)`, border: `1px solid ${scenario.accent}33`, borderRadius: 14, padding: "28px 20px", textAlign: "center", marginBottom: 16 }}>
-          <div style={{ fontSize: 48, marginBottom: 8 }}>{scenario.icon}</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>{scenario.jobTitle}</div>
-          <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>Customer: {scenario.customerName}</div>
-        </div>
-        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "12px 14px", marginBottom: 18 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: theme.textMuted, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 6 }}>Job notes</div>
-          <div style={{ fontSize: 13, color: theme.text, lineHeight: 1.5 }}>{scenario.description}</div>
-        </div>
-        <Button onClick={startGenerate} style={{ width: "100%", justifyContent: "center", padding: "14px 24px", fontSize: 15 }}>
-          <Sparkles size={16} style={{ marginRight: 6 }} /> Generate Sample Quote →
-        </Button>
-      </div>
-    );
-  }
-
-  // STEP 3: "Generating" — brief spinner for effect
-  if (step === 3) {
-    return shell(
-      <div style={{ padding: "80px 40px", textAlign: "center" }}>
-        <div style={{ marginBottom: 20 }}>
-          <Spinner />
-        </div>
-        <h3 style={{ fontSize: 18, fontWeight: 700, color: theme.text, margin: "0 0 8px" }}>Wynflow is reading the job...</h3>
-        <p style={{ fontSize: 13, color: theme.textMuted, margin: 0 }}>Pricing materials and labour...</p>
-      </div>
-    );
-  }
-
-  // STEP 4: Result — show the sample quote
-  return shell(
-    <div style={{ display: "flex", flexDirection: "column", maxHeight: "94vh" }}>
-      <div style={{ padding: isMobile ? "32px 20px 16px" : "40px 36px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ display: "inline-flex", padding: "4px 11px", borderRadius: 100, fontSize: 10, fontWeight: 700, color: "#F59E0B", background: "rgba(245,158,11,0.1)", letterSpacing: "0.06em", marginBottom: 10 }}>SAMPLE QUOTE</div>
-        <h2 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.15, margin: "0 0 4px", color: theme.text }}>{scenario.jobTitle}</h2>
-        <p style={{ fontSize: 12, color: theme.textMuted, margin: 0 }}>From <strong style={{ color: theme.text }}>{businessName}</strong> to {scenario.customerName}</p>
-      </div>
-      <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? "20px" : "24px 36px" }}>
-        {scenario.lineItems.map((item, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: i < scenario.lineItems.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-            <span style={{ fontSize: 13, color: theme.textMuted, flex: 1, paddingRight: 12 }}>{item.desc}</span>
-            <span style={{ fontSize: 13, color: theme.text, fontWeight: 600, whiteSpace: "nowrap" }}>${item.amount.toLocaleString()}</span>
+  return (
+    <>
+      <style>{`
+        @keyframes demoSlideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes demoStagger { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes demoTickPop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      `}</style>
+      <div style={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", padding: isMobile ? 12 : 20 }}>
+        <div style={{ width: isMobile ? "100%" : 480, maxHeight: "94vh", background: theme.bg, border: "1px solid rgba(255,255,255,0.08)", borderRadius: 24, overflow: "hidden", boxShadow: "0 40px 120px rgba(0,0,0,0.7)", display: "flex", flexDirection: "column", position: "relative" }}>
+          {/* Progress bar */}
+          <div style={{ height: 3, background: "rgba(255,255,255,0.05)", position: "relative", overflow: "hidden", flexShrink: 0 }}>
+            <div style={{
+              height: "100%", width: `${progressPct}%`,
+              background: `linear-gradient(90deg, ${theme.accent}, ${theme.accentHover})`,
+              boxShadow: `0 0 10px ${theme.accent}80`,
+              borderRadius: "0 3px 3px 0",
+              transition: "width 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
+            }}></div>
           </div>
-        ))}
-        <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 14, marginTop: 8, borderTop: `2px solid ${theme.accent}33` }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>Total</span>
-          <span style={{ fontSize: 20, fontWeight: 800, color: theme.accent }}>${scenario.total.toLocaleString()}</span>
-        </div>
-        <div style={{ marginTop: 16, padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: theme.textMuted, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 6 }}>Notes</div>
-          <div style={{ fontSize: 12, color: theme.text, lineHeight: 1.5 }}>{scenario.notes}</div>
-        </div>
-        <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 8, background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.12)", fontSize: 11, color: theme.textMuted, lineHeight: 1.5, textAlign: "center" }}>
-          This is a sample to show you how Wynflow structures a quote. Your real quotes will be AI-generated from your own photos and job notes.
+
+          {/* Top bar */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", flexShrink: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted, letterSpacing: "0.06em" }}>
+              {finishing ? "Done" : `${step} / ${totalSteps}`}
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {canShowBack && !finishing && (
+                <button onClick={handleBack}
+                  style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: theme.textMuted, background: "none", border: "none", cursor: "pointer", padding: "6px 10px", borderRadius: 8, fontFamily: theme.font }}
+                  onMouseEnter={e => { e.currentTarget.style.color = theme.text; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = theme.textMuted; e.currentTarget.style.background = "transparent"; }}>
+                  <ArrowLeft size={12} /> Back
+                </button>
+              )}
+              {canShowSkip && (
+                <button onClick={() => finishDemo(null)}
+                  style={{ fontSize: 12, color: theme.textMuted, background: "none", border: "none", cursor: "pointer", padding: "6px 10px", borderRadius: 8, fontFamily: theme.font }}
+                  onMouseEnter={e => { e.currentTarget.style.color = theme.text; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = theme.textMuted; e.currentTarget.style.background = "transparent"; }}>
+                  Skip
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Body */}
+          <div style={{ flex: 1, overflowY: "auto", position: "relative" }}>
+            {finishing ? (
+              <div key="finish" style={{ padding: "48px 40px 40px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", animation: "demoSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both" }}>
+                <div style={{
+                  width: 64, height: 64, borderRadius: "50%",
+                  background: `linear-gradient(135deg, ${theme.accent}33, ${theme.accent}0D)`,
+                  border: `1px solid ${theme.accent}66`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  marginBottom: 20, boxShadow: `0 0 40px ${theme.accent}4D`,
+                  animation: "demoTickPop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both",
+                }}>
+                  <Check size={32} color={theme.accent} strokeWidth={2.2} />
+                </div>
+                <h2 style={{ fontFamily: '"Playfair Display", serif', fontSize: 26, fontWeight: 700, margin: "0 0 8px", color: theme.text }}>
+                  You're set up{contactName.trim() ? `, ${contactName.trim().split(" ")[0]}` : ""}
+                </h2>
+                <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.55, maxWidth: 340, margin: 0 }}>
+                  Taking you to your first real quote…
+                </p>
+              </div>
+            ) : step === 1 ? (
+              <div key="1" style={{ padding: isMobile ? "20px 24px 28px" : "24px 40px 36px", animation: "demoSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both" }}>
+                {kickerPill("Takes 30 seconds")}
+                <h2 style={{ fontFamily: '"Playfair Display", serif', fontSize: isMobile ? 24 : 28, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.15, margin: "0 0 10px", color: theme.text }}>
+                  Kia ora — what do <em style={{ color: theme.accent, fontStyle: "italic" }}>you</em> do?
+                </h2>
+                <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.55, margin: "0 0 22px" }}>
+                  Pick your trade and we'll show you exactly what Wynflow will do for your business.
+                </p>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 16 }}>
+                  {TOP_TRADES.map(t => renderTradeTile(t.key, t.Icon))}
+                </div>
+
+                {!showAllTrades ? (
+                  <button onClick={() => setShowAllTrades(true)}
+                    style={{ display: "block", width: "100%", textAlign: "center", background: "transparent", border: "none", color: theme.accent, fontSize: 12, fontWeight: 600, padding: 8, cursor: "pointer", fontFamily: theme.font, marginBottom: 16 }}>
+                    See all 21 trades →
+                  </button>
+                ) : (
+                  <select value={selectedTrade} onChange={e => setSelectedTrade(e.target.value)}
+                    style={{ width: "100%", padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: theme.text, fontSize: 14, fontFamily: theme.font, outline: "none", marginBottom: 16 }}>
+                    <option value="">Or pick from the full list…</option>
+                    {TRADE_CATEGORIES.map(t => <option key={t} value={t} style={{ background: "#1A2235" }}>{t}</option>)}
+                  </select>
+                )}
+
+                <Button onClick={handleContinueFromTrade} style={{ width: "100%", justifyContent: "center", padding: "14px 24px" }} disabled={!selectedTrade}>
+                  Continue <ArrowRight size={14} style={{ marginLeft: 6 }} />
+                </Button>
+              </div>
+            ) : step === 2 && scenario ? (
+              <div key="2" style={{ padding: isMobile ? "20px 24px 28px" : "24px 40px 36px", animation: "demoSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both" }}>
+                {kickerPill("Here's how it works")}
+                <h2 style={{ fontFamily: '"Playfair Display", serif', fontSize: isMobile ? 22 : 26, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.15, margin: "0 0 10px", color: theme.text }}>
+                  Here's a sample <em style={{ color: theme.accent, fontStyle: "italic" }}>{scenario.jobTitle.toLowerCase()}</em>
+                </h2>
+                <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.55, margin: "0 0 18px" }}>
+                  Imagine this is a real site. Tap generate and Wynflow will show you what your quote would look like.
+                </p>
+
+                {/* Scenario photo card */}
+                <div style={{
+                  position: "relative", aspectRatio: "16 / 10",
+                  borderRadius: 14, overflow: "hidden", marginBottom: 14,
+                  background: `linear-gradient(135deg, ${scenario.accent}33, ${scenario.accent}14)`,
+                  border: `1px solid ${scenario.accent}33`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%)" }}></div>
+                  <div style={{ position: "absolute", top: 14, left: 14, zIndex: 3, background: "rgba(10,14,23,0.8)", backdropFilter: "blur(12px)", padding: "5px 12px", borderRadius: 100, fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "rgba(255,255,255,0.85)", border: "1px solid rgba(255,255,255,0.1)", textTransform: "uppercase" }}>
+                    Job site · 3 photos
+                  </div>
+                  <ImageIcon size={64} color="rgba(255,255,255,0.85)" strokeWidth={1.3} style={{ position: "relative", zIndex: 2, filter: `drop-shadow(0 4px 20px ${scenario.accent}80)` }} />
+                  <div style={{ position: "absolute", bottom: 14, left: 14, right: 14, zIndex: 3, fontSize: 11, color: "rgba(255,255,255,0.65)", display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ width: 4, height: 4, borderRadius: "50%", background: theme.accent, boxShadow: `0 0 6px ${theme.accent}` }}></span>
+                    demo-{scenario.scenarioKey}-01.jpg
+                  </div>
+                </div>
+
+                {/* Job card */}
+                <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 14, marginBottom: 18 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Customer</span>
+                    <span style={{ fontSize: 13, color: theme.text, fontWeight: 500 }}>{scenario.customerName}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Job</span>
+                    <span style={{ fontSize: 13, color: theme.text, fontWeight: 500 }}>{scenario.jobTitle}</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", lineHeight: 1.5, paddingTop: 8, marginTop: 4, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                    {scenario.description}
+                  </div>
+                </div>
+
+                <Button onClick={handleGenerate} style={{ width: "100%", justifyContent: "center", padding: "14px 24px" }}>
+                  <Sparkles size={16} style={{ marginRight: 6 }} /> Generate Sample Quote <ArrowRight size={14} style={{ marginLeft: 6 }} />
+                </Button>
+              </div>
+            ) : step === 3 ? (
+              <div key="3" style={{ padding: "60px 40px 80px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 320 }}>
+                <div style={{ marginBottom: 22 }}><Spinner /></div>
+                <h3 style={{ fontFamily: '"Playfair Display", serif', fontSize: 20, fontWeight: 600, margin: "0 0 6px", color: theme.text }}>Reading the job…</h3>
+                <p style={{ fontSize: 13, color: theme.textMuted, margin: 0, minHeight: 18, transition: "opacity 0.3s" }}>{loadingMsg}</p>
+              </div>
+            ) : step === 4 && scenario ? (
+              <div key="4" style={{ padding: isMobile ? "20px 24px 28px" : "24px 40px 36px", animation: "demoSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both" }}>
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "6px 12px", borderRadius: 100, marginBottom: 14,
+                  fontSize: 10, fontWeight: 700, color: theme.accent,
+                  background: `linear-gradient(135deg, ${theme.accent}26, ${theme.accent}14)`,
+                  border: `1px solid ${theme.accent}4D`,
+                  letterSpacing: "0.1em", textTransform: "uppercase",
+                }}>
+                  <Check size={12} strokeWidth={2.2} /> Your sample quote
+                </div>
+                <h2 style={{ fontFamily: '"Playfair Display", serif', fontSize: isMobile ? 22 : 26, fontWeight: 700, letterSpacing: "-0.01em", lineHeight: 1.15, margin: "0 0 4px", color: theme.text }}>
+                  {scenario.jobTitle}
+                </h2>
+                <p style={{ fontSize: 12, color: theme.textMuted, margin: "0 0 20px" }}>
+                  From <strong style={{ color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>{businessName}</strong> to {scenario.customerName}
+                </p>
+
+                <div style={{ marginBottom: 10 }}>
+                  {scenario.lineItems.map((item, i) => (
+                    <div key={i} style={{
+                      display: "flex", justifyContent: "space-between",
+                      padding: "11px 0",
+                      borderBottom: i < scenario.lineItems.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                      fontSize: 13,
+                      opacity: 0, transform: "translateX(-8px)",
+                      animation: `demoStagger 0.45s cubic-bezier(0.16, 1, 0.3, 1) ${80 + i * 80}ms forwards`,
+                    }}>
+                      <span style={{ color: "rgba(255,255,255,0.75)", flex: 1, paddingRight: 12 }}>{item.desc}</span>
+                      <span style={{ color: theme.text, fontWeight: 600, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>${item.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "14px 0 4px", borderTop: `2px solid ${theme.accent}4D` }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Total (incl. GST)</span>
+                  <span style={{
+                    fontFamily: '"Playfair Display", serif',
+                    fontSize: 30, fontWeight: 700, color: theme.accent,
+                    letterSpacing: "-0.02em",
+                    textShadow: `0 0 24px ${theme.accent}66`,
+                    fontVariantNumeric: "tabular-nums",
+                  }}>
+                    ${animatedTotal.toLocaleString()}
+                  </span>
+                </div>
+
+                <div style={{ padding: "12px 14px", background: `${theme.accent}0A`, border: `1px solid ${theme.accent}1F`, borderRadius: 10, fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, textAlign: "center", marginTop: 14 }}>
+                  This is a sample to show how Wynflow structures a quote. Your real quotes will be AI-generated from your own job photos &amp; notes.
+                </div>
+
+                <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+                  <Button onClick={() => handleAfterReveal(true)} style={{ flex: 1, justifyContent: "center", padding: "14px 20px" }}>
+                    <Camera size={14} style={{ marginRight: 6 }} /> Make a real one
+                  </Button>
+                </div>
+                <Button variant="ghost" onClick={() => handleAfterReveal(false)} style={{ width: "100%", justifyContent: "center", padding: "12px 20px", marginTop: 10 }}>
+                  Explore dashboard
+                </Button>
+              </div>
+            ) : step === 5 ? (
+              <div key="5" style={{ padding: isMobile ? "20px 24px 28px" : "24px 40px 36px", animation: "demoSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both" }}>
+                {kickerPill("One last thing")}
+                <h2 style={{ fontFamily: '"Playfair Display", serif', fontSize: isMobile ? 24 : 28, fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.15, margin: "0 0 10px", color: theme.text }}>
+                  Make it <em style={{ color: theme.accent, fontStyle: "italic" }}>yours</em>
+                </h2>
+                <p style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1.55, margin: "0 0 18px" }}>
+                  This goes on every quote so customers know who to call. You can edit this later in settings.
+                </p>
+
+                <div style={{ background: `${theme.accent}0A`, border: `1px solid ${theme.accent}26`, borderRadius: 12, padding: "12px 14px", marginBottom: 18, fontSize: 12, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>
+                  Nice work. <strong style={{ color: theme.accent, fontWeight: 700 }}>Real quotes</strong> will use your contact info below, your company details, and photos from your actual jobs.
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 18 }}>
+                  <Input label="Your Name" value={contactName} onChange={setContactName} placeholder="e.g. Jesse Smith" />
+                  <Input label="Mobile Number" value={phone} onChange={setPhone} type="tel" placeholder="e.g. 021 123 4567" />
+                </div>
+
+                <Button onClick={handleFinish} style={{ width: "100%", justifyContent: "center", padding: "14px 24px" }}>
+                  Finish setup <ArrowRight size={14} style={{ marginLeft: 6 }} />
+                </Button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
-      <div style={{ padding: isMobile ? "16px 20px 24px" : "20px 36px 28px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10 }}>
-        <Button onClick={() => finishDemo("aiQuote")} style={{ flex: 1, justifyContent: "center", padding: "14px 20px" }}>
-          <Camera size={16} style={{ marginRight: 6 }} /> Make a real one →
-        </Button>
-        <Button variant="ghost" onClick={() => finishDemo(null)} style={{ justifyContent: "center", padding: "14px 20px" }}>
-          Skip for now
-        </Button>
-      </div>
-    </div>
+    </>
   );
 };
 

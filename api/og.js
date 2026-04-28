@@ -4,8 +4,8 @@ export const config = { runtime: 'edge' };
 
 export default async function handler(req) {
   const { searchParams } = new URL(req.url);
-  const title = searchParams.get('title') || 'AI-Powered Quoting for NZ Tradies';
-  const subtitle = searchParams.get('subtitle') || 'Generate quotes from photos. Chase customers automatically. Win more jobs.';
+  const title = searchParams.get('title') || 'Quote the job. Win the job.';
+  const subtitle = searchParams.get('subtitle') || 'Job & customer management software for NZ tradies.';
 
   // Fetch the W logo from the live site
   const logoData = await fetch('https://www.wynflow.co.nz/logo.png').then(r => r.arrayBuffer());
@@ -105,8 +105,8 @@ export default async function handler(req) {
                   type: 'div',
                   props: {
                     style: {
-                      fontSize: 52, fontWeight: 700, color: 'white',
-                      lineHeight: 1.15, letterSpacing: '-0.03em',
+                      fontSize: 64, fontWeight: 700, color: 'white',
+                      lineHeight: 1.1, letterSpacing: '-0.04em',
                       marginBottom: 20, maxWidth: 900, display: 'flex',
                       textAlign: 'center',
                     },
@@ -118,8 +118,8 @@ export default async function handler(req) {
                   type: 'div',
                   props: {
                     style: {
-                      fontSize: 24, color: 'rgba(255,255,255,0.5)',
-                      lineHeight: 1.5, maxWidth: 700, display: 'flex',
+                      fontSize: 24, color: 'rgba(255,255,255,0.55)',
+                      lineHeight: 1.5, maxWidth: 800, display: 'flex',
                       textAlign: 'center',
                     },
                     children: subtitle,
@@ -130,7 +130,7 @@ export default async function handler(req) {
                   type: 'div',
                   props: {
                     style: { display: 'flex', gap: 12, marginTop: 40 },
-                    children: ['AI Photo Quotes', 'Auto Follow-Ups', 'Quote Dashboard'].map((f) => ({
+                    children: ['Quoting', 'Auto Follow-Ups', 'Customer Management'].map((f) => ({
                       type: 'div',
                       props: {
                         style: {
