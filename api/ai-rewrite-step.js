@@ -2,9 +2,17 @@
 // natural, on-brand prose using Claude. Keeps placeholder tags ({name},
 // {job}, {amount}, {business_name}, {invoice_number}, {due_date}) intact
 // so the runtime substitution still works.
+//
+// Two paths:
+//   1. If ANTHROPIC_API_KEY env var is set, calls Anthropic API directly.
+//   2. Otherwise, proxies through the active N8N workflow at
+//      /webhook/ai-rewrite-step, which has the credentials configured.
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-4-7';
+const N8N_PROXY_URL = process.env.N8N_BASE_URL
+  ? `${process.env.N8N_BASE_URL.replace(/\/$/, '')}/webhook/ai-rewrite-step`
+  : 'https://wynfallautomation.app.n8n.cloud/webhook/ai-rewrite-step';
 
 const ALLOWED_PLACEHOLDERS = ['{name}', '{job}', '{amount}', '{business_name}', '{invoice_number}', '{due_date}'];
 
@@ -42,13 +50,25 @@ ${isInvoice ? '- Reference the invoice and due date factually. Step 3+ should me
 Return ONLY the JSON object, no preamble, no markdown fences.`;
 }
 
+// Fallback: forward the request to the N8N proxy workflow.
+// The N8N workflow has the Anthropic key built in.
+async function rewriteViaN8N(payload) {
+  const r = await fetch(N8N_PROXY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) {
+    const text = await r.text();
+    throw new Error(`N8N proxy returned ${r.status}: ${text.slice(0, 300)}`);
+  }
+  return r.json();
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
-  }
-  if (!ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY env var not configured' });
   }
 
   try {
@@ -56,6 +76,19 @@ export default async function handler(req, res) {
 
     if (!subject && !body) {
       return res.status(400).json({ error: 'Provide at least one of subject or body to rewrite' });
+    }
+
+    // If ANTHROPIC_API_KEY isn't set in Vercel, proxy through N8N (which has its own creds)
+    if (!ANTHROPIC_API_KEY) {
+      try {
+        const data = await rewriteViaN8N({ subject, body, businessName, trade, stepNumber, totalSteps, sequenceType, tone });
+        if (data?.error) return res.status(502).json(data);
+        if (!data?.subject || !data?.body) return res.status(502).json({ error: 'N8N proxy returned malformed response', raw: data });
+        return res.status(200).json({ subject: data.subject, body: data.body });
+      } catch (err) {
+        console.error('N8N proxy failed:', err.message);
+        return res.status(502).json({ error: `AI rewrite unavailable: ${err.message}` });
+      }
     }
 
     const prompt = buildPrompt({ subject, body, businessName, trade, stepNumber, totalSteps, sequenceType, tone });

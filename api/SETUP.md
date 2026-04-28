@@ -59,7 +59,9 @@ Takes a follow-up sequence step (subject + body with placeholder tags) and uses 
 
 Used by `SequencesManager` — every step edit form has an "AI Rewrite" button that calls this endpoint.
 
-**To enable AI rewrite:** add `ANTHROPIC_API_KEY` to Vercel env vars. Optionally override `ANTHROPIC_MODEL` (defaults to `claude-opus-4-7`). Without the key, the button surfaces a friendly error and the user can keep editing manually.
+**Two paths, in order:**
+1. If `ANTHROPIC_API_KEY` is set in Vercel, the route calls Anthropic directly. (Override model with `ANTHROPIC_MODEL`.)
+2. Otherwise the route proxies through the active N8N workflow `Wynflow - AI Rewrite Step` at `/webhook/ai-rewrite-step` (which has its own Anthropic credentials). **This is the default — works out of the box, no Vercel env var needed.**
 
 ## Xero integration — `/api/xero-oauth-init`, `/api/xero-oauth-callback`, `/api/xero-push-invoice`
 
