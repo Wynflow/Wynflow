@@ -1,7 +1,8 @@
 import Stripe from 'stripe';
 
-// Only used for webhook signature verification — no API key needed
-const stripe = new Stripe('unused', { apiVersion: '2024-12-18.acacia' });
+// API key is only required for outbound API calls (e.g. creating payment links).
+// Signature verification works without it. Use the real secret if present, fall back to placeholder.
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'unused', { apiVersion: '2024-12-18.acacia' });
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -49,10 +50,43 @@ async function updateBusiness(id, data) {
 
 // ---------- Event handlers ----------
 
+async function updateInvoice(id, data) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/invoices?id=eq.${id}`,
+    {
+      method: 'PATCH',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(data),
+    }
+  );
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Supabase invoice update failed (${res.status}): ${text}`);
+  }
+}
+
 async function handleCheckoutCompleted(session) {
+  // Branch A: Wynflow customer paying their own invoice (metadata.kind === wynflow_invoice)
+  const meta = session.metadata || {};
+  if (meta.kind === 'wynflow_invoice' && meta.invoice_id) {
+    await updateInvoice(meta.invoice_id, {
+      status: 'paid',
+      paid_at: new Date().toISOString(),
+      paid_via: 'stripe',
+    });
+    console.log(`checkout.session.completed — invoice ${meta.invoice_id} marked paid`);
+    return;
+  }
+
+  // Branch B: Wynflow subscription signup (existing logic — match business by email)
   const email = session.customer_details?.email;
   if (!email) {
-    console.log('checkout.session.completed — no customer email, skipping');
+    console.log('checkout.session.completed — no customer email and no invoice metadata, skipping');
     return;
   }
 

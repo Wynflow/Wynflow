@@ -8089,7 +8089,20 @@ const CreateInvoiceForm = ({ dispatch, business, quotes, sequences, invoices, qu
         dispatch({ type: "UPDATE_INVOICE", payload: { id: invoiceId, pdf_url: uploadPath, pdf_filename: pdfFilename } });
       }
 
-      // Send invoice email via N8N
+      // Best-effort: create a Stripe Payment Link for online payment.
+      // Silently skipped if STRIPE_SECRET_KEY isn't configured — invoice still sends with bank-transfer details.
+      try {
+        const linkRes = await fetch("/api/create-invoice-payment-link", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invoice_id: invoiceId }),
+        });
+        if (linkRes.ok) {
+          const { url } = await linkRes.json();
+          if (url) dispatch({ type: "UPDATE_INVOICE", payload: { id: invoiceId, stripe_payment_link_url: url } });
+        }
+      } catch (e) { /* non-blocking */ }
+
+      // Send invoice email via N8N (workflow reads payment link from invoice row)
       await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-invoice", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ invoice_id: invoiceId }),
@@ -8647,6 +8660,18 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
         }
       }
 
+      // Ensure Stripe payment link exists (idempotent — reuses if already created)
+      try {
+        const linkRes = await fetch("/api/create-invoice-payment-link", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invoice_id: invoice.id }),
+        });
+        if (linkRes.ok) {
+          const { url } = await linkRes.json();
+          if (url) dispatch({ type: "UPDATE_INVOICE", payload: { id: invoice.id, stripe_payment_link_url: url } });
+        }
+      } catch (e) { /* non-blocking */ }
+
       await fetch("https://wynfallautomation.app.n8n.cloud/webhook/send-invoice", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ invoice_id: invoice.id }),
@@ -8772,6 +8797,61 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
               }} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <Download size={16} /> Download PDF
               </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Online payment link */}
+        {(invoice.status !== "draft") && (
+          <Card style={{ gridColumn: "1 / -1" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <CreditCard size={20} color={invoice.status === "paid" && invoice.paid_via === "stripe" ? theme.green : theme.accent} />
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, display: "flex", alignItems: "center", gap: 8 }}>
+                  Pay online
+                  {invoice.status === "paid" && invoice.paid_via === "stripe" && (
+                    <span style={{ padding: "2px 8px", borderRadius: 5, background: theme.greenSoft, color: theme.green, fontSize: 10, fontWeight: 700, letterSpacing: "0.04em" }}>PAID VIA STRIPE</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>
+                  {invoice.stripe_payment_link_url
+                    ? "Customers can pay this invoice with credit card via Stripe."
+                    : "No payment link yet — click Generate to create one (requires STRIPE_SECRET_KEY)."}
+                </div>
+                {invoice.stripe_payment_link_url && (
+                  <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 6, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 11, color: theme.textMuted, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {invoice.stripe_payment_link_url}
+                  </div>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {invoice.stripe_payment_link_url ? (
+                  <>
+                    <Button variant="secondary" size="sm" onClick={() => {
+                      navigator.clipboard.writeText(invoice.stripe_payment_link_url);
+                      dispatch({ type: "NOTIFY", payload: { message: "Payment link copied", type: "success" } });
+                    }}><Copy size={14} /> Copy</Button>
+                    <Button size="sm" onClick={() => window.open(invoice.stripe_payment_link_url, "_blank")}><ArrowRight size={14} /> Open</Button>
+                  </>
+                ) : (
+                  <Button size="sm" disabled={sending} onClick={async () => {
+                    setSending(true);
+                    try {
+                      const r = await fetch("/api/create-invoice-payment-link", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ invoice_id: invoice.id }),
+                      });
+                      const data = await r.json();
+                      if (!r.ok) throw new Error(data.error || "Failed");
+                      dispatch({ type: "UPDATE_INVOICE", payload: { id: invoice.id, stripe_payment_link_url: data.url, stripe_payment_link_id: data.id } });
+                      dispatch({ type: "NOTIFY", payload: { message: "Payment link created", type: "success" } });
+                    } catch (err) {
+                      dispatch({ type: "NOTIFY", payload: { message: err.message || "Failed to create link", type: "error" } });
+                    }
+                    setSending(false);
+                  }}>Generate link</Button>
+                )}
+              </div>
             </div>
           </Card>
         )}
