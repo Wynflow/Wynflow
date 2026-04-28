@@ -86,10 +86,12 @@ The key insight: **the user's first action inside Wynflow is using the core prod
    - Pre-filled notes: 2-3 sentences describing the scenario
    - **Big button: "Generate AI quote →"**
 
-   **Step 3: AI generates** (shows spinner, uses real quote generation pipeline)
-   - Calls existing `POST /webhook/generate-quote` with the demo data
-   - Real AI generates a real quote with the user's **actual business name** at the top
-   - **v0 decision: NOT saved to the quotes table.** The result lives only in component state. This avoids polluting the dashboard's "recent quotes" list with demo data that the user didn't actually create. A `demo_completed_at` column on `businesses` will track completion for analytics (see schema change below).
+   **Step 3: "Generate" the demo quote** (shows brief spinner for effect)
+   - **v0 design decision:** Uses a **hardcoded sample quote** per scenario, not a real AI call. The hardcoded sample is interpolated with the user's actual `business_name` so it feels personal.
+   - **Why hardcoded, not real AI for v0:** The existing `/webhook/generate-quote` endpoint requires `customer_email`, `customer_phone`, `hourly_rate`, `trade`, `quote_history`, `price_list` and more — fields the brand-new user hasn't filled in yet. Forcing the AI to work around these gaps introduces risk, cost, and edge cases that would delay shipping. A hardcoded sample is (a) zero cost, (b) 100% reliable, (c) instant, (d) clearly labeled as "Sample" (honest), (e) unblocks v0 immediately.
+   - **Labeling:** The demo result is labeled clearly at the top: **"SAMPLE QUOTE"** badge + subtitle "This is what Wynflow produces from a job photo and notes. Your real quotes will use our AI."
+   - **v1 upgrade path:** Once the user has set their hourly rate (via the lazy profile modal or Settings), we can add an opt-in "Generate a REAL sample using AI" button that calls the real webhook. Out of scope for v0.
+   - **Not saved to the quotes table.** The sample lives only in component state. A `demo_completed_at` column on `businesses` will track completion for analytics (see schema change below).
 
    **Step 4: See the result** (the "aha")
    - Full quote preview shown on screen (reuses existing `QuotePreview` component where possible)
