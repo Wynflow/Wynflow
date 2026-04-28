@@ -7305,6 +7305,109 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
   const [responses, setResponses] = useState([]);
   const [logs, setLogs] = useState([]);
 
+  // Job-card tabs: Notes / Checklist / Files
+  const [jobTab, setJobTab] = useState("notes");
+  const [notes, setNotes] = useState(quote?.tradie_notes || "");
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesDirty, setNotesDirty] = useState(false);
+  const [checklist, setChecklist] = useState(Array.isArray(quote?.checklist) ? quote.checklist : []);
+  const [newChecklistItem, setNewChecklistItem] = useState("");
+  const [attachments, setAttachments] = useState(Array.isArray(quote?.attachments) ? quote.attachments : []);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+
+  useEffect(() => {
+    if (!quote) return;
+    setNotes(quote.tradie_notes || "");
+    setChecklist(Array.isArray(quote.checklist) ? quote.checklist : []);
+    setAttachments(Array.isArray(quote.attachments) ? quote.attachments : []);
+  }, [quote?.id]);
+
+  // Debounced notes auto-save
+  useEffect(() => {
+    if (!notesDirty || !quote) return;
+    const t = setTimeout(async () => {
+      setNotesSaving(true);
+      const { error } = await db("quotes").eq("id", quote.id).update({ tradie_notes: notes });
+      if (!error) {
+        dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, tradie_notes: notes } });
+        setNotesDirty(false);
+      }
+      setNotesSaving(false);
+    }, 800);
+    return () => clearTimeout(t);
+  }, [notes, notesDirty, quote?.id]);
+
+  const saveChecklist = async (next) => {
+    setChecklist(next);
+    if (!quote) return;
+    const { error } = await db("quotes").eq("id", quote.id).update({ checklist: next });
+    if (!error) dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, checklist: next } });
+  };
+
+  const addChecklistItem = () => {
+    const label = newChecklistItem.trim();
+    if (!label) return;
+    const item = { id: `c_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, label, done: false };
+    saveChecklist([...checklist, item]);
+    setNewChecklistItem("");
+  };
+
+  const toggleChecklistItem = (id) => {
+    saveChecklist(checklist.map(it => it.id === id ? { ...it, done: !it.done, done_at: !it.done ? new Date().toISOString() : null } : it));
+  };
+
+  const removeChecklistItem = (id) => {
+    saveChecklist(checklist.filter(it => it.id !== id));
+  };
+
+  const handleAttachmentUpload = async (e) => {
+    if (!quote) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      dispatch({ type: "NOTIFY", payload: { message: "File too large — max 25MB", type: "error" } });
+      return;
+    }
+    setUploadingAttachment(true);
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${business.id}/attachments/${quote.id}/${Date.now()}-${safeName}`;
+      const { error: upErr } = await supabase.uploadFile("quote-pdfs", path, file);
+      if (upErr) throw new Error("Upload failed");
+      const next = [...attachments, { path, filename: file.name, size: file.size, uploaded_at: new Date().toISOString() }];
+      const { error } = await db("quotes").eq("id", quote.id).update({ attachments: next });
+      if (error) throw new Error("Save failed");
+      setAttachments(next);
+      dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, attachments: next } });
+      dispatch({ type: "NOTIFY", payload: { message: "Attached", type: "success" } });
+    } catch (err) {
+      dispatch({ type: "NOTIFY", payload: { message: err.message || "Upload failed", type: "error" } });
+    }
+    setUploadingAttachment(false);
+    e.target.value = "";
+  };
+
+  const removeAttachment = async (path) => {
+    if (!quote) return;
+    if (!window.confirm("Remove this attachment?")) return;
+    const next = attachments.filter(a => a.path !== path);
+    const { error } = await db("quotes").eq("id", quote.id).update({ attachments: next });
+    if (!error) {
+      setAttachments(next);
+      dispatch({ type: "UPDATE_QUOTE", payload: { id: quote.id, attachments: next } });
+      dispatch({ type: "NOTIFY", payload: { message: "Attachment removed", type: "success" } });
+    }
+  };
+
+  const openAttachment = async (path) => {
+    try {
+      const { signedURL } = await supabase.getSignedUrl("quote-pdfs", path, 300);
+      if (signedURL) window.open(signedURL, "_blank");
+    } catch {
+      dispatch({ type: "NOTIFY", payload: { message: "Failed to open attachment", type: "error" } });
+    }
+  };
+
   useEffect(() => {
     if (!quote) return;
     if (quote.sequence_id) {
@@ -7459,6 +7562,131 @@ const QuoteDetail = ({ quoteId, quotes, sequences, dispatch, business, invoices 
             )}
           </div>
         </Card>
+        {/* Job Card — Notes / Checklist / Files */}
+        <Card style={{ gridColumn: "1 / -1" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+              <ClipboardList size={16} color={theme.accent} /> Job Card
+            </h3>
+            <div style={{ display: "flex", gap: 4, padding: 3, borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              {[
+                { id: "notes", label: "Notes", Icon: FileText, count: notes ? null : null },
+                { id: "checklist", label: "Checklist", Icon: CheckCircle2, count: checklist.length > 0 ? `${checklist.filter(c => c.done).length}/${checklist.length}` : null },
+                { id: "files", label: "Files", Icon: Paperclip, count: attachments.length > 0 ? attachments.length : null },
+              ].map(t => {
+                const TIcon = t.Icon;
+                const isActive = jobTab === t.id;
+                return (
+                  <button key={t.id} onClick={() => setJobTab(t.id)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600,
+                      background: isActive ? "rgba(20,184,166,0.12)" : "transparent",
+                      color: isActive ? theme.accent : theme.textMuted,
+                      border: "none", cursor: "pointer", transition: "all 0.15s",
+                    }}>
+                    <TIcon size={12} /> {t.label}
+                    {t.count && <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "rgba(255,255,255,0.06)", color: theme.textDim }}>{t.count}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {jobTab === "notes" && (
+            <div>
+              <textarea
+                value={notes}
+                onChange={(e) => { setNotes(e.target.value); setNotesDirty(true); }}
+                placeholder="Private notes for this job — access constraints, customer preferences, materials needed, anything you want to remember. Only you see these."
+                style={{
+                  width: "100%", minHeight: 140, padding: "12px 14px", borderRadius: 8,
+                  background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)",
+                  color: theme.text, fontFamily: theme.font, fontSize: 14, lineHeight: 1.6,
+                  resize: "vertical", outline: "none", boxSizing: "border-box",
+                }}
+              />
+              <div style={{ marginTop: 6, fontSize: 11, color: theme.textDim, display: "flex", alignItems: "center", gap: 6 }}>
+                {notesSaving ? "Saving…" : notesDirty ? "Unsaved" : notes ? "Saved" : "Empty"}
+              </div>
+            </div>
+          )}
+
+          {jobTab === "checklist" && (
+            <div>
+              {checklist.length === 0 && (
+                <div style={{ padding: 20, textAlign: "center", borderRadius: 8, background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.08)", fontSize: 13, color: theme.textMuted, marginBottom: 12 }}>
+                  Add checklist items below — things to bring on site, steps to complete, materials to order.
+                </div>
+              )}
+              {checklist.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
+                  {checklist.map(item => (
+                    <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 8, background: item.done ? "rgba(34,197,94,0.04)" : "rgba(255,255,255,0.025)", border: `1px solid ${item.done ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)"}` }}>
+                      <button onClick={() => toggleChecklistItem(item.id)} style={{
+                        width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${item.done ? theme.green : theme.border}`,
+                        background: item.done ? theme.green : "transparent", cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0,
+                      }}>
+                        {item.done && <Check size={11} color="#fff" strokeWidth={3} />}
+                      </button>
+                      <span style={{ flex: 1, fontSize: 14, color: item.done ? theme.textMuted : theme.text, textDecoration: item.done ? "line-through" : "none", lineHeight: 1.4 }}>{item.label}</span>
+                      <button onClick={() => removeChecklistItem(item.id)} style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 4, display: "flex" }}>
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  value={newChecklistItem}
+                  onChange={e => setNewChecklistItem(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addChecklistItem(); } }}
+                  placeholder="Add an item (e.g. Bring impact driver)"
+                  style={{
+                    flex: 1, padding: "9px 12px", borderRadius: 8, fontSize: 13,
+                    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
+                    color: theme.text, fontFamily: theme.font, outline: "none",
+                  }}
+                />
+                <Button size="sm" onClick={addChecklistItem} disabled={!newChecklistItem.trim()}><Plus size={14} /> Add</Button>
+              </div>
+            </div>
+          )}
+
+          {jobTab === "files" && (
+            <div>
+              {attachments.length === 0 ? (
+                <div style={{ padding: 20, textAlign: "center", borderRadius: 8, background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.08)", fontSize: 13, color: theme.textMuted, marginBottom: 12 }}>
+                  No files yet. Upload contracts, receipts, photos, drawings — anything that belongs to this job.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+                  {attachments.map(att => (
+                    <div key={att.path} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <Paperclip size={14} color={theme.accent} style={{ flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: theme.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{att.filename}</div>
+                        <div style={{ fontSize: 11, color: theme.textDim }}>{(att.size / 1024).toFixed(0)} KB · {customerTimeAgo(att.uploaded_at)}</div>
+                      </div>
+                      <button onClick={() => openAttachment(att.path)} style={{ background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.15)", borderRadius: 6, color: theme.accent, padding: "5px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                        <Download size={11} /> Open
+                      </button>
+                      <button onClick={() => removeAttachment(att.path)} style={{ background: "none", border: "none", cursor: "pointer", color: theme.textDim, padding: 4, display: "flex" }}>
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 8, background: "rgba(20,184,166,0.08)", border: "1px solid rgba(20,184,166,0.2)", color: theme.accent, fontSize: 13, fontWeight: 600, cursor: uploadingAttachment ? "wait" : "pointer" }}>
+                <Upload size={14} /> {uploadingAttachment ? "Uploading…" : "Upload file"}
+                <input type="file" onChange={handleAttachmentUpload} disabled={uploadingAttachment} style={{ display: "none" }} />
+              </label>
+            </div>
+          )}
+        </Card>
+
         <Card style={{ gridColumn: "1 / -1" }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, margin: "0 0 20px" }}>Follow-Up Timeline</h3>
           {steps.length > 0 ? (
