@@ -5429,14 +5429,17 @@ function ScheduleView({ jobs, dispatch, business, quotes, focusDate }) {
     ? jobs
     : jobs.filter((j) => (j.assigned_to || []).includes(employeeFilter));
 
-  const events = filteredJobs.map((job) => ({
-    id: job.id,
-    title: job.title,
-    start: new Date(job.starts_at),
-    end: new Date(job.ends_at),
-    allDay: job.all_day || false,
-    resource: job,
-  }));
+  const events = filteredJobs.map((job) => {
+    const customerLabel = job.customer_name ? ` · ${job.customer_name}` : "";
+    return {
+      id: job.id,
+      title: `${job.title}${customerLabel}`,
+      start: new Date(job.starts_at),
+      end: new Date(job.ends_at),
+      allDay: job.all_day || false,
+      resource: job,
+    };
+  });
 
   const eventPropGetter = (event) => {
     const job = event.resource;
@@ -5548,7 +5551,8 @@ function ScheduleView({ jobs, dispatch, business, quotes, focusDate }) {
       <div style={{ height: isMobile ? "calc(100vh - 240px)" : "calc(100vh - 200px)", minHeight: 400 }}>
         <DnDCalendar
           localizer={localizer} events={events}
-          defaultView={isMobile ? "day" : "week"} views={isMobile ? ["day"] : ["week", "day"]}
+          defaultView={isMobile ? "agenda" : "week"}
+          views={isMobile ? ["agenda", "day"] : ["month", "week", "day", "agenda"]}
           date={currentDate} onNavigate={(date) => setCurrentDate(date)}
           min={new Date(2026, 0, 1, 6, 0)} max={new Date(2026, 0, 1, 20, 0)}
           step={30} timeslots={2} selectable resizable
@@ -5556,10 +5560,25 @@ function ScheduleView({ jobs, dispatch, business, quotes, focusDate }) {
           onEventDrop={handleEventDrop} onEventResize={handleEventResize}
           onSelectEvent={handleSelectEvent} onSelectSlot={handleSelectSlot}
           eventPropGetter={eventPropGetter} components={{ event: EventComponent }}
+          tooltipAccessor={(event) => {
+            const j = event.resource;
+            const lines = [j.title];
+            if (j.customer_name) lines.push(`Customer: ${j.customer_name}`);
+            if (j.customer_phone) lines.push(`Phone: ${j.customer_phone}`);
+            if (j.address) lines.push(`Address: ${j.address}`);
+            if ((j.assigned_to || []).length) lines.push(`Assigned: ${j.assigned_to.join(", ")}`);
+            if (j.notes) lines.push(`Notes: ${j.notes}`);
+            return lines.join("\n");
+          }}
           formats={{
             dayHeaderFormat: (date) => format(date, "EEE d MMM"),
             dayRangeHeaderFormat: ({ start, end }) => `${format(start, "d MMM")} – ${format(end, "d MMM yyyy")}`,
+            monthHeaderFormat: (date) => format(date, "MMMM yyyy"),
             timeGutterFormat: (date) => format(date, "h a"),
+            agendaHeaderFormat: ({ start, end }) => `${format(start, "d MMM yyyy")} – ${format(end, "d MMM yyyy")}`,
+            agendaDateFormat: (date) => format(date, "EEE d MMM"),
+            agendaTimeFormat: (date) => format(date, "h:mm a"),
+            agendaTimeRangeFormat: ({ start, end }) => `${format(start, "h:mm a")} – ${format(end, "h:mm a")}`,
           }}
           style={{ height: "100%" }}
         />
