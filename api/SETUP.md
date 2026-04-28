@@ -10,6 +10,9 @@
 | `STRIPE_SECRET_KEY` | Stripe secret API key (starts with `sk_live_` or `sk_test_`) | `/api/create-invoice-payment-link` (online invoice pay) |
 | `ANTHROPIC_API_KEY` | Anthropic API key (starts with `sk-ant-`) | `/api/ai-rewrite-step` (AI follow-up rewrite) |
 | `ANTHROPIC_MODEL` | Optional. Claude model id (default `claude-opus-4-7`) | `/api/ai-rewrite-step` |
+| `XERO_CLIENT_ID` | OAuth client ID from your Xero app | `/api/xero-oauth-init`, `/api/xero-oauth-callback`, `/api/xero-push-invoice` |
+| `XERO_CLIENT_SECRET` | OAuth client secret from your Xero app | `/api/xero-oauth-callback`, `/api/xero-push-invoice` |
+| `SITE_BASE_URL` | Optional. Defaults to `https://www.wynflow.co.nz`. Override for staging | Xero callback redirect |
 
 ## Stripe Dashboard Configuration
 
@@ -50,16 +53,6 @@ When a Wynflow tradie sends or resends an invoice, the app calls this route to c
 
 If `STRIPE_SECRET_KEY` is not set, invoice sending still works — just without an online-payment link (bank-transfer details only, as before).
 
-## DB columns added (already migrated)
-
-```sql
-ALTER TABLE invoices
-  ADD COLUMN IF NOT EXISTS stripe_payment_link_id text,
-  ADD COLUMN IF NOT EXISTS stripe_payment_link_url text,
-  ADD COLUMN IF NOT EXISTS paid_via text,
-  ADD COLUMN IF NOT EXISTS paid_at timestamptz;
-```
-
 ## `/api/ai-rewrite-step`
 
 Takes a follow-up sequence step (subject + body with placeholder tags) and uses Claude to rewrite it as natural, on-brand prose for a NZ tradie. Preserves placeholder tags so runtime substitution still works.
@@ -67,3 +60,59 @@ Takes a follow-up sequence step (subject + body with placeholder tags) and uses 
 Used by `SequencesManager` — every step edit form has an "AI Rewrite" button that calls this endpoint.
 
 **To enable AI rewrite:** add `ANTHROPIC_API_KEY` to Vercel env vars. Optionally override `ANTHROPIC_MODEL` (defaults to `claude-opus-4-7`). Without the key, the button surfaces a friendly error and the user can keep editing manually.
+
+## Xero integration — `/api/xero-oauth-init`, `/api/xero-oauth-callback`, `/api/xero-push-invoice`
+
+One-way push of Wynflow invoices into a connected Xero org. OAuth 2 flow with refresh-token rotation. Tokens stored on the `businesses` row.
+
+**Setup steps for Wynflow operator:**
+1. Sign in at https://developer.xero.com → My Apps → New App
+2. Choose "Web app", name it (e.g. "Wynflow"), set company URL to `https://www.wynflow.co.nz`
+3. Add redirect URI exactly: `https://www.wynflow.co.nz/api/xero-oauth-callback`
+4. Save and copy **Client ID** + **Client Secret**
+5. In Vercel → Settings → Environment Variables, add:
+   - `XERO_CLIENT_ID` = the client ID
+   - `XERO_CLIENT_SECRET` = the client secret
+6. Redeploy (or wait for next deploy) so the new env vars apply
+7. In the app: Settings → Integrations → "Connect Xero" → choose your Xero org → done
+
+Once connected, every InvoiceDetail screen exposes a "Push to Xero" button. The push:
+- Refreshes the access token transparently if expired
+- Looks up (or creates) a Xero contact by email
+- Creates the Xero invoice as `AUTHORISED` (or `DRAFT` if Wynflow status is draft)
+- Maps line items from `breakdown.lineItems` if present, else a single line of `job_title`/`amount`
+- Saves `xero_invoice_id` and `xero_pushed_at` back on the Wynflow invoice
+
+Errors are stored in `xero_push_error` and surfaced inline on the invoice page.
+
+## DB columns added (already migrated)
+
+```sql
+-- Stripe pay button
+ALTER TABLE invoices
+  ADD COLUMN stripe_payment_link_id text,
+  ADD COLUMN stripe_payment_link_url text,
+  ADD COLUMN paid_via text,
+  ADD COLUMN paid_at timestamptz;
+
+-- Xero sync
+ALTER TABLE businesses
+  ADD COLUMN xero_access_token text,
+  ADD COLUMN xero_refresh_token text,
+  ADD COLUMN xero_tenant_id text,
+  ADD COLUMN xero_token_expires_at timestamptz,
+  ADD COLUMN xero_connected_at timestamptz,
+  ADD COLUMN xero_oauth_state text,
+  ADD COLUMN xero_oauth_state_expires_at timestamptz;
+
+ALTER TABLE invoices
+  ADD COLUMN xero_invoice_id text,
+  ADD COLUMN xero_pushed_at timestamptz,
+  ADD COLUMN xero_push_error text;
+
+-- Job Card depth (Notes / Checklist / Files)
+ALTER TABLE quotes
+  ADD COLUMN tradie_notes text,
+  ADD COLUMN checklist jsonb DEFAULT '[]'::jsonb,
+  ADD COLUMN attachments jsonb DEFAULT '[]'::jsonb;
+```

@@ -8880,6 +8880,23 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
     dispatch({ type: "NOTIFY", payload: { message: "Invoice deleted", type: "success" } });
   };
 
+  const pushToXero = async () => {
+    setSending(true);
+    try {
+      const r = await fetch("/api/xero-push-invoice", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoice_id: invoice.id }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Push failed");
+      dispatch({ type: "UPDATE_INVOICE", payload: { id: invoice.id, xero_invoice_id: data.xero_invoice_id, xero_pushed_at: new Date().toISOString(), xero_push_error: null } });
+      dispatch({ type: "NOTIFY", payload: { message: "Pushed to Xero", type: "success" } });
+    } catch (err) {
+      dispatch({ type: "NOTIFY", payload: { message: err.message || "Failed to push to Xero", type: "error" } });
+    }
+    setSending(false);
+  };
+
   const resendInvoice = async () => {
     const isDraft = invoice.status === "draft";
     const msg = isDraft ? "Send this invoice to " + invoice.customer_email + "?" : "Resend this invoice to " + invoice.customer_email + "?";
@@ -9044,6 +9061,41 @@ const InvoiceDetail = ({ invoiceId, invoices, business, dispatch, sequences }) =
               }} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <Download size={16} /> Download PDF
               </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Xero sync */}
+        {(invoice.status !== "draft") && business?.xero_connected_at && (
+          <Card style={{ gridColumn: "1 / -1" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ width: 32, height: 32, borderRadius: 7, background: "#13B5EA", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13, flexShrink: 0, fontFamily: "Helvetica, Arial, sans-serif" }}>X</div>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, display: "flex", alignItems: "center", gap: 8 }}>
+                  Xero
+                  {invoice.xero_invoice_id && (
+                    <span style={{ padding: "2px 8px", borderRadius: 5, background: theme.greenSoft, color: theme.green, fontSize: 10, fontWeight: 700, letterSpacing: "0.04em" }}>SYNCED</span>
+                  )}
+                  {invoice.xero_push_error && (
+                    <span style={{ padding: "2px 8px", borderRadius: 5, background: theme.redSoft, color: theme.red, fontSize: 10, fontWeight: 700, letterSpacing: "0.04em" }}>ERROR</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>
+                  {invoice.xero_pushed_at
+                    ? `Pushed to Xero on ${new Date(invoice.xero_pushed_at).toLocaleString("en-NZ")}.`
+                    : "Send this invoice through to your Xero account."}
+                </div>
+                {invoice.xero_push_error && (
+                  <div style={{ marginTop: 6, fontSize: 11, color: theme.red, fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{invoice.xero_push_error}</div>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                {invoice.xero_invoice_id ? (
+                  <Button size="sm" variant="secondary" onClick={pushToXero} disabled={sending}>Re-push</Button>
+                ) : (
+                  <Button size="sm" onClick={pushToXero} disabled={sending}>{sending ? "Pushing…" : "Push to Xero"}</Button>
+                )}
+              </div>
             </div>
           </Card>
         )}
@@ -10685,6 +10737,52 @@ const Settings = ({ business, dispatch }) => {
           <p style={{ fontSize: 11, color: theme.textDim, margin: "10px 0 0" }}>Customers can also leave a comment. Hit "Save Changes" above to update.</p>
         </Card>
         <Card style={{ gridColumn: "1 / -1", ...(isMobile ? { padding: 16 } : {}) }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 6px", letterSpacing: "0.01em", display: "flex", alignItems: "center", gap: 8 }}>
+            <Zap size={14} color={theme.accent} /> Integrations
+          </h3>
+          <p style={{ fontSize: 12, color: theme.textMuted, margin: "0 0 14px" }}>Connect Wynflow to the tools you already use.</p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: "#13B5EA", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 14, flexShrink: 0, fontFamily: "Helvetica, Arial, sans-serif" }}>X</div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: theme.text, display: "flex", alignItems: "center", gap: 8 }}>
+                  Xero
+                  {business?.xero_connected_at && (
+                    <span style={{ padding: "2px 8px", borderRadius: 5, background: theme.greenSoft, color: theme.green, fontSize: 10, fontWeight: 700, letterSpacing: "0.04em" }}>CONNECTED</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>
+                  {business?.xero_connected_at
+                    ? `Push invoices straight to Xero with one click. Connected ${new Date(business.xero_connected_at).toLocaleDateString()}.`
+                    : "Push invoices straight to Xero with one click. Reconnect required if your token expires."}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              {business?.xero_connected_at ? (
+                <>
+                  <Button size="sm" variant="secondary" onClick={() => { window.location.href = `/api/xero-oauth-init?business_id=${business.id}`; }}>Reconnect</Button>
+                  <Button size="sm" variant="danger" onClick={async () => {
+                    if (!window.confirm("Disconnect Xero? Existing pushed invoices stay in Xero, but Wynflow won't be able to push new ones until you reconnect.")) return;
+                    const { error } = await db("businesses").eq("id", business.id).update({
+                      xero_access_token: null, xero_refresh_token: null, xero_tenant_id: null,
+                      xero_token_expires_at: null, xero_connected_at: null,
+                    });
+                    if (!error) {
+                      const updated = { ...business, xero_access_token: null, xero_refresh_token: null, xero_tenant_id: null, xero_token_expires_at: null, xero_connected_at: null };
+                      dispatch({ type: "SET_BUSINESS", payload: updated });
+                      setCookie("wynflow_business", updated, 43200);
+                      dispatch({ type: "NOTIFY", payload: { message: "Xero disconnected", type: "success" } });
+                    }
+                  }}>Disconnect</Button>
+                </>
+              ) : (
+                <Button size="sm" onClick={() => { window.location.href = `/api/xero-oauth-init?business_id=${business.id}`; }}>Connect Xero</Button>
+              )}
+            </div>
+          </div>
+        </Card>
+        <Card style={{ gridColumn: "1 / -1", ...(isMobile ? { padding: 16 } : {}) }}>
           <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, margin: "0 0 12px", letterSpacing: "0.01em" }}>Subscription</h3>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: business?.subscription_status === "trialing" ? 12 : 0 }}>
             <div style={{ minWidth: 0 }}>
@@ -11262,6 +11360,36 @@ function WynflowAppInner() {
     }
     dispatch({ type: "SET_LOADING", payload: false });
   }, [business?.id]);
+
+  // Xero OAuth callback toast (xero_connected=1 or xero_error=...)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("xero_connected")) {
+      dispatch({ type: "NOTIFY", payload: { message: "Xero connected!", type: "success" } });
+      // Refresh business from DB so connection state appears
+      (async () => {
+        try {
+          const u = supabase.user;
+          if (!u) return;
+          const { data } = await db("businesses").eq("user_id", u.id).single().select();
+          if (data) {
+            dispatch({ type: "SET_BUSINESS", payload: data });
+            setCookie("wynflow_business", data, 43200);
+          }
+        } catch {}
+      })();
+      // Clear the query string but preserve hash
+      const url = new URL(window.location.href);
+      url.searchParams.delete("xero_connected");
+      window.history.replaceState(null, "", url.pathname + (url.hash || ""));
+    }
+    if (params.has("xero_error")) {
+      dispatch({ type: "NOTIFY", payload: { message: `Xero connect failed: ${params.get("xero_error")}`, type: "error" } });
+      const url = new URL(window.location.href);
+      url.searchParams.delete("xero_error");
+      window.history.replaceState(null, "", url.pathname + (url.hash || ""));
+    }
+  }, []);
 
   // Restore session on mount
   useEffect(() => {
