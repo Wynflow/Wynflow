@@ -1,6 +1,6 @@
 import { useState, useEffect, useReducer, useCallback, Component } from "react";
 import { jsPDF } from "jspdf";
-import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, ArrowLeft, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History, Eye, CalendarDays, Hammer, Paintbrush, Home as HomeIcon, TreePine, Image as ImageIcon } from "lucide-react";
+import { LayoutDashboard, FileText, RefreshCw, Settings as SettingsIcon, Upload, Send, Bot, ClipboardList, Paperclip, CheckCircle2, BarChart3, Lock, Clock, DollarSign, ChevronLeft, ChevronRight, Menu, X, ArrowRight, ArrowLeft, Star, Mail, Plus, Search, Check, XCircle, MessageSquare, Globe, Cpu, Wrench, HelpCircle, Camera, UserCheck, Zap, Link, Copy, Sparkles, Bell, Receipt, CreditCard, AlertTriangle, Download, Trash2, History, Eye, CalendarDays, Hammer, Paintbrush, Home as HomeIcon, TreePine, Image as ImageIcon, Users, Phone, TrendingUp } from "lucide-react";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -3349,6 +3349,7 @@ const Sidebar = ({ screen, dispatch, business }) => {
   const mainNav = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "quotes", label: "Quotes", icon: FileText },
+    { id: "customers", label: "Customers", icon: Users },
     { id: "schedule", label: "Schedule", icon: CalendarDays },
     { id: "invoices", label: "Invoices", icon: Receipt },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
@@ -3913,6 +3914,424 @@ const Dashboard = ({ quotes, dispatch, invoices = [], jobs = [], business, onSho
 };
 
 // ─── Quotes List ───
+// ─── Customers Aggregation ───
+// Derives customer records from the existing quotes (and invoices) tables.
+// No separate customers table — every quoted customer becomes a record by email.
+const aggregateCustomers = (quotes = [], invoices = []) => {
+  const map = new Map();
+  quotes.forEach(q => {
+    const email = (q.customer_email || "").trim().toLowerCase();
+    if (!email) return;
+    let rec = map.get(email);
+    if (!rec) {
+      rec = {
+        email,
+        name: q.customer_name || "(no name)",
+        phone: q.customer_phone || "",
+        firstSeen: q.created_at || q.sent_at,
+        lastActivity: q.created_at || q.sent_at,
+        latestStatus: q.status,
+        latestQuoteId: q.id,
+        quoteIds: [],
+        sentCount: 0, acceptedCount: 0, bookedCount: 0, declinedCount: 0, requestedCount: 0,
+        totalQuoted: 0, totalWon: 0,
+        invoiceIds: [], totalInvoiced: 0, totalPaid: 0,
+      };
+      map.set(email, rec);
+    }
+    rec.quoteIds.push(q.id);
+    const eventDate = new Date(q.responded_at || q.sent_at || q.created_at || 0);
+    const recDate = new Date(rec.lastActivity || 0);
+    if (eventDate >= recDate) {
+      rec.lastActivity = q.responded_at || q.sent_at || q.created_at;
+      rec.latestStatus = q.status;
+      rec.latestQuoteId = q.id;
+      if (q.customer_name) rec.name = q.customer_name;
+      if (q.customer_phone) rec.phone = q.customer_phone;
+    }
+    if (q.created_at && new Date(q.created_at) < new Date(rec.firstSeen || Infinity)) {
+      rec.firstSeen = q.created_at;
+    }
+    const amt = parseFloat(q.amount || 0);
+    if (q.status === "requested") rec.requestedCount++;
+    if (q.status === "sent" || q.status === "opened") rec.sentCount++;
+    if (q.status === "accepted") { rec.acceptedCount++; rec.totalWon += amt; }
+    if (q.status === "booked") { rec.bookedCount++; rec.totalWon += amt; }
+    if (q.status === "declined") rec.declinedCount++;
+    rec.totalQuoted += amt;
+  });
+  invoices.forEach(inv => {
+    const email = (inv.customer_email || "").trim().toLowerCase();
+    if (!email) return;
+    const rec = map.get(email);
+    if (!rec) return;
+    rec.invoiceIds.push(inv.id);
+    const amt = parseFloat(inv.amount || 0) + parseFloat(inv.gst_amount || 0);
+    rec.totalInvoiced += amt;
+    if (inv.status === "paid") rec.totalPaid += amt;
+  });
+  for (const rec of map.values()) {
+    const responded = rec.acceptedCount + rec.bookedCount + rec.declinedCount;
+    rec.winRate = responded > 0 ? (rec.bookedCount + rec.acceptedCount) / responded : null;
+    rec.quoteCount = rec.quoteIds.length;
+  }
+  return Array.from(map.values()).sort((a, b) => new Date(b.lastActivity || 0) - new Date(a.lastActivity || 0));
+};
+
+const customerStatus = (c) => {
+  if (c.bookedCount > 0) return "booked";
+  if (c.acceptedCount > 0) return "accepted";
+  if (c.requestedCount > 0) return "requested";
+  if (c.sentCount > 0) return "sent";
+  if (c.declinedCount > 0) return "declined";
+  return "none";
+};
+
+const customerStatusConf = (s) => {
+  if (s === "booked") return { label: "Booked", color: theme.green, bg: theme.greenSoft };
+  if (s === "accepted") return { label: "Accepted", color: "#F59E0B", bg: "rgba(245,158,11,0.12)" };
+  if (s === "requested") return { label: "Requested", color: theme.accent, bg: theme.accentSoft };
+  if (s === "sent") return { label: "Awaiting", color: theme.accentBlue, bg: theme.accentBlueSoft };
+  if (s === "declined") return { label: "Declined", color: theme.red, bg: theme.redSoft };
+  return { label: "—", color: theme.textMuted, bg: "rgba(255,255,255,0.04)" };
+};
+
+const fmtCustomerMoney = (n) => "$" + parseFloat(n || 0).toLocaleString("en-NZ", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+const customerTimeAgo = (dateStr) => {
+  if (!dateStr) return "—";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-NZ", { day: "numeric", month: "short" });
+};
+
+const CustomersList = ({ quotes, invoices = [], dispatch }) => {
+  const isMobile = useIsMobile();
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+
+  const customers = aggregateCustomers(quotes, invoices);
+
+  const filtered = customers.filter(c => {
+    if (filter === "active") {
+      if (c.bookedCount === 0 && c.acceptedCount === 0 && c.sentCount === 0 && c.requestedCount === 0) return false;
+    }
+    if (filter === "won") {
+      if (c.bookedCount === 0 && c.acceptedCount === 0) return false;
+    }
+    if (filter === "quiet") {
+      const stale = (Date.now() - new Date(c.lastActivity || 0).getTime()) > 14 * 24 * 3600 * 1000;
+      if (!stale || c.sentCount === 0) return false;
+    }
+    if (search) {
+      const s = search.toLowerCase();
+      if (!c.name.toLowerCase().includes(s) && !c.email.toLowerCase().includes(s) && !c.phone.toLowerCase().includes(s)) return false;
+    }
+    return true;
+  });
+
+  const counts = {
+    all: customers.length,
+    active: customers.filter(c => c.bookedCount > 0 || c.acceptedCount > 0 || c.sentCount > 0 || c.requestedCount > 0).length,
+    won: customers.filter(c => c.bookedCount > 0 || c.acceptedCount > 0).length,
+    quiet: customers.filter(c => c.sentCount > 0 && (Date.now() - new Date(c.lastActivity || 0).getTime()) > 14 * 24 * 3600 * 1000).length,
+  };
+
+  const tabs = [
+    { key: "all", label: "All", count: counts.all },
+    { key: "active", label: "Active", count: counts.active },
+    { key: "won", label: "Won", count: counts.won },
+    { key: "quiet", label: "Quiet", count: counts.quiet, dot: counts.quiet > 0 },
+  ];
+
+  const totalCustomers = customers.length;
+  const totalQuotedAll = customers.reduce((s, c) => s + c.totalQuoted, 0);
+  const totalWonAll = customers.reduce((s, c) => s + c.totalWon, 0);
+  const repeatCustomers = customers.filter(c => c.quoteCount > 1).length;
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", marginBottom: isMobile ? 16 : 24, flexDirection: isMobile ? "column" : "row", gap: isMobile ? 12 : 0 }}>
+        <div>
+          <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.02em" }}>Customers</h1>
+          <p style={{ fontSize: 13, color: theme.textMuted, margin: "4px 0 0" }}>{totalCustomers} {totalCustomers === 1 ? "customer" : "customers"}{repeatCustomers > 0 ? ` · ${repeatCustomers} repeat` : ""}</p>
+        </div>
+      </div>
+
+      {customers.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 8 : 12, marginBottom: isMobile ? 14 : 18 }}>
+          {[
+            { Icon: Users, label: "Total customers", value: totalCustomers, color: theme.accent },
+            { Icon: FileText, label: "Total quoted", value: fmtCustomerMoney(totalQuotedAll), color: theme.accentBlue },
+            { Icon: TrendingUp, label: "Total won", value: fmtCustomerMoney(totalWonAll), color: theme.green },
+            { Icon: RefreshCw, label: "Repeat customers", value: repeatCustomers, color: "#F59E0B" },
+          ].map((s, i) => {
+            const Icon = s.Icon;
+            return (
+              <div key={i} style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <Icon size={13} color={s.color} />
+                  <span style={{ fontSize: 11, color: theme.textDim, fontWeight: 500, letterSpacing: "0.02em" }}>{s.label}</span>
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: theme.text, letterSpacing: "-0.02em" }}>{s.value}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 4, marginBottom: isMobile ? 12 : 16, overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 4, flexWrap: "nowrap", alignItems: "center" }}>
+        {tabs.map((tab) => (
+          <span key={tab.key} onClick={() => setFilter(tab.key)}
+            style={{
+              padding: isMobile ? "5px 10px" : "6px 12px", borderRadius: 6, fontSize: isMobile ? 11 : 12, fontWeight: 500, cursor: "pointer",
+              background: filter === tab.key ? "rgba(20,184,166,0.1)" : "transparent",
+              color: filter === tab.key ? theme.accent : theme.textMuted,
+              border: `1px solid ${filter === tab.key ? "rgba(20,184,166,0.2)" : "transparent"}`,
+              whiteSpace: "nowrap", flexShrink: 0, display: "flex", alignItems: "center", gap: 5,
+              transition: "all 0.15s",
+            }}>
+            {tab.label}
+            {tab.dot && <span style={{ width: 5, height: 5, borderRadius: 3, background: theme.accent, flexShrink: 0 }} />}
+            {tab.count > 0 && !tab.dot && <span style={{ fontSize: 10, fontWeight: 600, color: filter === tab.key ? theme.accent : theme.textDim }}>{tab.count}</span>}
+          </span>
+        ))}
+      </div>
+
+      <div style={{ position: "relative", marginBottom: isMobile ? 12 : 16, maxWidth: isMobile ? "100%" : 280 }}>
+        <Search size={14} color={theme.textDim} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
+        <input value={search} onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, email or phone..."
+          style={{
+            fontFamily: theme.font, fontSize: 13, padding: "8px 12px 8px 34px", borderRadius: 8, width: "100%",
+            background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: theme.text, outline: "none",
+            boxSizing: "border-box",
+          }} />
+      </div>
+
+      {filtered.length === 0 ? (
+        <div style={{ padding: 56, textAlign: "center", borderRadius: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+          <Users size={32} color={theme.textDim} style={{ margin: "0 auto 12px", display: "block" }} />
+          <div style={{ fontSize: 14, color: theme.textMuted }}>
+            {customers.length === 0 ? "No customers yet — they'll appear here once you start quoting." : "No customers match your filter."}
+          </div>
+        </div>
+      ) : (
+        <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
+          {filtered.map((c, i) => {
+            const status = customerStatus(c);
+            const sc = customerStatusConf(status);
+            return (
+              <div key={c.email}
+                onClick={() => dispatch({ type: "SET_SCREEN", payload: "customerDetail:" + encodeURIComponent(c.email) })}
+                style={{
+                  display: "flex", alignItems: "center", gap: 12, padding: isMobile ? "12px 14px" : "14px 18px",
+                  borderBottom: i < filtered.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                  cursor: "pointer", transition: "background 0.1s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                <div style={{ width: isMobile ? 32 : 36, height: isMobile ? 32 : 36, borderRadius: "50%", background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.18)", color: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flexShrink: 0, letterSpacing: "0.02em" }}>
+                  {(c.name || c.email).split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.text, marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {c.name}
+                    {c.quoteCount > 1 && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: "rgba(245,158,11,0.12)", color: "#F59E0B", letterSpacing: "0.04em" }}>×{c.quoteCount}</span>}
+                  </div>
+                  <div style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.email}</div>
+                </div>
+
+                {!isMobile && (
+                  <div style={{ textAlign: "right", flexShrink: 0, minWidth: 100 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>{fmtCustomerMoney(c.totalWon || c.totalQuoted)}</div>
+                    <div style={{ fontSize: 10, color: theme.textDim, fontWeight: 500, letterSpacing: "0.02em" }}>{c.totalWon > 0 ? "won" : "quoted"}</div>
+                  </div>
+                )}
+
+                <div style={{ padding: "3px 9px", borderRadius: 5, background: sc.bg, color: sc.color, fontSize: 10, fontWeight: 600, letterSpacing: "0.04em", flexShrink: 0 }}>
+                  {sc.label}
+                </div>
+
+                {!isMobile && (
+                  <div style={{ fontSize: 11, color: theme.textDim, flexShrink: 0, minWidth: 60, textAlign: "right" }}>{customerTimeAgo(c.lastActivity)}</div>
+                )}
+
+                <ChevronRight size={14} color={theme.textDim} style={{ flexShrink: 0 }} />
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const CustomerDetail = ({ email, quotes, invoices = [], dispatch }) => {
+  const isMobile = useIsMobile();
+  const decoded = decodeURIComponent(email || "").toLowerCase();
+  const all = aggregateCustomers(quotes, invoices);
+  const customer = all.find(c => c.email === decoded);
+
+  if (!customer) {
+    return (
+      <div>
+        <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "customers" })} variant="ghost" size="sm" style={{ marginBottom: 16 }}>
+          <ChevronLeft size={14} /> Back
+        </Button>
+        <div style={{ padding: 48, textAlign: "center", borderRadius: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ fontSize: 14, color: theme.textMuted }}>Customer not found.</div>
+        </div>
+      </div>
+    );
+  }
+
+  const customerQuotes = quotes.filter(q => (q.customer_email || "").trim().toLowerCase() === decoded)
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  const customerInvoices = invoices.filter(inv => (inv.customer_email || "").trim().toLowerCase() === decoded)
+    .sort((a, b) => new Date(b.created_at || b.sent_at || 0) - new Date(a.created_at || b.sent_at || 0));
+
+  const winRatePct = customer.winRate !== null ? Math.round(customer.winRate * 100) : null;
+  const status = customerStatus(customer);
+  const sc = customerStatusConf(status);
+
+  return (
+    <div>
+      <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "customers" })} variant="ghost" size="sm" style={{ marginBottom: 16 }}>
+        <ChevronLeft size={14} /> Back to Customers
+      </Button>
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: isMobile ? "flex-start" : "center", gap: 14, marginBottom: 18, flexDirection: isMobile ? "column" : "row" }}>
+        <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(20,184,166,0.1)", border: "1px solid rgba(20,184,166,0.2)", color: theme.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 700, flexShrink: 0 }}>
+          {(customer.name || customer.email).split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <h1 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.02em" }}>{customer.name}</h1>
+            <div style={{ padding: "3px 9px", borderRadius: 5, background: sc.bg, color: sc.color, fontSize: 10, fontWeight: 600, letterSpacing: "0.04em" }}>{sc.label}</div>
+          </div>
+          <div style={{ display: "flex", gap: 14, marginTop: 4, flexWrap: "wrap" }}>
+            <a href={`mailto:${customer.email}`} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: theme.textMuted, textDecoration: "none" }}>
+              <Mail size={11} /> {customer.email}
+            </a>
+            {customer.phone && (
+              <a href={`tel:${customer.phone}`} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: theme.textMuted, textDecoration: "none" }}>
+                <Phone size={11} /> {customer.phone}
+              </a>
+            )}
+            <span style={{ fontSize: 12, color: theme.textDim }}>First seen {customerTimeAgo(customer.firstSeen)}</span>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          <Button onClick={() => dispatch({ type: "SET_SCREEN", payload: "aiQuote" })} size="sm" style={{ background: "rgba(20,184,166,0.1)", color: theme.accent, border: "1px solid rgba(20,184,166,0.15)" }}>
+            <Plus size={13} /> New quote
+          </Button>
+        </div>
+      </div>
+
+      {/* Stat tiles */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 8 : 12, marginBottom: isMobile ? 18 : 22 }}>
+        {[
+          { label: "Quotes sent", value: customer.quoteCount, color: theme.accent },
+          { label: "Total quoted", value: fmtCustomerMoney(customer.totalQuoted), color: theme.accentBlue },
+          { label: "Total won", value: fmtCustomerMoney(customer.totalWon), color: theme.green },
+          { label: "Win rate", value: winRatePct !== null ? `${winRatePct}%` : "—", color: "#F59E0B" },
+        ].map((s, i) => (
+          <div key={i} style={{ padding: "14px 16px", borderRadius: 10, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ fontSize: 11, color: theme.textDim, fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 4 }}>{s.label}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: s.color, letterSpacing: "-0.02em" }}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Quote history */}
+      <div style={{ marginBottom: 22 }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, color: theme.text, margin: "0 0 10px", letterSpacing: "-0.01em" }}>Quote history</h2>
+        {customerQuotes.length === 0 ? (
+          <div style={{ padding: 24, textAlign: "center", borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", fontSize: 13, color: theme.textMuted }}>No quotes yet.</div>
+        ) : (
+          <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
+            {customerQuotes.map((q, i) => {
+              const sc2 = statusConfig[q.status] || { label: q.status, color: theme.textMuted, bg: "rgba(255,255,255,0.04)" };
+              return (
+                <div key={q.id}
+                  onClick={() => dispatch({ type: "SET_SCREEN", payload: "quoteDetail:" + q.id })}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 12, padding: isMobile ? "11px 14px" : "12px 18px",
+                    borderBottom: i < customerQuotes.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                    cursor: "pointer", transition: "background 0.1s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                      <span style={{ fontSize: 11, color: theme.textDim, fontFamily: "monospace" }}>{q.quote_number || `#${(q.id || "").slice(0, 6)}`}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: theme.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{q.job_title || "(no title)"}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: theme.textDim }}>{customerTimeAgo(q.responded_at || q.sent_at || q.created_at)}</div>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, flexShrink: 0, minWidth: 80, textAlign: "right" }}>{fmtCustomerMoney(q.amount)}</div>
+                  <div style={{ padding: "3px 9px", borderRadius: 5, background: sc2.bg, color: sc2.color, fontSize: 10, fontWeight: 600, letterSpacing: "0.04em", flexShrink: 0 }}>
+                    {sc2.label}
+                  </div>
+                  <ChevronRight size={14} color={theme.textDim} style={{ flexShrink: 0 }} />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Invoice history */}
+      {customerInvoices.length > 0 && (
+        <div>
+          <h2 style={{ fontSize: 14, fontWeight: 600, color: theme.text, margin: "0 0 10px", letterSpacing: "-0.01em" }}>Invoices</h2>
+          <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
+            {customerInvoices.map((inv, i) => {
+              const sc3 = invoiceStatusConfig[inv.status] || { label: inv.status, color: theme.textMuted, bg: "rgba(255,255,255,0.04)" };
+              const total = parseFloat(inv.amount || 0) + parseFloat(inv.gst_amount || 0);
+              return (
+                <div key={inv.id}
+                  onClick={() => dispatch({ type: "SET_SCREEN", payload: "invoiceDetail:" + inv.id })}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 12, padding: isMobile ? "11px 14px" : "12px 18px",
+                    borderBottom: i < customerInvoices.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                    cursor: "pointer", transition: "background 0.1s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                      <span style={{ fontSize: 11, color: theme.textDim, fontFamily: "monospace" }}>{inv.invoice_number}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: theme.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{inv.job_title || "(no title)"}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: theme.textDim }}>{customerTimeAgo(inv.sent_at || inv.created_at)}</div>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, flexShrink: 0, minWidth: 80, textAlign: "right" }}>{fmtCustomerMoney(total)}</div>
+                  <div style={{ padding: "3px 9px", borderRadius: 5, background: sc3.bg, color: sc3.color, fontSize: 10, fontWeight: 600, letterSpacing: "0.04em", flexShrink: 0 }}>
+                    {sc3.label}
+                  </div>
+                  <ChevronRight size={14} color={theme.textDim} style={{ flexShrink: 0 }} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const QuotesList = ({ quotes, dispatch, sequences, invoices = [] }) => {
   const isMobile = useIsMobile();
   const [filter, setFilter] = useState("all");
@@ -10816,6 +11235,8 @@ function WynflowAppInner() {
     switch (activeScreen) {
       case "dashboard": return <Dashboard quotes={quotes} dispatch={dispatch} invoices={invoices} jobs={jobs} business={business} onShowDemo={() => setShowOnboarding(true)} />;
       case "quotes": return <QuotesList quotes={quotes} dispatch={dispatch} sequences={sequences} invoices={invoices} />;
+      case "customers": return <CustomersList quotes={quotes} invoices={invoices} dispatch={dispatch} />;
+      case "customerDetail": return <CustomerDetail email={detailId} quotes={quotes} invoices={invoices} dispatch={dispatch} />;
       case "analytics": return <Analytics quotes={quotes} invoices={invoices} />;
       case "schedule": return <ScheduleView jobs={jobs} dispatch={dispatch} business={business} quotes={quotes} focusDate={detailId} />;
       case "newQuote": return <NewQuoteForm dispatch={dispatch} business={business} sequences={sequences} />;
